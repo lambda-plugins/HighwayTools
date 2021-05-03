@@ -1,0 +1,20 @@
+[
+  {
+    "modid": "PluginExample",
+    "name": "PluginExample",
+    "description": "does absolutely nothing",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "lambda-client.com",
+    "updateUrl": "",
+    "authorList": [
+      "me",
+      "you"
+    ],
+    "credits": "",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": [],
+    "test": ""
+  }
+]
