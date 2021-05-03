@@ -54,7 +54,7 @@ minecraft {
             property 'forge.logging.console.level', 'debug'
 
             mods {
-                pluginexample {
+                highwaytools {
                     source sourceSets.main
                 }
             }

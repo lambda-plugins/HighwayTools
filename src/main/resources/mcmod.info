@@ -1,17 +1,16 @@
 [
   {
-    "modid": "PluginExample",
-    "name": "PluginExample",
-    "description": "does absolutely nothing",
+    "modid": "highwaytools",
+    "name": "HighwayTools",
+    "description": "Build highways with ease",
     "version": "${version}",
     "mcversion": "${mcversion}",
     "url": "lambda-client.com",
     "updateUrl": "",
     "authorList": [
-      "me",
-      "you"
+      "Constructor"
     ],
-    "credits": "",
+    "credits": "HWU, MEG",
     "logoFile": "",
     "screenshots": [],
     "dependencies": [],
