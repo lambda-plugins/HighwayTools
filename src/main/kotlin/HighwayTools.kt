@@ -34,6 +34,16 @@ import com.lambda.client.event.events.PacketEvent
 import com.lambda.client.event.events.RenderWorldEvent
 import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
 import com.lambda.client.module.Category
+import com.lambda.client.module.modules.client.Hud.primaryColor
+import com.lambda.client.module.modules.client.Hud.secondaryColor
+import com.lambda.client.module.modules.combat.AutoLog
+import com.lambda.client.module.modules.misc.AntiAFK
+import com.lambda.client.module.modules.misc.AutoObsidian
+import com.lambda.client.module.modules.movement.AntiHunger
+import com.lambda.client.module.modules.movement.Velocity
+import com.lambda.client.module.modules.player.AutoEat
+import com.lambda.client.module.modules.player.InventoryManager
+import com.lambda.client.module.modules.player.LagNotifier
 import com.lambda.client.plugin.api.PluginModule
 import com.lambda.client.process.PauseProcess
 import com.lambda.client.setting.settings.impl.collection.CollectionSetting
@@ -230,10 +240,6 @@ internal object HighwayTools : PluginModule(
     private val packetLimiterMutex = Mutex()
     private val packetLimiter = ArrayDeque<Long>()
 
-    // Test
-    private val primaryColor = ColorHolder(255, 255, 255)
-    private val secondaryColor = ColorHolder(255, 255, 255)
-
     // Stats
     private val simpleMovingAveragePlaces = ArrayDeque<Long>()
     private val simpleMovingAverageBreaks = ArrayDeque<Long>()
@@ -267,6 +273,16 @@ internal object HighwayTools : PluginModule(
 
         onEnable {
             runSafeR {
+                /* Turn on inventory manager if the users wants us to control it */
+                if (toggleInventoryManager && InventoryManager.isDisabled && mode != Mode.TUNNEL) {
+                    InventoryManager.enable()
+                }
+
+                /* Turn on Auto Obsidian if the user wants us to control it. */
+                if (toggleAutoObsidian && AutoObsidian.isDisabled && mode != Mode.TUNNEL) {
+                    AutoObsidian.enable()
+                }
+
                 startingBlockPos = player.flooredPosition
                 currentBlockPos = startingBlockPos
                 startingDirection = Direction.fromEntity(player)
@@ -290,6 +306,14 @@ internal object HighwayTools : PluginModule(
 
         onDisable {
             runSafe {
+                if (toggleInventoryManager && InventoryManager.isEnabled) {
+                    InventoryManager.disable()
+                }
+
+                if (toggleAutoObsidian && AutoObsidian.isEnabled) {
+                    AutoObsidian.disable()
+                }
+
                 BaritoneUtils.settings?.allowPlace?.value = baritoneSettingAllowPlace
                 BaritoneUtils.settings?.allowBreak?.value = baritoneSettingAllowBreak
                 BaritoneUtils.settings?.renderGoal?.value = baritoneSettingRenderGoal
@@ -334,6 +358,26 @@ internal object HighwayTools : PluginModule(
                 MessageSendHelper.sendRawChatMessage("    §9> §cCheck altitude and make sure to build at Y: 120 for the correct height")
             }
 
+            if (AntiHunger.isEnabled) {
+                MessageSendHelper.sendRawChatMessage("    §9> §cAntiHunger does slow down block interactions.")
+            }
+
+            if (LagNotifier.isDisabled) {
+                MessageSendHelper.sendRawChatMessage("    §9> §cYou should activate LagNotifier to make the bot stop on server lag.")
+            }
+
+            if (AutoEat.isDisabled) {
+                MessageSendHelper.sendRawChatMessage("    §9> §cYou should activate AutoEat to not die on starvation.")
+            }
+
+            if (AutoLog.isDisabled) {
+                MessageSendHelper.sendRawChatMessage("    §9> §cYou should activate AutoLog to prevent most deaths when afk.")
+            }
+
+            if (multiBuilding && Velocity.isDisabled) {
+                MessageSendHelper.sendRawChatMessage("    §9> §cMake sure to enable Velocity to not get pushed from your mates.")
+            }
+
             if (material == fillerMat) {
                 MessageSendHelper.sendRawChatMessage("    §9> §cMake sure to use §aTunnel Mode§c instead of having same material for both main and filler!")
             }
@@ -357,11 +401,12 @@ internal object HighwayTools : PluginModule(
         safeListener<PacketEvent.Receive> { event ->
             when (event.packet) {
                 is SPacketBlockChange -> {
-                    val pos = (event.packet as SPacketBlockChange).blockPosition
+                    val packet = event.packet as SPacketBlockChange
+                    val pos = packet.blockPosition
                     if (!isInsideBlueprint(pos)) return@safeListener
 
                     val prev = world.getBlockState(pos).block
-                    val new = (event.packet as SPacketBlockChange).getBlockState().block
+                    val new = packet.getBlockState().block
 
                     if (prev != new) {
                         val task = if (pos == containerTask.blockPos) {
@@ -399,22 +444,25 @@ internal object HighwayTools : PluginModule(
                     rubberbandTimer.reset()
                 }
                 is SPacketOpenWindow -> {
-                    if ((event.packet as SPacketOpenWindow).guiId == "minecraft:shulker_box" ||
-                        (event.packet as SPacketOpenWindow).guiId == "minecraft:container") {
+                    val packet = event.packet as SPacketOpenWindow
+                    if (packet.guiId == "minecraft:shulker_box" ||
+                        packet.guiId == "minecraft:container") {
                         containerTask.isOpen = true
                         event.cancel()
                     }
                 }
                 is SPacketWindowItems -> {
+                    val packet = event.packet as SPacketWindowItems
                     if (containerTask.isOpen) {
-                        containerTask.inventory = (event.packet as SPacketWindowItems).itemStacks
-                        containerTask.windowID = (event.packet as SPacketWindowItems).windowId
+                        containerTask.inventory = packet.itemStacks
+                        containerTask.windowID = packet.windowId
                         event.cancel()
                     }
                 }
                 is SPacketConfirmTransaction -> {
+                    val packet = event.packet as SPacketConfirmTransaction
                     if (containerTask.isOpen && inventoryTasks.isNotEmpty()) {
-                        if ((event.packet as SPacketConfirmTransaction).wasAccepted()) {
+                        if (packet.wasAccepted()) {
                             inventoryTasks.peek()?.let {
                                 it.inventoryState = InventoryState.DONE
                             }
@@ -445,6 +493,7 @@ internal object HighwayTools : PluginModule(
 
             if (!rubberbandTimer.tick(rubberbandTimeout.toLong(), false) ||
                 PauseProcess.isActive ||
+                AutoObsidian.isActive() ||
                 (world.difficulty == EnumDifficulty.PEACEFUL &&
                         player.dimension == 1 &&
                         @Suppress("UNNECESSARY_SAFE_CALL")
@@ -1098,7 +1147,7 @@ internal object HighwayTools : PluginModule(
             connection.sendPacket(CPacketCloseWindow(blockTask.windowID))
 
             if (leaveEmptyShulkers &&
-                blockTask.inventory.take(27).filter { it.item != Items.AIR}.size < 2) {
+                blockTask.inventory.take(27).filter { it.item != Items.AIR && !InventoryManager.ejectList.contains(it.item.registryName.toString()) }.size < 2) {
                 if (debugMessages != DebugMessages.OFF) {
                     if (!anonymizeStats) {
                         MessageSendHelper.sendChatMessage("$chatName Left empty ${blockTask.block.localizedName}@(${blockTask.blockPos.asString()})")
@@ -1154,7 +1203,7 @@ internal object HighwayTools : PluginModule(
                 when (disableMode) {
                     DisableMode.ANTI_AFK -> {
                         MessageSendHelper.sendChatMessage("$chatName Going into AFK mode.")
-//                        AntiAFK.enable()
+                        AntiAFK.enable()
                     }
                     DisableMode.LOGOUT -> {
                         MessageSendHelper.sendChatMessage("$chatName CAUTION: Logging of in X Minutes.")
@@ -1892,13 +1941,15 @@ internal object HighwayTools : PluginModule(
 
     private fun SafeClientEvent.getEjectSlot(): Slot? {
         return player.inventorySlots.firstByStack {
-            !it.isEmpty
+            !it.isEmpty &&
+                    InventoryManager.ejectList.contains(it.item.registryName.toString())
         }
     }
 
     private fun getFreeSlot(inventory: List<ItemStack>): Int {
         return inventory.indexOfFirst {
-            it.isEmpty
+            it.isEmpty ||
+                    InventoryManager.ejectList.contains(it.item.registryName.toString())
         }
     }
 
