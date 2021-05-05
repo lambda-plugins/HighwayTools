@@ -9,6 +9,8 @@ internal object HighwayToolsPlugin: Plugin() {
     }
 
     override fun onUnload() {
-        // ?
+        modules.forEach {
+            it.disable()
+        }
     }
 }

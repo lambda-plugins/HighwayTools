@@ -22,9 +22,13 @@ object HighwayToolsProcess : IBaritoneProcess {
     override fun displayName0(): String {
         val lastTask = HighwayTools.lastTask
 
-        val processName = HighwayTools.goal?.goalPos?.asString()
-            ?: lastTask?.toString()
-            ?: "Thinking"
+        val processName = if (!HighwayTools.anonymizeStats) {
+            HighwayTools.goal?.goalPos?.asString()
+                ?: lastTask?.toString()
+                ?: "Thinking"
+        } else {
+            "Running"
+        }
 
         return "HighwayTools: $processName"
     }

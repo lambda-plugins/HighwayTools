@@ -144,7 +144,7 @@ internal object HighwayTools : PluginModule(
     private val tryRefreshSlots by setting("Try refresh slot", false, { page == Page.STORAGE_MANAGEMENT }, description = "Clicks a slot on desync")
 
     // stat settings
-    private val anonymizeStats by setting("Anonymize", false, { page == Page.STATS }, description = "Censors all coordinates in HUD and Chat")
+    val anonymizeStats by setting("Anonymize", false, { page == Page.STATS }, description = "Censors all coordinates in HUD and Chat")
     private val simpleMovingAverageRange by setting("Moving Average", 60, 5..600, 5, { page == Page.STATS }, description = "Sets the timeframe of the average in seconds")
     private val showSession by setting("Show Session", true, { page == Page.STATS }, description = "Toggles the Session section in HUD")
     private val showLifeTime by setting("Show Lifetime", true, { page == Page.STATS }, description = "Toggles the Lifetime section in HUD")
@@ -1723,7 +1723,8 @@ internal object HighwayTools : PluginModule(
         } else {
             if (mode != Mode.TUNNEL &&
                 containerTask.taskState == TaskState.DONE &&
-                player.allSlots.countBlock(material) < saveMaterial) {
+                player.allSlots.countBlock(material) < saveMaterial &&
+                storageManagement) {
                 if (player.allSlots.countItem(Items.DIAMOND_PICKAXE) > saveTools) {
                     handleRestock(material.item)
                 } else {
@@ -1756,7 +1757,7 @@ internal object HighwayTools : PluginModule(
 
     private fun SafeClientEvent.swapOrMoveBestTool(blockTask: BlockTask): Boolean {
         if (player.allSlots.countItem(Items.DIAMOND_PICKAXE) <= saveTools) {
-            return if (containerTask.taskState == TaskState.DONE) {
+            return if (containerTask.taskState == TaskState.DONE && storageManagement) {
                 handleRestock(Items.DIAMOND_PICKAXE)
                 false
             } else {
