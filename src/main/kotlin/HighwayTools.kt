@@ -1083,10 +1083,10 @@ internal object HighwayTools : PluginModule(
         if (mc.currentScreen is GuiContainer) {
             val container = player.openContainer
 
-            container.getSlots(0..27).firstItem(containerTask.item)?.let {
+            container.getSlots(0..26).firstItem(containerTask.item)?.let {
                 moveToInventory(containerTask, it)
             } ?: run {
-                getShulkerWith(container.getSlots(0..27), containerTask.item)?.let {
+                getShulkerWith(container.getSlots(0..26), containerTask.item)?.let {
                     moveToInventory(containerTask, it)
                 } ?: run {
                     sendChatMessage("$chatName No material left in any container.")
@@ -1773,23 +1773,21 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun SafeClientEvent.moveToInventory(blockTask: BlockTask, slot: Slot) {
-        val slotTo = player.hotbarSlots.firstOrNull {
-            it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
+        player.hotbarSlots.firstOrNull {
+            InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
+        }?.let {
+            clickSlot(player.openContainer.windowId, slot, it.hotbarSlot, ClickType.SWAP)
+        } ?: run {
+            clickSlot(player.openContainer.windowId, slot, 0, ClickType.QUICK_MOVE)
         }
 
-        slotTo?.let {
-            if (it.stack.isEmpty) {
-                clickSlot(player.openContainer.windowId, slot, 0, ClickType.QUICK_MOVE)
-            } else {
-                clickSlot(player.openContainer.windowId, slot, slotTo.hotbarSlot, ClickType.SWAP)
-            }
-        } ?: run {
-            sendChatMessage("Later")
-            disable()
+        sendChatMessage("${player.openContainer.windowId} ################")
+        player.openContainer.getSlots(0..26).forEach {
+            sendChatMessage(it.stack.displayName)
         }
 
         if (leaveEmptyShulkers &&
-            player.openContainer.getSlots(0..27).all { it.stack.item == Items.AIR || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) }) {
+            player.openContainer.getSlots(0..26).all { it.stack.item == Items.AIR || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) }) {
             if (debugMessages != DebugMessages.OFF) {
                 if (!anonymizeStats) {
                     sendChatMessage("$chatName Left empty ${blockTask.block.localizedName}@(${blockTask.blockPos.asString()})")
