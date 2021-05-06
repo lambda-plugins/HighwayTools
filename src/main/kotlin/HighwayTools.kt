@@ -138,6 +138,7 @@ internal object HighwayTools : PluginModule(
     // storage management
     private val storageManagement by setting("Manage Storage", false, { page == Page.STORAGE_MANAGEMENT }, description = "Choose to interact with container using only packets.")
     private val leaveEmptyShulkers by setting("Leave Empty Shulkers", true, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Does not break empty shulkers.")
+    private val grindObsidian by setting("Grind Obsidian", true, { page == Page.STORAGE_MANAGEMENT }, description = "Destroy Ender Chests to obtain Obsidian.")
     private val saveMaterial by setting("Save Material", 12, 0..64, 1, { page == Page.STORAGE_MANAGEMENT }, description = "How many material blocks are saved")
     private val saveTools by setting("Save Tools", 1, 0..36, 1, { page == Page.STORAGE_MANAGEMENT }, description = "How many tools are saved")
     private val saveEnder by setting("Save Ender Chests", 1, 0..64, 1, { page == Page.STORAGE_MANAGEMENT }, description = "How many ender chests are saved")
@@ -445,7 +446,8 @@ internal object HighwayTools : PluginModule(
                 }
                 is SPacketOpenWindow -> {
                     val packet = event.packet as SPacketOpenWindow
-                    if (packet.guiId == "minecraft:shulker_box" && containerTask.isShulker ||
+                    if (containerTask.taskState != TaskState.DONE &&
+                        packet.guiId == "minecraft:shulker_box" && containerTask.isShulker ||
                         packet.guiId == "minecraft:container" && !containerTask.isShulker) {
                         containerTask.isOpen = true
                     }
@@ -1112,13 +1114,16 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun SafeClientEvent.doPickup() {
-        if (eject()) {
-            if (getCollectingPosition() == null) {
-                moveState = MovementState.RUNNING
-                containerTask.updateState(TaskState.DONE)
-            } else {
-                containerTask.onStuck()
+        if (getCollectingPosition() == null) {
+            moveState = MovementState.RUNNING
+            containerTask.updateState(TaskState.DONE)
+        } else {
+            if (player.inventorySlots.firstEmpty() == null) {
+                getEjectSlot()?.let {
+                    throwAllInSlot(it)
+                }
             }
+            containerTask.onStuck()
         }
     }
 
@@ -1606,7 +1611,7 @@ internal object HighwayTools : PluginModule(
 
     private fun SafeClientEvent.swapOrMoveBlock(blockTask: BlockTask): Boolean {
         if (blockTask.isShulker) {
-            getShulkerWith(player.allSlots, blockTask.item)?.let { slot ->
+            getShulkerWith(player.inventorySlots, blockTask.item)?.let { slot ->
                 blockTask.itemID = slot.stack.item.id
                 slot.toHotbarSlotOrNull()?.let {
                     swapToSlot(it)
@@ -1617,11 +1622,10 @@ internal object HighwayTools : PluginModule(
             }
             return true
         } else {
-            if (mode != Mode.TUNNEL &&
+            if (storageManagement && grindObsidian &&
                 containerTask.taskState == TaskState.DONE &&
-                player.allSlots.countBlock(material) < saveMaterial &&
-                storageManagement) {
-                if (player.allSlots.countItem(Items.DIAMOND_PICKAXE) > saveTools) {
+                player.inventorySlots.any { it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) }) {
+                if (player.inventorySlots.countItem(Items.DIAMOND_PICKAXE) > saveTools) {
                     handleRestock(material.item)
                 } else {
                     handleRestock(Items.DIAMOND_PICKAXE)
@@ -1630,9 +1634,9 @@ internal object HighwayTools : PluginModule(
             }
 
             val useBlock = when {
-                player.allSlots.countBlock(blockTask.block) > 0 -> blockTask.block
-                player.allSlots.countBlock(material) > 0 -> material
-                player.allSlots.countBlock(fillerMat) > 0 && mode == Mode.TUNNEL -> fillerMat
+                player.inventorySlots.countBlock(blockTask.block) > 0 -> blockTask.block
+                player.inventorySlots.countBlock(material) > 0 -> material
+                player.inventorySlots.countBlock(fillerMat) > 0 && mode == Mode.TUNNEL -> fillerMat
                 else -> blockTask.block
             }
 
@@ -1652,7 +1656,7 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun SafeClientEvent.swapOrMoveBestTool(blockTask: BlockTask): Boolean {
-        if (player.allSlots.countItem(Items.DIAMOND_PICKAXE) <= saveTools) {
+        if (player.inventorySlots.countItem(Items.DIAMOND_PICKAXE) <= saveTools) {
             return if (containerTask.taskState == TaskState.DONE && storageManagement) {
                 handleRestock(Items.DIAMOND_PICKAXE)
                 false
@@ -1678,7 +1682,7 @@ internal object HighwayTools : PluginModule(
         }
 
     private fun SafeClientEvent.handleRestock(item: Item) {
-        getShulkerWith(player.allSlots, item)?.let { slot ->
+        getShulkerWith(player.inventorySlots, item)?.let { slot ->
             getRemotePos()?.let { pos ->
                 containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, item)
                 containerTask.isShulker = true
@@ -1687,8 +1691,8 @@ internal object HighwayTools : PluginModule(
             }
         } ?: run {
             if (item.block == Blocks.OBSIDIAN) {
-                if (player.allSlots.countBlock(Blocks.ENDER_CHEST) <= saveEnder) {
-                    getShulkerWith(player.allSlots, Blocks.ENDER_CHEST.item)?.let { slot ->
+                if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) <= saveEnder) {
+                    getShulkerWith(player.inventorySlots, Blocks.ENDER_CHEST.item)?.let { slot ->
                         getRemotePos()?.let { pos ->
                             containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, Blocks.ENDER_CHEST.item)
                             containerTask.isShulker = true
@@ -1714,7 +1718,7 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun SafeClientEvent.dispatchEnderChest(item: Item) {
-        if (player.allSlots.countBlock(Blocks.ENDER_CHEST) > 0) {
+        if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) > 0) {
             getRemotePos()?.let { pos ->
                 containerTask = BlockTask(pos, TaskState.PLACE, Blocks.ENDER_CHEST, item)
                 containerTask.itemID = Blocks.OBSIDIAN.id
@@ -1722,7 +1726,7 @@ internal object HighwayTools : PluginModule(
                 disableNoPosition()
             }
         } else {
-            getShulkerWith(player.allSlots, Blocks.ENDER_CHEST.item)?.let { slot ->
+            getShulkerWith(player.inventorySlots, Blocks.ENDER_CHEST.item)?.let { slot ->
                 getRemotePos()?.let { pos ->
                     containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, Blocks.ENDER_CHEST.item)
                     containerTask.isShulker = true
@@ -1841,14 +1845,9 @@ internal object HighwayTools : PluginModule(
         return if (player.inventorySlots.firstEmpty() == null) {
             getEjectSlot()?.let {
                 throwAllInSlot(it)
-//                connection.sendPacket(CPacketCloseWindow(0))
             }
             false
         } else {
-//            player.inventorySlots.firstEmpty()?.let {
-//                clickSlot(0, it.slotIndex, 0, ClickType.PICKUP)
-//                playerController.updateController()
-//            }
             true
         }
     }
@@ -1910,7 +1909,7 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun SafeClientEvent.updateLiquidTask(blockTask: BlockTask) {
-        val filler = if (player.allSlots.countBlock(fillerMat) == 0 || isInsideBlueprintBuild(blockTask.blockPos)) material
+        val filler = if (player.inventorySlots.countBlock(fillerMat) == 0 || isInsideBlueprintBuild(blockTask.blockPos)) material
         else fillerMat
 
         if (world.getBlockState(blockTask.blockPos).getValue(BlockLiquid.LEVEL) != 0) {
@@ -2108,9 +2107,9 @@ internal object HighwayTools : PluginModule(
     private fun SafeClientEvent.gatherEstimations(displayText: TextComponent, runtimeSec: Double, distanceDone: Double) {
         when (mode) {
             Mode.HIGHWAY, Mode.FLAT -> {
-                materialLeft = player.allSlots.countBlock(material)
-                fillerMatLeft = player.allSlots.countBlock(fillerMat)
-                val indirectMaterialLeft = 8 * player.allSlots.countBlock(Blocks.ENDER_CHEST)
+                materialLeft = player.inventorySlots.countBlock(material)
+                fillerMatLeft = player.inventorySlots.countBlock(fillerMat)
+                val indirectMaterialLeft = 8 * player.inventorySlots.countBlock(Blocks.ENDER_CHEST)
 
                 val pavingLeft = materialLeft / (totalBlocksPlaced.coerceAtLeast(1) / distanceDone.coerceAtLeast(1.0))
 
@@ -2145,7 +2144,7 @@ internal object HighwayTools : PluginModule(
                 displayText.addLine("$hoursLeft:$minutesLeft:$secondsLeft", secondaryColor)
             }
             Mode.TUNNEL -> {
-                val pickaxesLeft = player.allSlots.countItem<ItemPickaxe>()
+                val pickaxesLeft = player.inventorySlots.countItem<ItemPickaxe>()
 
                 val tunnelingLeft = (pickaxesLeft * 1561) / (durabilityUsages.coerceAtLeast(1) / distanceDone.coerceAtLeast(1.0))
 
