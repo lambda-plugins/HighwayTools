@@ -124,9 +124,8 @@ internal object HighwayTools : PluginModule(
     private val breakDelay by setting("Break Delay", 1, 1..20, 1, { page == Page.BEHAVIOR }, description = "Sets the delay ticks between break tasks")
     private val illegalPlacements by setting("Illegal Placements", false, { page == Page.BEHAVIOR }, description = "Do not use on 2b2t. Tries to interact with invisible surfaces")
     private val bridging by setting("Bridging", true, { page == Page.BEHAVIOR }, description = "Tries to bridge / scaffold when stuck placing")
+    private val instantMine by setting("Instant Mine", false, { page == Page.BEHAVIOR }, description = "Instant mine NCP exploit.")
     private val multiBuilding by setting("Shuffle Tasks", false, { page == Page.BEHAVIOR }, description = "Only activate when working with several players")
-    private val toggleInventoryManager by setting("Toggle InvManager", false, { page == Page.BEHAVIOR }, description = "Activates InventoryManager on enable")
-    private val toggleAutoObsidian by setting("Toggle AutoObsidian", false, { page == Page.BEHAVIOR }, description = "Activates AutoObsidian on enable")
     private val taskTimeout by setting("Task Timeout", 8, 0..20, 1, { page == Page.BEHAVIOR }, description = "Timeout for waiting for the server to try again")
     private val rubberbandTimeout by setting("Rubberband Timeout", 50, 5..100, 5, { page == Page.BEHAVIOR }, description = "Timeout for pausing after a lag")
     private val maxReach by setting("Max Reach", 4.9f, 1.0f..6.0f, 0.1f, { page == Page.BEHAVIOR }, description = "Sets the range of the blueprint. Decrease when tasks fail!")
@@ -274,16 +273,6 @@ internal object HighwayTools : PluginModule(
 
         onEnable {
             runSafeR {
-                /* Turn on inventory manager if the users wants us to control it */
-                if (toggleInventoryManager && InventoryManager.isDisabled && mode != Mode.TUNNEL) {
-                    InventoryManager.enable()
-                }
-
-                /* Turn on Auto Obsidian if the user wants us to control it. */
-                if (toggleAutoObsidian && AutoObsidian.isDisabled && mode != Mode.TUNNEL) {
-                    AutoObsidian.enable()
-                }
-
                 startingBlockPos = player.flooredPosition
                 currentBlockPos = startingBlockPos
                 startingDirection = Direction.fromEntity(player)
@@ -307,14 +296,6 @@ internal object HighwayTools : PluginModule(
 
         onDisable {
             runSafe {
-                if (toggleInventoryManager && InventoryManager.isEnabled) {
-                    InventoryManager.disable()
-                }
-
-                if (toggleAutoObsidian && AutoObsidian.isEnabled) {
-                    AutoObsidian.disable()
-                }
-
                 BaritoneUtils.settings?.allowPlace?.value = baritoneSettingAllowPlace
                 BaritoneUtils.settings?.allowBreak?.value = baritoneSettingAllowBreak
                 BaritoneUtils.settings?.renderGoal?.value = baritoneSettingRenderGoal
@@ -1468,10 +1449,10 @@ internal object HighwayTools : PluginModule(
                 return
             }
 
-            if (blockTask.primed && blockTask.destroy) {
+            if (containerTask.primed && containerTask.destroy && instantMine) {
                 side = side.opposite
             } else {
-                blockTask.primed
+                containerTask.primed
             }
             lastHitVec = getHitVec(blockTask.blockPos, side)
             rotateTimer.reset()
@@ -1624,6 +1605,7 @@ internal object HighwayTools : PluginModule(
         } else {
             if (storageManagement && grindObsidian &&
                 containerTask.taskState == TaskState.DONE &&
+//                player.inventorySlots.countBlock(material) < saveMaterial ||
                 player.inventorySlots.any { it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) }) {
                 if (player.inventorySlots.countItem(Items.DIAMOND_PICKAXE) > saveTools) {
                     handleRestock(material.item)
