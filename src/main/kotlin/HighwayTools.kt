@@ -1084,10 +1084,10 @@ internal object HighwayTools : PluginModule(
             val container = player.openContainer
 
             container.getSlots(0..26).firstItem(containerTask.item)?.let {
-                moveToInventory(containerTask, it)
+                moveToInventory(it)
             } ?: run {
                 getShulkerWith(container.getSlots(0..26), containerTask.item)?.let {
-                    moveToInventory(containerTask, it)
+                    moveToInventory(it)
                 } ?: run {
                     sendChatMessage("$chatName No material left in any container.")
                     mc.soundHandler.playSound(PositionedSoundRecord.getRecord(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f))
@@ -1772,7 +1772,7 @@ internal object HighwayTools : PluginModule(
         }
     }
 
-    private fun SafeClientEvent.moveToInventory(blockTask: BlockTask, slot: Slot) {
+    private fun SafeClientEvent.moveToInventory(slot: Slot) {
         player.hotbarSlots.firstOrNull {
             InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
         }?.let {
@@ -1781,23 +1781,18 @@ internal object HighwayTools : PluginModule(
             clickSlot(player.openContainer.windowId, slot, 0, ClickType.QUICK_MOVE)
         }
 
-        sendChatMessage("${player.openContainer.windowId} ################")
-        player.openContainer.getSlots(0..26).forEach {
-            sendChatMessage(it.stack.displayName)
-        }
-
         if (leaveEmptyShulkers &&
-            player.openContainer.getSlots(0..26).all { it.stack.item == Items.AIR || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) }) {
+            player.openContainer.getSlots(0..26).all { it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) }) {
             if (debugMessages != DebugMessages.OFF) {
                 if (!anonymizeStats) {
-                    sendChatMessage("$chatName Left empty ${blockTask.block.localizedName}@(${blockTask.blockPos.asString()})")
+                    sendChatMessage("$chatName Left empty ${containerTask.block.localizedName}@(${containerTask.blockPos.asString()})")
                 } else {
-                    sendChatMessage("$chatName Left empty ${blockTask.block.localizedName}")
+                    sendChatMessage("$chatName Left empty ${containerTask.block.localizedName}")
                 }
             }
-            blockTask.updateState(TaskState.DONE)
+            containerTask.updateState(TaskState.DONE)
         } else {
-            blockTask.updateState(TaskState.BREAK)
+            containerTask.updateState(TaskState.BREAK)
         }
 
         containerTask.isOpen = false
