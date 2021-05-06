@@ -1,6 +1,7 @@
 import com.lambda.client.command.ClientCommand
 import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.text.MessageSendHelper
+import com.lambda.client.util.text.MessageSendHelper.sendChatMessage
 
 object HighwayToolsCommand : ClientCommand(
     name = "highwaytools",
@@ -15,9 +16,9 @@ object HighwayToolsCommand : ClientCommand(
                     val added = HighwayTools.ignoreBlocks.add(blockArg.value.registryName.toString())
                     if (added) {
                         HighwayTools.printSettings()
-                        MessageSendHelper.sendChatMessage("Added &7${blockArg.value.localizedName}&r to ignore list.")
+                        sendChatMessage("Added &7${blockArg.value.localizedName}&r to ignore list.")
                     } else {
-                        MessageSendHelper.sendChatMessage("&7${blockArg.value.localizedName}&r is already ignored.")
+                        sendChatMessage("&7${blockArg.value.localizedName}&r is already ignored.")
                     }
                 }
             }
@@ -29,9 +30,9 @@ object HighwayToolsCommand : ClientCommand(
                     val removed = HighwayTools.ignoreBlocks.remove(blockArg.value.registryName.toString())
                     if (removed) {
                         HighwayTools.printSettings()
-                        MessageSendHelper.sendChatMessage("Removed &7${blockArg.value.localizedName}&r from ignore list.")
+                        sendChatMessage("Removed &7${blockArg.value.localizedName}&r from ignore list.")
                     } else {
-                        MessageSendHelper.sendChatMessage("&7${blockArg.value.localizedName}&r is not yet ignored.")
+                        sendChatMessage("&7${blockArg.value.localizedName}&r is not yet ignored.")
                     }
                 }
             }
@@ -50,10 +51,10 @@ object HighwayToolsCommand : ClientCommand(
             blockPos("position") { blockPosArg ->
                 execute("Sets stopping coordinates and starts bot") {
                     if (HighwayTools.isEnabled) {
-                        MessageSendHelper.sendChatMessage("Run this command when the bot is not running")
+                        sendChatMessage("Run this command when the bot is not running")
                     } else {
                         HighwayTools.targetBlockPos = blockPosArg.value
-                        MessageSendHelper.sendChatMessage("Started HighwayTools with target @(${blockPosArg.value.asString()})")
+                        sendChatMessage("Started HighwayTools with target @(${blockPosArg.value.asString()})")
                         HighwayTools.enable()
                     }
                 }
@@ -72,7 +73,7 @@ object HighwayToolsCommand : ClientCommand(
             block("block") { blockArg ->
                 execute("Set a block as main material") {
                     HighwayTools.material = blockArg.value
-                    MessageSendHelper.sendChatMessage("Set your building material to &7${blockArg.value.localizedName}&r.")
+                    sendChatMessage("Set your building material to &7${blockArg.value.localizedName}&r.")
                 }
             }
         }
@@ -81,7 +82,7 @@ object HighwayToolsCommand : ClientCommand(
             block("block") { blockArg ->
                 execute("Set a block as filler material") {
                     HighwayTools.fillerMat = blockArg.value
-                    MessageSendHelper.sendChatMessage("Set your filling material to &7${blockArg.value.localizedName}&r.")
+                    sendChatMessage("Set your filling material to &7${blockArg.value.localizedName}&r.")
                 }
             }
         }
