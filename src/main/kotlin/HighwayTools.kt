@@ -68,7 +68,9 @@ import com.lambda.client.util.world.*
 import com.lambda.commons.extension.ceilToInt
 import com.lambda.commons.extension.floorToInt
 import com.lambda.event.listener.listener
-import java.util.*
+import net.minecraft.client.gui.inventory.GuiContainer
+import net.minecraft.client.gui.inventory.GuiShulkerBox
+import net.minecraft.inventory.Container
 import kotlin.collections.ArrayDeque
 import kotlin.collections.LinkedHashMap
 import kotlin.math.abs
@@ -231,7 +233,6 @@ internal object HighwayTools : PluginModule(
     private val pendingTasks = LinkedHashMap<BlockPos, BlockTask>()
     private val doneTasks = LinkedHashMap<BlockPos, BlockTask>()
     private var sortedTasks: List<BlockTask> = emptyList()
-    private val inventoryTasks: Queue<InventoryTask> = LinkedList()
     var lastTask: BlockTask? = null; private set
 
     private var containerTask = BlockTask(BlockPos.ORIGIN, TaskState.DONE, Blocks.AIR, Items.AIR)
@@ -443,38 +444,6 @@ internal object HighwayTools : PluginModule(
                 is SPacketPlayerPosLook -> {
                     rubberbandTimer.reset()
                 }
-                is SPacketOpenWindow -> {
-                    val packet = event.packet as SPacketOpenWindow
-                    if (packet.guiId == "minecraft:shulker_box" ||
-                        packet.guiId == "minecraft:container") {
-                        containerTask.isOpen = true
-                        event.cancel()
-                    }
-                }
-                is SPacketWindowItems -> {
-                    val packet = event.packet as SPacketWindowItems
-                    if (containerTask.isOpen) {
-                        containerTask.inventory = packet.itemStacks
-                        containerTask.windowID = packet.windowId
-                        event.cancel()
-                    }
-                }
-                is SPacketConfirmTransaction -> {
-                    val packet = event.packet as SPacketConfirmTransaction
-                    if (containerTask.isOpen && inventoryTasks.isNotEmpty()) {
-                        if (packet.wasAccepted()) {
-                            inventoryTasks.peek()?.let {
-                                it.inventoryState = InventoryState.DONE
-                            }
-                        } else {
-                            inventoryTasks.peek()?.let {
-                                if (debugMessages == DebugMessages.ALL) MessageSendHelper.sendChatMessage("$chatName InventoryTask: $it was not accepted.")
-                                inventoryTasks.clear()
-                                containerTask.updateState(TaskState.BREAK)
-                            }
-                        }
-                    }
-                }
                 else -> {
                     // Nothing
                 }
@@ -599,7 +568,6 @@ internal object HighwayTools : PluginModule(
         moveState = MovementState.RUNNING
         pendingTasks.clear()
         doneTasks.clear()
-        inventoryTasks.clear()
         lastTask = null
 
         blueprint.clear()
@@ -1028,9 +996,6 @@ internal object HighwayTools : PluginModule(
                 TaskState.PENDING_PLACE -> {
                     blockTask.updateState(TaskState.PLACE)
                 }
-                TaskState.PENDING_RESTOCK -> {
-                    blockTask.updateState(TaskState.DONE)
-                }
                 else -> {
                     if (debugMessages != DebugMessages.OFF) {
                         if (!anonymizeStats) {
@@ -1070,17 +1035,11 @@ internal object HighwayTools : PluginModule(
             TaskState.DONE -> {
                 doDone(blockTask)
             }
-            TaskState.PENDING_RESTOCK -> {
-                doPendingRestock(blockTask)
-            }
             TaskState.RESTOCK -> {
                 doRestock(blockTask)
             }
             TaskState.PICKUP -> {
                 doPickup(blockTask)
-            }
-            TaskState.OPEN_CONTAINER -> {
-                doOpenContainer(blockTask)
             }
             TaskState.BREAKING -> {
                 doBreaking(blockTask, updateOnly)
@@ -1106,19 +1065,38 @@ internal object HighwayTools : PluginModule(
         }
     }
 
-    private fun addInventoryTask(packet: CPacketClickWindow) {
-        inventoryTasks.add(InventoryTask(packet, InventoryState.TRANSACTION))
-    }
-
     private fun doDone(blockTask: BlockTask) {
         pendingTasks.remove(blockTask.blockPos)
         doneTasks[blockTask.blockPos] = blockTask
     }
 
-    private fun SafeClientEvent.doOpenContainer(blockTask: BlockTask) {
+    private fun SafeClientEvent.doRestock(blockTask: BlockTask) {
+        if (mc.currentScreen is GuiContainer) {
+            val container = player.openContainer
 
-        if (blockTask.isOpen && blockTask.inventory.take(27).isNotEmpty()) {
-            blockTask.updateState(TaskState.RESTOCK)
+            container.getSlots(0..27).firstItem(blockTask.item)?.let {
+                moveToInventory(blockTask, it)
+            } ?: run {
+                getShulkerFromContainer(container, blockTask.item)?.let{
+                    moveToInventory(blockTask, it)
+                } ?: run {
+                    MessageSendHelper.sendChatMessage("$chatName No material left in container.")
+                    mc.soundHandler.playSound(PositionedSoundRecord.getRecord(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f))
+                    disable()
+                    when (disableMode) {
+                        DisableMode.ANTI_AFK -> {
+                            MessageSendHelper.sendChatMessage("$chatName Going into AFK mode.")
+                            AntiAFK.enable()
+                        }
+                        DisableMode.LOGOUT -> {
+                            MessageSendHelper.sendChatMessage("$chatName CAUTION: Logging of in X Minutes.")
+                        }
+                        DisableMode.NONE -> {
+                            // Nothing
+                        }
+                    }
+                }
+            }
         } else {
             val center = blockTask.blockPos.toVec3dCenter()
             val diff = player.getPositionEyes(1f).subtract(center)
@@ -1140,105 +1118,6 @@ internal object HighwayTools : PluginModule(
                 }
             }
         }
-    }
-
-    private fun SafeClientEvent.doPendingRestock(blockTask: BlockTask) {
-        if (inventoryTasks.isEmpty()) {
-            connection.sendPacket(CPacketCloseWindow(blockTask.windowID))
-
-            if (leaveEmptyShulkers &&
-                blockTask.inventory.take(27).filter { it.item != Items.AIR && !InventoryManager.ejectList.contains(it.item.registryName.toString()) }.size < 2) {
-                if (debugMessages != DebugMessages.OFF) {
-                    if (!anonymizeStats) {
-                        MessageSendHelper.sendChatMessage("$chatName Left empty ${blockTask.block.localizedName}@(${blockTask.blockPos.asString()})")
-                    } else {
-                        MessageSendHelper.sendChatMessage("$chatName Left empty ${blockTask.block.localizedName}")
-                    }
-                }
-                blockTask.updateState(TaskState.DONE)
-            } else {
-//                waitTicks = 20
-                blockTask.updateState(TaskState.BREAK)
-            }
-
-            blockTask.isOpen = false
-            blockTask.inventory = emptyList()
-        } else {
-            val inventoryTask = inventoryTasks.peek()
-
-            when (inventoryTask.inventoryState) {
-                InventoryState.TRANSACTION -> {
-                    inventoryTask.inventoryState = InventoryState.PENDING_TRANSACTION
-
-                    defaultScope.launch {
-                        delay(10L)
-                        connection.sendPacket(inventoryTask.packet)
-
-                        delay(50L * taskTimeout)
-                        if (inventoryTask.inventoryState == InventoryState.PENDING_TRANSACTION) {
-                            if (debugMessages == DebugMessages.ALL) MessageSendHelper.sendChatMessage("$chatName Timed out - InventoryTask: $inventoryTask")
-                            inventoryTask.inventoryState = InventoryState.TRANSACTION
-                        }
-                    }
-                }
-                InventoryState.PENDING_TRANSACTION -> {
-                    blockTask.onStuck()
-                }
-                InventoryState.DONE -> {
-                    inventoryTasks.poll()
-                }
-            }
-        }
-    }
-
-    private fun SafeClientEvent.doRestock(blockTask: BlockTask) {
-        var moveSlot = blockTask.inventory.take(27).indexOfFirst { it.item == blockTask.item }
-
-        if (moveSlot == -1) {
-            moveSlot = getShulkerFromContainer(blockTask.item)
-            if (moveSlot == -1) {
-                MessageSendHelper.sendChatMessage("$chatName No material left in ender chest.")
-                mc.soundHandler.playSound(PositionedSoundRecord.getRecord(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f))
-                disable()
-                when (disableMode) {
-                    DisableMode.ANTI_AFK -> {
-                        MessageSendHelper.sendChatMessage("$chatName Going into AFK mode.")
-                        AntiAFK.enable()
-                    }
-                    DisableMode.LOGOUT -> {
-                        MessageSendHelper.sendChatMessage("$chatName CAUTION: Logging of in X Minutes.")
-                    }
-                    DisableMode.NONE -> {
-                        // Nothing
-                    }
-                }
-            }
-        }
-
-        var slot = getFreeSlot(blockTask.inventory.takeLast(9))
-
-        if (slot != -1) {
-            addInventoryTask(CPacketClickWindow(blockTask.windowID, moveSlot, slot, ClickType.SWAP, player.inventory.itemStack, ++blockTask.transactionID))
-        } else {
-            slot = getFreeSlot(blockTask.inventory.drop(27))
-
-            if (slot != -1) {
-                addInventoryTask(CPacketClickWindow(blockTask.windowID, moveSlot, 0, ClickType.PICKUP, blockTask.inventory[moveSlot], ++blockTask.transactionID))
-                addInventoryTask(CPacketClickWindow(blockTask.windowID, slot + 27, 0, ClickType.PICKUP, blockTask.inventory[slot + 27], ++blockTask.transactionID))
-            } else {
-                MessageSendHelper.sendChatMessage("$chatName You have no inventory space left")
-                disable()
-            }
-        }
-
-        if (debugMessages == DebugMessages.ALL) {
-            inventoryTasks.forEach {
-                MessageSendHelper.sendChatMessage("$chatName InventoryTask: $it State: ${it.inventoryState}")
-            }
-        }
-
-        moveState = MovementState.PICKUP
-        blockTask.updateState(TaskState.PENDING_RESTOCK)
     }
 
     private fun SafeClientEvent.doPickup(blockTask: BlockTask) {
@@ -1313,7 +1192,7 @@ internal object HighwayTools : PluginModule(
                     if (blockTask.destroy) {
                         blockTask.updateState(TaskState.BREAK)
                     } else {
-                        blockTask.updateState(TaskState.OPEN_CONTAINER)
+                        blockTask.updateState(TaskState.RESTOCK)
                     }
                 } else {
                     blockTask.updateState(TaskState.DONE)
@@ -1876,14 +1755,45 @@ internal object HighwayTools : PluginModule(
         }
     }
 
-    private fun getShulkerFromContainer(item: Item): Int {
-        return containerTask.inventory.take(27).indexOfFirst { index ->
-            containerTask.inventory.take(27).filter {
-                it.item is ItemShulkerBox && getShulkerData(it, item) > 0
-            }.minByOrNull {
-                getShulkerData(it, item)
-            } == index
+    private fun getShulkerFromContainer(container: Container, item: Item): Slot? {
+        return container.getSlots(0..27).filterByStack {
+            it.item is ItemShulkerBox && getShulkerData(it, item) > 0
+        }.minByOrNull {
+            getShulkerData(it.stack, item)
         }
+    }
+
+    private fun SafeClientEvent.moveToInventory(blockTask: BlockTask, slot: Slot) {
+        val slotTo = player.hotbarSlots.firstOrNull {
+            it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
+        }
+
+        slotTo?.let {
+            if (it.stack.isEmpty) {
+                clickSlot(player.openContainer.windowId, slot, 0, ClickType.QUICK_MOVE)
+            } else {
+                clickSlot(player.openContainer.windowId, slot, slotTo.hotbarSlot, ClickType.SWAP)
+            }
+        } ?: run {
+            MessageSendHelper.sendChatMessage("Later")
+            disable()
+        }
+
+        if (leaveEmptyShulkers &&
+            player.openContainer.getSlots(0..27).all { it.stack.item == Items.AIR || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) }) {
+            if (debugMessages != DebugMessages.OFF) {
+                if (!anonymizeStats) {
+                    MessageSendHelper.sendChatMessage("$chatName Left empty ${blockTask.block.localizedName}@(${blockTask.blockPos.asString()})")
+                } else {
+                    MessageSendHelper.sendChatMessage("$chatName Left empty ${blockTask.block.localizedName}")
+                }
+            }
+            blockTask.updateState(TaskState.DONE)
+        } else {
+            blockTask.updateState(TaskState.BREAK)
+        }
+
+        player.closeScreen()
     }
 
     @JvmStatic
@@ -1943,13 +1853,6 @@ internal object HighwayTools : PluginModule(
     private fun SafeClientEvent.getEjectSlot(): Slot? {
         return player.inventorySlots.firstByStack {
             !it.isEmpty &&
-                    InventoryManager.ejectList.contains(it.item.registryName.toString())
-        }
-    }
-
-    private fun getFreeSlot(inventory: List<ItemStack>): Int {
-        return inventory.indexOfFirst {
-            it.isEmpty ||
                     InventoryManager.ejectList.contains(it.item.registryName.toString())
         }
     }
@@ -2287,21 +2190,6 @@ internal object HighwayTools : PluginModule(
         }
     }
 
-    class InventoryTask(
-        val packet: CPacketClickWindow,
-        var inventoryState: InventoryState
-    ) {
-        override fun toString(): String {
-            return "windowId: ${packet.windowId} slotId: ${packet.slotId} usedButton: ${packet.usedButton} clickType: ${packet.clickType} clickedItem: ${packet.clickedItem.displayName} actionNumber: ${packet.actionNumber}"
-        }
-    }
-
-    enum class InventoryState {
-        DONE,
-        TRANSACTION,
-        PENDING_TRANSACTION
-    }
-
     class BlockTask(
         val blockPos: BlockPos,
         var taskState: TaskState,
@@ -2317,11 +2205,7 @@ internal object HighwayTools : PluginModule(
         var hitVecDistance = 0.0; private set
 
         var isShulker = false
-        var isOpen = false
-        var windowID = 0
         var itemID = 0
-        var inventory = emptyList<ItemStack>()
-        var transactionID: Short = 0
         var destroy = false
         var primed = false
 
@@ -2404,9 +2288,7 @@ internal object HighwayTools : PluginModule(
         LIQUID_SOURCE(100, 100, ColorHolder(114, 27, 255)),
         LIQUID_FLOW(100, 100, ColorHolder(68, 27, 255)),
         PICKUP(500, 500, ColorHolder(252, 3, 207)),
-        PENDING_RESTOCK(500, 500, ColorHolder(252, 3, 207)),
         RESTOCK(500, 500, ColorHolder(252, 3, 207)),
-        OPEN_CONTAINER(500, 500, ColorHolder(252, 3, 207)),
         BREAKING(100, 100, ColorHolder(240, 222, 60)),
         BREAK(20, 20, ColorHolder(222, 0, 0)),
         PLACE(20, 20, ColorHolder(35, 188, 254)),
