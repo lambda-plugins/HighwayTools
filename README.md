@@ -67,3 +67,10 @@ Adding fully automated highway building as plugin to Lambda. The tool places bui
 - [x] If placed block disappear increase the `TickDelayPlace` until it works
 - [x] Deactivate `IllegalPlacements` if the server requires (like 2b2t)
 - [x] Check if the Baritone process `Lambda Pauser` is active in GUI. Sometimes it does not stop correctly
+
+This is a pre-release. Use with care. Any suggestions and questions: Constructor#9948 on Discord Made by @Avanatiker
+Report bugs on <a href="https://github.com/Avanatiker/client/issues">Issues</a> and if not possible message EnigmA_008#1505 on Discord.
+
+`Copyright ©2021` Constructor#9948 alias Avanatiker. All Rights Reserved. Permission to use, copy, modify, and distribute this software and its documentation for educational, research, and not-for-profit purposes, without fee and without a signed licensing agreement, is hereby granted, provided that the above copyright notice, this paragraph appears in all copies, modifications, and distributions.
+
+By downloading this software you agree to be bound by the terms of service.
