@@ -1104,7 +1104,7 @@ internal object HighwayTools : PluginModule(
                 getEjectSlot()?.let {
                     throwAllInSlot(it)
                 } ?: run {
-                    sendChatMessage("$chatName inventory: Can't pickup Item@(${containerTask.blockPos.asString()})")
+                    sendChatMessage("$chatName Inventory: can't pickup Item@(${containerTask.blockPos.asString()})")
                     containerTask.updateState(TaskState.DONE)
                 }
             } else {
