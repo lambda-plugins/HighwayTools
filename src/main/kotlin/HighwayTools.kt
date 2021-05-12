@@ -142,7 +142,7 @@ internal object HighwayTools : PluginModule(
     private val saveTools by setting("Save Tools", 1, 0..36, 1, { page == Page.STORAGE_MANAGEMENT }, description = "How many tools are saved")
     private val saveEnder by setting("Save Ender Chests", 1, 0..64, 1, { page == Page.STORAGE_MANAGEMENT }, description = "How many ender chests are saved")
     private val disableMode by setting("Disable Mode", DisableMode.NONE, { page == Page.STORAGE_MANAGEMENT }, description = "Choose action when bot is out of materials or tools")
-    private val tryRefreshSlots by setting("Try refresh slot", false, { page == Page.STORAGE_MANAGEMENT }, description = "Clicks a slot on desync")
+//    private val tryRefreshSlots by setting("Try refresh slot", false, { page == Page.STORAGE_MANAGEMENT }, description = "Clicks a slot on desync")
 
     // stat settings
     val anonymizeStats by setting("Anonymize", false, { page == Page.STATS }, description = "Censors all coordinates in HUD and Chat")
@@ -236,6 +236,7 @@ internal object HighwayTools : PluginModule(
 
     private var containerTask = BlockTask(BlockPos.ORIGIN, TaskState.DONE, Blocks.AIR, Items.AIR)
     private val shulkerOpenTimer = TickTimer(TimeUnit.TICKS)
+    private var grindCycles = 0
 
     private val packetLimiterMutex = Mutex()
     private val packetLimiter = ArrayDeque<Long>()
@@ -868,7 +869,7 @@ internal object HighwayTools : PluginModule(
                     when (containerTask.taskState) {
                         TaskState.PICKUP -> {
                             player.inventorySlots.firstEmpty()?.let {
-                                if (tryRefreshSlots) updateSlot(it.slotNumber)
+//                                if (tryRefreshSlots) updateSlot(it.slotNumber)
                             }
                             containerTask.updateState(TaskState.DONE)
                         }
@@ -998,10 +999,10 @@ internal object HighwayTools : PluginModule(
                         TaskState.PLACE -> {
                             if (dynamicDelay && extraPlaceDelay < 10) extraPlaceDelay += 1
 
-                            if (tryRefreshSlots) updateSlot()
+//                            if (tryRefreshSlots) updateSlot()
                         }
                         TaskState.BREAK -> {
-                            if (tryRefreshSlots) updateSlot()
+//                            if (tryRefreshSlots) updateSlot()
                         }
                         else -> {
                             // Nothing
@@ -1102,7 +1103,12 @@ internal object HighwayTools : PluginModule(
             if (player.inventorySlots.firstEmpty() == null) {
                 getEjectSlot()?.let {
                     throwAllInSlot(it)
+                } ?: run {
+                    sendChatMessage("Full inventory: Can't pickup Item@(${containerTask.blockPos.asString()})")
+                    containerTask.updateState(TaskState.DONE)
                 }
+            } else {
+                // ToDo: Resolve ghost slot
             }
             containerTask.onStuck()
         }
@@ -1167,8 +1173,12 @@ internal object HighwayTools : PluginModule(
                         blockTask.updateState(TaskState.DONE)
                     }
                     blockTask == containerTask -> {
-                        moveState = MovementState.PICKUP
-                        blockTask.updateState(TaskState.PICKUP)
+                        if (containerTask.collect) {
+                            moveState = MovementState.PICKUP
+                            blockTask.updateState(TaskState.PICKUP)
+                        } else {
+                            blockTask.updateState(TaskState.DONE)
+                        }
                     }
                     else -> {
                         blockTask.updateState(TaskState.PLACE)
@@ -1605,9 +1615,9 @@ internal object HighwayTools : PluginModule(
         } else {
             if (storageManagement && grindObsidian &&
                 containerTask.taskState == TaskState.DONE &&
-//                player.inventorySlots.countBlock(material) < saveMaterial ||
-                player.inventorySlots.any { it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) }) {
+                (player.inventorySlots.countBlock(material) <= saveMaterial || grindCycles > 0)) {
                 if (player.inventorySlots.countItem(Items.DIAMOND_PICKAXE) > saveTools) {
+                    if (grindCycles == 0) grindCycles = player.inventorySlots.count { it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) } * 8 - 1
                     handleRestock(material.item)
                 } else {
                     handleRestock(Items.DIAMOND_PICKAXE)
@@ -1688,7 +1698,9 @@ internal object HighwayTools : PluginModule(
                     getRemotePos()?.let { pos ->
                         containerTask = BlockTask(pos, TaskState.PLACE, Blocks.ENDER_CHEST)
                         containerTask.destroy = true
+                        if (grindCycles > 1) containerTask.collect = false
                         containerTask.itemID = Blocks.OBSIDIAN.id
+                        grindCycles--
                     } ?: run {
                         disableNoPosition()
                     }
@@ -1785,8 +1797,7 @@ internal object HighwayTools : PluginModule(
         player.closeScreen()
     }
 
-    @JvmStatic
-    fun getShulkerData(stack: ItemStack, item: Item): Int {
+    private fun getShulkerData(stack: ItemStack, item: Item): Int {
         val tagCompound = if (stack.item is ItemShulkerBox) stack.tagCompound else return 0
 
         if (tagCompound != null && tagCompound.hasKey("BlockEntityTag", 10)) {
@@ -1823,17 +1834,6 @@ internal object HighwayTools : PluginModule(
         return null
     }
 
-    private fun SafeClientEvent.eject(): Boolean {
-        return if (player.inventorySlots.firstEmpty() == null) {
-            getEjectSlot()?.let {
-                throwAllInSlot(it)
-            }
-            false
-        } else {
-            true
-        }
-    }
-
     private fun SafeClientEvent.getEjectSlot(): Slot? {
         return player.inventorySlots.firstByStack {
             !it.isEmpty &&
@@ -1841,13 +1841,13 @@ internal object HighwayTools : PluginModule(
         }
     }
 
-    private fun SafeClientEvent.updateSlot(slot: Int = player.inventory.currentItem + 36) {
-        clickSlot(0, slot, 0, ClickType.PICKUP)
-        connection.sendPacket(CPacketCloseWindow(0))
-        runBlocking {
-            onMainThreadSafe { playerController.updateController() }
-        }
-    }
+//    private fun SafeClientEvent.updateSlot(slot: Int = player.inventory.currentItem + 36) {
+//        clickSlot(0, slot, 0, ClickType.PICKUP)
+//        connection.sendPacket(CPacketCloseWindow(0))
+//        runBlocking {
+//            onMainThreadSafe { playerController.updateController() }
+//        }
+//    }
 
     private fun SafeClientEvent.handleLiquid(blockTask: BlockTask): Boolean {
         var foundLiquid = false
@@ -2192,6 +2192,7 @@ internal object HighwayTools : PluginModule(
         var isOpen = false
         var itemID = 0
         var destroy = false
+        var collect = true
         var primed = false
 
 //      var isBridge = false ToDo: Implement
