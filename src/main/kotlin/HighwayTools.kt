@@ -799,7 +799,7 @@ internal object HighwayTools : PluginModule(
                 val nextPos = getNextPos()
 
                 if (currentBlockPos.distanceTo(targetBlockPos) < 2 ||
-                    (distancePending > 0 && currentBlockPos.distanceTo(startingDirection.directionVec.multiply(distancePending)) < 2)) {
+                    (distancePending > 0 && startingBlockPos.add(startingDirection.directionVec.multiply(distancePending)).distanceTo(currentBlockPos) == 0.0)) {
                     sendChatMessage("$chatName Reached target destination")
                     mc.soundHandler.playSound(PositionedSoundRecord.getRecord(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f))
                     disable()
@@ -1104,7 +1104,7 @@ internal object HighwayTools : PluginModule(
                 getEjectSlot()?.let {
                     throwAllInSlot(it)
                 } ?: run {
-                    sendChatMessage("Full inventory: Can't pickup Item@(${containerTask.blockPos.asString()})")
+                    sendChatMessage("$chatName inventory: Can't pickup Item@(${containerTask.blockPos.asString()})")
                     containerTask.updateState(TaskState.DONE)
                 }
             } else {
@@ -2104,7 +2104,7 @@ internal object HighwayTools : PluginModule(
                 val minutesLeft = ((secLeft % 3600) / 60).toInt().toString().padStart(2, '0')
                 val hoursLeft = (secLeft / 3600).toInt().toString().padStart(2, '0')
 
-                displayText.addLine("Next refill", primaryColor)
+                displayText.addLine("Refill", primaryColor)
                 displayText.add("    ${material.localizedName}:", primaryColor)
 
                 if (material == Blocks.OBSIDIAN) {
@@ -2116,14 +2116,19 @@ internal object HighwayTools : PluginModule(
                 displayText.add("    ${fillerMat.localizedName}:", primaryColor)
                 displayText.addLine("$fillerMatLeft", secondaryColor)
 
-                displayText.add("    Distance left:", primaryColor)
-                displayText.addLine("${pavingLeft.toInt()}", secondaryColor)
+                if (grindCycles > 0) {
+                    displayText.add("    Ender Chest cycles:", primaryColor)
+                    displayText.addLine("$grindCycles", secondaryColor)
+                } else {
+                    displayText.add("    Distance left:", primaryColor)
+                    displayText.addLine("${pavingLeft.toInt()}", secondaryColor)
 
-                if (!anonymizeStats) displayText.add("    Destination:", primaryColor)
-                if (!anonymizeStats) displayText.addLine("(${currentBlockPos.add(startingDirection.directionVec.multiply(pavingLeft.toInt())).asString()})", secondaryColor)
+                    if (!anonymizeStats) displayText.add("    Destination:", primaryColor)
+                    if (!anonymizeStats) displayText.addLine("(${currentBlockPos.add(startingDirection.directionVec.multiply(pavingLeft.toInt())).asString()})", secondaryColor)
 
-                displayText.add("    ETA:", primaryColor)
-                displayText.addLine("$hoursLeft:$minutesLeft:$secondsLeft", secondaryColor)
+                    displayText.add("    ETA:", primaryColor)
+                    displayText.addLine("$hoursLeft:$minutesLeft:$secondsLeft", secondaryColor)
+                }
             }
             Mode.TUNNEL -> {
                 val pickaxesLeft = player.inventorySlots.countItem<ItemPickaxe>()

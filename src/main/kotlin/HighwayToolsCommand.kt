@@ -38,33 +38,34 @@ object HighwayToolsCommand : ClientCommand(
             }
         }
 
-        literal("from", "start") {
-            blockPos("position") { blockPosArg ->
-                execute("Sets starting coordinates") {
-                    // ToDo: Make starting position for next instance
-//                    HighwayTools.startingPos = blockPosArg.value
-                }
-            }
-        }
+//        literal("from", "start") {
+//            blockPos("position") { blockPosArg ->
+//                execute("Sets starting coordinates") {
+//                    // ToDo: Make starting position for next instance
+////                    HighwayTools.startingPos = blockPosArg.value
+//                }
+//            }
+//        }
 
-        literal("to", "stop") {
-            blockPos("position") { blockPosArg ->
-                execute("Sets stopping coordinates and starts bot") {
-                    if (HighwayTools.isEnabled) {
-                        sendChatMessage("Run this command when the bot is not running")
-                    } else {
-                        HighwayTools.targetBlockPos = blockPosArg.value
-                        sendChatMessage("Started HighwayTools with target @(${blockPosArg.value.asString()})")
-                        HighwayTools.enable()
-                    }
-                }
-            }
-        }
+//        literal("to", "stop") {
+//            blockPos("position") { blockPosArg ->
+//                execute("Sets stopping coordinates and starts bot") {
+//                    if (HighwayTools.isEnabled) {
+//                        sendChatMessage("Run this command when the bot is not running")
+//                    } else {
+//                        HighwayTools.targetBlockPos = blockPosArg.value
+//                        sendChatMessage("Started HighwayTools with target @(${blockPosArg.value.asString()})")
+//                        HighwayTools.enable()
+//                    }
+//                }
+//            }
+//        }
 
         literal("distance") {
             int("distance") { distanceArg ->
                 execute("Set the target distance until the bot stops") {
                     HighwayTools.distancePending = distanceArg.value
+                    sendChatMessage("HighwayTools will stop after (${distanceArg.value}) blocks distance. To remove the limit use distance 0")
                 }
             }
         }
