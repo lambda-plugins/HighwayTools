@@ -70,6 +70,7 @@ import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.RayTraceResult
 import net.minecraft.util.math.Vec3d
+import net.minecraft.util.text.TextComponentString
 import net.minecraft.world.EnumDifficulty
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import kotlin.math.abs
@@ -135,13 +136,15 @@ internal object HighwayTools : PluginModule(
     private val placementSearch by setting("Place Deep Search", 2, 1..4, 1, { page == Page.BEHAVIOR }, description = "EXPERIMENTAL: Attempts to find a support block for placing against")
 
     // storage management
-    private val storageManagement by setting("Manage Storage", false, { page == Page.STORAGE_MANAGEMENT }, description = "Choose to interact with container using only packets.")
+    private val storageManagement by setting("Manage Storage", true, { page == Page.STORAGE_MANAGEMENT }, description = "Choose to interact with container using only packets.")
     private val leaveEmptyShulkers by setting("Leave Empty Shulkers", true, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Does not break empty shulkers.")
     private val grindObsidian by setting("Grind Obsidian", true, { page == Page.STORAGE_MANAGEMENT }, description = "Destroy Ender Chests to obtain Obsidian.")
     private val saveMaterial by setting("Save Material", 12, 0..64, 1, { page == Page.STORAGE_MANAGEMENT }, description = "How many material blocks are saved")
     private val saveTools by setting("Save Tools", 1, 0..36, 1, { page == Page.STORAGE_MANAGEMENT }, description = "How many tools are saved")
     private val saveEnder by setting("Save Ender Chests", 1, 0..64, 1, { page == Page.STORAGE_MANAGEMENT }, description = "How many ender chests are saved")
     private val disableMode by setting("Disable Mode", DisableMode.NONE, { page == Page.STORAGE_MANAGEMENT }, description = "Choose action when bot is out of materials or tools")
+    private val usingProxy by setting("Proxy", false, { disableMode == DisableMode.LOGOUT && page == Page.STORAGE_MANAGEMENT }, description = "Enable this if you are using a proxy to call the given command")
+    private val proxyCommand by setting("Proxy Command", "/dc", { usingProxy && disableMode == DisableMode.LOGOUT && page == Page.STORAGE_MANAGEMENT }, description = "Command to be sent to log out")
 //    private val tryRefreshSlots by setting("Try refresh slot", false, { page == Page.STORAGE_MANAGEMENT }, description = "Clicks a slot on desync")
 
     // stat settings
@@ -1082,7 +1085,19 @@ internal object HighwayTools : PluginModule(
                             AntiAFK.enable()
                         }
                         DisableMode.LOGOUT -> {
-                            sendChatMessage("$chatName CAUTION: Logging of in X Minutes.")
+                            sendChatMessage("$chatName CAUTION: Logging of in 1 minute!")
+                            defaultScope.launch {
+                                delay(6000L)
+                                if (disableMode == DisableMode.LOGOUT && isEnabled) {
+                                    onMainThreadSafe {
+                                        if (usingProxy) {
+                                            player.sendChatMessage(proxyCommand)
+                                        } else {
+                                            connection.networkManager.closeChannel(TextComponentString("Done building highways."))
+                                        }
+                                    }
+                                }
+                            }
                         }
                         DisableMode.NONE -> {
                             // Nothing
