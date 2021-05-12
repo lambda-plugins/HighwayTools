@@ -48,8 +48,9 @@ Adding fully automated highway building as plugin to Lambda. The tool places bui
     - `Railing` Choose if the highway has rims/guardrails
     - `RailingHeight` Choose height of the rims/guardrails
     - `CornerBlock` Choose if u want to have a corner block or not
-      <img src="https://cdn.discordapp.com/attachments/744735300554588320/748222025109209097/photo_2020-08-26_18-39-26.jpg" width="20%"/>
-      <img src="https://cdn.discordapp.com/attachments/744735300554588320/748222044478374038/unknown.png" width="60%"/>
+
+<img src="https://cdn.discordapp.com/attachments/744735300554588320/748222025109209097/photo_2020-08-26_18-39-26.jpg" width="20%"/>
+<img src="https://cdn.discordapp.com/attachments/744735300554588320/748222044478374038/unknown.png" width="60%"/>
 
 ### Installation
 1. Get the latest Lambda release here https://github.com/lambda-client/lambda/releases
