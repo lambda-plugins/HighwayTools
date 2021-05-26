@@ -8,8 +8,6 @@ import com.lambda.client.module.Category
 import com.lambda.client.module.modules.client.Hud.primaryColor
 import com.lambda.client.module.modules.client.Hud.secondaryColor
 import com.lambda.client.module.modules.combat.AutoLog
-import com.lambda.client.module.modules.combat.CrystalESP
-import com.lambda.client.module.modules.combat.CrystalESP.setting
 import com.lambda.client.module.modules.misc.AntiAFK
 import com.lambda.client.module.modules.misc.AutoObsidian
 import com.lambda.client.module.modules.movement.AntiHunger
@@ -86,7 +84,6 @@ import kotlin.collections.ArrayDeque
 import kotlin.collections.LinkedHashMap
 import kotlin.math.PI
 import kotlin.math.abs
-import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random.Default.nextInt
 
@@ -1804,7 +1801,7 @@ internal object HighwayTools : PluginModule(
                 containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, item)
                 containerTask.isShulker = true
             } ?: run {
-                disableNoPosition()
+                disableNoPosition(1)
             }
         } ?: run {
             if (item.block == Blocks.OBSIDIAN) {
@@ -1814,7 +1811,7 @@ internal object HighwayTools : PluginModule(
                             containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, Blocks.ENDER_CHEST.item)
                             containerTask.isShulker = true
                         } ?: run {
-                            disableNoPosition()
+                            disableNoPosition(2)
                         }
                     } ?: run {
                         dispatchEnderChest(Blocks.ENDER_CHEST.item)
@@ -1827,7 +1824,7 @@ internal object HighwayTools : PluginModule(
                         containerTask.itemID = Blocks.OBSIDIAN.id
                         grindCycles--
                     } ?: run {
-                        disableNoPosition()
+                        disableNoPosition(3)
                     }
                 }
             } else {
@@ -1842,7 +1839,7 @@ internal object HighwayTools : PluginModule(
                 containerTask = BlockTask(pos, TaskState.PLACE, Blocks.ENDER_CHEST, item)
                 containerTask.itemID = Blocks.OBSIDIAN.id
             } ?: run {
-                disableNoPosition()
+                disableNoPosition(4)
             }
         } else {
             getShulkerWith(player.inventorySlots, Blocks.ENDER_CHEST.item)?.let { slot ->
@@ -1850,18 +1847,18 @@ internal object HighwayTools : PluginModule(
                     containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, Blocks.ENDER_CHEST.item)
                     containerTask.isShulker = true
                 } ?: run {
-                    disableNoPosition()
+                    disableNoPosition(5)
                 }
             } ?: run {
-                sendChatMessage("$chatName No Ender Chest was found in inventory.")
+                sendChatMessage("$chatName No ${Blocks.ENDER_CHEST.item.registryName} was found in inventory.")
                 mc.soundHandler.playSound(PositionedSoundRecord.getRecord(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f))
                 disable()
             }
         }
     }
 
-    private fun disableNoPosition() {
-        sendChatMessage("$chatName Cant find possible container position.")
+    private fun disableNoPosition(id: Int) {
+        sendChatMessage("$chatName Can't find possible container position. ($id)")
         mc.soundHandler.playSound(PositionedSoundRecord.getRecord(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f))
         disable()
     }

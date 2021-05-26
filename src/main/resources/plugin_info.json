@@ -1,10 +1,10 @@
 {
   "name": "HighwayTools",
-  "version": "9.9",
+  "version": "9.9.1",
   "authors": [
     "Constructor"
   ],
   "description": "Build highways with ease",
   "main_class": "HighwayToolsPlugin",
-  "min_api_version": "2.04.01"
+  "min_api_version": "2.05.01"
 }
