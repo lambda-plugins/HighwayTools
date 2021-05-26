@@ -1,12 +1,15 @@
 import baritone.api.pathing.goals.GoalNear
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.event.events.PacketEvent
+import com.lambda.client.event.events.RenderOverlayEvent
 import com.lambda.client.event.events.RenderWorldEvent
 import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
 import com.lambda.client.module.Category
 import com.lambda.client.module.modules.client.Hud.primaryColor
 import com.lambda.client.module.modules.client.Hud.secondaryColor
 import com.lambda.client.module.modules.combat.AutoLog
+import com.lambda.client.module.modules.combat.CrystalESP
+import com.lambda.client.module.modules.combat.CrystalESP.setting
 import com.lambda.client.module.modules.misc.AntiAFK
 import com.lambda.client.module.modules.misc.AutoObsidian
 import com.lambda.client.module.modules.movement.AntiHunger
@@ -22,6 +25,9 @@ import com.lambda.client.util.EntityUtils.flooredPosition
 import com.lambda.client.util.EntityUtils.getDroppedItems
 import com.lambda.client.util.color.ColorHolder
 import com.lambda.client.util.graphics.ESPRenderer
+import com.lambda.client.util.graphics.GlStateUtils
+import com.lambda.client.util.graphics.ProjectionUtils
+import com.lambda.client.util.graphics.font.FontRenderAdapter
 import com.lambda.client.util.graphics.font.TextComponent
 import com.lambda.client.util.items.*
 import com.lambda.client.util.math.CoordinateConverter.asString
@@ -61,6 +67,7 @@ import net.minecraft.network.play.client.*
 import net.minecraft.network.play.server.SPacketBlockChange
 import net.minecraft.network.play.server.SPacketOpenWindow
 import net.minecraft.network.play.server.SPacketPlayerPosLook
+import net.minecraft.network.play.server.SPacketWindowItems
 import net.minecraft.stats.StatList
 import net.minecraft.util.EnumFacing
 import net.minecraft.util.EnumHand
@@ -73,7 +80,14 @@ import net.minecraft.util.math.Vec3d
 import net.minecraft.util.text.TextComponentString
 import net.minecraft.world.EnumDifficulty
 import net.minecraftforge.fml.common.gameevent.TickEvent
+import org.lwjgl.opengl.GL11
+import java.util.*
+import kotlin.collections.ArrayDeque
+import kotlin.collections.LinkedHashMap
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.random.Random.Default.nextInt
 
 /**
@@ -166,8 +180,13 @@ internal object HighwayTools : PluginModule(
     private val goalRender by setting("Goal Render", false, { page == Page.CONFIG }, description = "Renders the baritone goal")
     private val filled by setting("Filled", true, { page == Page.CONFIG }, description = "Renders colored task surfaces")
     private val outline by setting("Outline", true, { page == Page.CONFIG }, description = "Renders colored task outlines")
+    private val popUp by setting("Pop up", true, { page == Page.CONFIG }, description = "Funny render effect")
+    private val popUpSpeed by setting("Pop up speed", 80, 0..1000, 1, { popUp && page == Page.CONFIG }, description = "Sets speed of the pop up effect")
+    private val showDebugRender by setting("Debug Render", false, { page == Page.CONFIG }, description = "Render debug info on tasks")
+    private val textScale by setting("Text Scale", 1.0f, 0.0f..4.0f, 0.25f, { showDebugRender && page == Page.CONFIG }, description = "Scale of debug text")
     private val aFilled by setting("Filled Alpha", 26, 0..255, 1, { filled && page == Page.CONFIG }, description = "Sets the opacity")
     private val aOutline by setting("Outline Alpha", 91, 0..255, 1, { outline && page == Page.CONFIG }, description = "Sets the opacity")
+    private val thickness by setting("Thickness", 2.0f, 0.25f..4.0f, 0.25f, { outline && page == Page.CONFIG }, description = "Sets thickness of outline")
 
     enum class Mode {
         HIGHWAY, FLAT, TUNNEL
@@ -437,6 +456,9 @@ internal object HighwayTools : PluginModule(
                         containerTask.isOpen = true
                     }
                 }
+                is SPacketWindowItems -> {
+                    if (containerTask.isOpen) containerTask.isLoaded = true
+                }
                 else -> {
                     // Nothing
                 }
@@ -444,7 +466,38 @@ internal object HighwayTools : PluginModule(
         }
 
         listener<RenderWorldEvent> {
+            renderer.clear()
+            renderer.aFilled = if (filled) aFilled else 0
+            renderer.aOutline = if (outline) aOutline else 0
+            renderer.thickness = thickness
+            val currentTime = System.currentTimeMillis()
+
+//        renderer.add(world.getBlockState(currentBlockPos).getSelectedBoundingBox(world, currentBlockPos), ColorHolder(255, 255, 255))
+
+            if (containerTask.taskState != TaskState.DONE) {
+                addToRenderer(containerTask, currentTime)
+            }
+
+            pendingTasks.values.forEach {
+                if (it.taskState == TaskState.DONE) return@forEach
+                addToRenderer(it, currentTime)
+            }
+
+            doneTasks.values.forEach {
+                if (it.block == Blocks.AIR || it.isShulker) return@forEach
+                addToRenderer(it, currentTime)
+            }
             renderer.render(false)
+        }
+
+        listener<RenderOverlayEvent> {
+            if (!showDebugRender) return@listener
+            GlStateUtils.rescaleActual()
+
+            if (containerTask.taskState != TaskState.DONE) updateOverlay(containerTask.blockPos, containerTask)
+            pendingTasks.forEach { (pos, blockTask) ->
+                updateOverlay(pos, blockTask)
+            }
         }
 
         safeListener<TickEvent.ClientTickEvent> { event ->
@@ -477,30 +530,66 @@ internal object HighwayTools : PluginModule(
                 updateDequeues()
             }
 
-            doPathing()
             runTasks()
+            doPathing()
 
             doRotation()
         }
     }
 
     private fun SafeClientEvent.updateRenderer() {
-        renderer.clear()
-        renderer.aFilled = if (filled) aFilled else 0
-        renderer.aOutline = if (outline) aOutline else 0
+        containerTask.aabb = world
+            .getBlockState(containerTask.blockPos)
+            .getSelectedBoundingBox(world, containerTask.blockPos)
 
-//        renderer.add(world.getBlockState(currentBlockPos).getSelectedBoundingBox(world, currentBlockPos), ColorHolder(255, 255, 255))
-
-        if (containerTask.taskState != TaskState.DONE) renderer.add(world.getBlockState(containerTask.blockPos).getSelectedBoundingBox(world, containerTask.blockPos), containerTask.taskState.color)
-
-        pendingTasks.values.forEach {
-            if (it.taskState == TaskState.DONE) return@forEach
-            renderer.add(world.getBlockState(it.blockPos).getSelectedBoundingBox(world, it.blockPos), it.taskState.color)
+        pendingTasks.forEach { (_, task) ->
+            task.aabb = world
+                .getBlockState(task.blockPos)
+                .getSelectedBoundingBox(world, task.blockPos)
         }
 
-        doneTasks.values.forEach {
-            if (it.block == Blocks.AIR || it.isShulker) return@forEach
-            renderer.add(world.getBlockState(it.blockPos).getSelectedBoundingBox(world, it.blockPos), it.taskState.color)
+        doneTasks.forEach { (_, task) ->
+            task.aabb = world
+                .getBlockState(task.blockPos)
+                .getSelectedBoundingBox(world, task.blockPos)
+        }
+    }
+
+    private fun updateOverlay(pos: BlockPos, blockTask: BlockTask) {
+        GL11.glPushMatrix()
+        val screenPos = ProjectionUtils.toScreenPos(pos.toVec3dCenter())
+        GL11.glTranslated(screenPos.x, screenPos.y, 0.0)
+        GL11.glScalef(textScale * 2.0f, textScale * 2.0f, 1.0f)
+
+        val color = ColorHolder(255, 255, 255, 255)
+
+        val debugInfos = mutableListOf<Pair<String, String>>()
+        if (blockTask.sides > 0 ) debugInfos.add(Pair("Sides", "${blockTask.sides}"))
+        if (blockTask != containerTask) {
+            debugInfos.add(Pair("Distance", "%.2f".format(blockTask.eyeDistance)))
+        } else {
+            debugInfos.add(Pair("Item", "${blockTask.item.registryName}"))
+        }
+        if (blockTask.stuckTicks > 0) debugInfos.add(Pair("Stuck", "${blockTask.stuckTicks}"))
+
+        debugInfos.forEachIndexed { index, pair ->
+            val text = "${pair.first}: ${pair.second}"
+            val halfWidth = FontRenderAdapter.getStringWidth(text) / -2.0f
+            FontRenderAdapter.drawString(text, halfWidth, (FontRenderAdapter.getFontHeight() + 2.0f) * index, color = color)
+        }
+
+        GL11.glPopMatrix()
+    }
+
+    private fun addToRenderer(blockTask: BlockTask, currentTime: Long) {
+        if (popUp) {
+            renderer.add(blockTask.aabb
+                .shrink((0.5 - sin(((currentTime - blockTask.timestamp).toDouble()
+                    .coerceAtMost(popUpSpeed * PI / 2) / popUpSpeed)) * 0.5)),
+                blockTask.taskState.color
+            )
+        } else {
+            renderer.add(blockTask.aabb, blockTask.taskState.color)
         }
     }
 
@@ -559,8 +648,15 @@ internal object HighwayTools : PluginModule(
 
     private fun SafeClientEvent.refreshData(originPos: BlockPos = currentBlockPos) {
         moveState = MovementState.RUNNING
-        pendingTasks.clear()
-        doneTasks.clear()
+        val toRemove = LinkedList<BlockPos>()
+        doneTasks.forEach { (pos, _) ->
+            if (player.getPositionEyes(1f).distanceTo(pos) > maxReach) {
+                toRemove.add(pos)
+            }
+        }
+        toRemove.forEach {
+            doneTasks.remove(it)
+        }
         lastTask = null
 
         blueprint.clear()
@@ -789,11 +885,23 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun addTaskToPending(blockPos: BlockPos, taskState: TaskState, material: Block) {
-        pendingTasks[blockPos] = (BlockTask(blockPos, taskState, material))
+        pendingTasks[blockPos]?.let {
+            if (it.taskState != taskState || it.stuckTicks > it.taskState.stuckTimeout) {
+                pendingTasks[blockPos] = (BlockTask(blockPos, taskState, material))
+            }
+        } ?: run {
+            pendingTasks[blockPos] = (BlockTask(blockPos, taskState, material))
+        }
     }
 
     private fun addTaskToDone(blockPos: BlockPos, material: Block) {
-        doneTasks[blockPos] = (BlockTask(blockPos, TaskState.DONE, material))
+        doneTasks[blockPos]?.let {
+            if (it.taskState != TaskState.DONE) {
+                doneTasks[blockPos] = (BlockTask(blockPos, TaskState.DONE, material))
+            }
+        } ?: run {
+            doneTasks[blockPos] = (BlockTask(blockPos, TaskState.DONE, material))
+        }
     }
 
     private fun SafeClientEvent.doPathing() {
@@ -862,6 +970,7 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun SafeClientEvent.runTasks() {
+        if (player.inventory.isEmpty) return
         when {
             pendingTasks.isEmpty() -> {
                 if (checkDoneTasks()) doneTasks.clear()
@@ -1007,6 +1116,10 @@ internal object HighwayTools : PluginModule(
                         TaskState.BREAK -> {
 //                            if (tryRefreshSlots) updateSlot()
                         }
+                        TaskState.PICKUP -> {
+                            sendChatMessage("$chatName Can't pickup ${containerTask.item.registryName}@(${containerTask.blockPos.asString()})")
+                            containerTask.updateState(TaskState.DONE)
+                        }
                         else -> {
                             // Nothing
                         }
@@ -1067,7 +1180,7 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun SafeClientEvent.doRestock() {
-        if (mc.currentScreen is GuiContainer) {
+        if (mc.currentScreen is GuiContainer && containerTask.isLoaded) {
             val container = player.openContainer
 
             container.getSlots(0..26).firstItem(containerTask.item)?.let {
@@ -1076,7 +1189,7 @@ internal object HighwayTools : PluginModule(
                 getShulkerWith(container.getSlots(0..26), containerTask.item)?.let {
                     moveToInventory(it)
                 } ?: run {
-                    sendChatMessage("$chatName No material left in any container.")
+                    sendChatMessage("$chatName No ${containerTask.item.registryName} left in any container.")
                     mc.soundHandler.playSound(PositionedSoundRecord.getRecord(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f))
                     disable()
                     when (disableMode) {
@@ -1118,9 +1231,6 @@ internal object HighwayTools : PluginModule(
             if (player.inventorySlots.firstEmpty() == null) {
                 getEjectSlot()?.let {
                     throwAllInSlot(it)
-                } ?: run {
-                    sendChatMessage("$chatName Inventory: can't pickup Item@(${containerTask.blockPos.asString()})")
-                    containerTask.updateState(TaskState.DONE)
                 }
             } else {
                 // ToDo: Resolve ghost slot
@@ -1787,11 +1897,17 @@ internal object HighwayTools : PluginModule(
 
     private fun SafeClientEvent.moveToInventory(slot: Slot) {
         player.hotbarSlots.firstOrNull {
-            InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
+            slot.stack.item == it.stack.item
         }?.let {
-            clickSlot(player.openContainer.windowId, slot, it.hotbarSlot, ClickType.SWAP)
-        } ?: run {
             clickSlot(player.openContainer.windowId, slot, 0, ClickType.QUICK_MOVE)
+        } ?: run {
+            player.hotbarSlots.firstOrNull {
+                InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
+            }?.let {
+                clickSlot(player.openContainer.windowId, slot, it.hotbarSlot, ClickType.SWAP)
+            } ?: run {
+                sendChatMessage("To be implemented")
+            }
         }
 
         if (leaveEmptyShulkers &&
@@ -2210,6 +2326,7 @@ internal object HighwayTools : PluginModule(
 
         var isShulker = false
         var isOpen = false
+        var isLoaded = false
         var itemID = 0
         var destroy = false
         var collect = true
@@ -2217,10 +2334,15 @@ internal object HighwayTools : PluginModule(
 
 //      var isBridge = false ToDo: Implement
 
+        // Render
+        var timestamp = System.currentTimeMillis()
+        var aabb = AxisAlignedBB(1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
         fun updateState(state: TaskState) {
             if (state == taskState) return
 
             taskState = state
+            timestamp = System.currentTimeMillis()
             if (state == TaskState.DONE || state == TaskState.PLACED || state == TaskState.BROKEN) {
                 onUpdate()
             }
@@ -2246,10 +2368,12 @@ internal object HighwayTools : PluginModule(
 
         fun prepareSortInfo(event: SafeClientEvent, eyePos: Vec3d) {
             sides = when (taskState) {
-                TaskState.PLACE -> {
+                TaskState.PLACE, TaskState.LIQUID_FLOW, TaskState.LIQUID_SOURCE -> {
                     event.getNeighbourSequence(blockPos, placementSearch, maxReach, true).size
                 }
-                //TaskState.BREAK ->
+                TaskState.BREAK -> {
+                    event.getVisibleSides(blockPos).size
+                }
                 else -> 0
             }
 
