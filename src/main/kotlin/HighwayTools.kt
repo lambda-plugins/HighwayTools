@@ -252,6 +252,8 @@ internal object HighwayTools : PluginModule(
     private val doneTasks = LinkedHashMap<BlockPos, BlockTask>()
     private var sortedTasks: List<BlockTask> = emptyList()
     var lastTask: BlockTask? = null; private set
+    private var prePrimedPos = BlockPos.NULL_VECTOR
+    private var primedPos = BlockPos.NULL_VECTOR
 
     private var containerTask = BlockTask(BlockPos.ORIGIN, TaskState.DONE, Blocks.AIR, Items.AIR)
     private val shulkerOpenTimer = TickTimer(TimeUnit.TICKS)
@@ -296,6 +298,8 @@ internal object HighwayTools : PluginModule(
                 startingBlockPos = player.flooredPosition
                 currentBlockPos = startingBlockPos
                 startingDirection = Direction.fromEntity(player)
+                primedPos = BlockPos.NULL_VECTOR
+                prePrimedPos = BlockPos.NULL_VECTOR
 
                 baritoneSettingAllowPlace = BaritoneUtils.settings?.allowPlace?.value ?: true
                 baritoneSettingAllowBreak = BaritoneUtils.settings?.allowBreak?.value ?: true
@@ -567,6 +571,8 @@ internal object HighwayTools : PluginModule(
         } else {
             debugInfos.add(Pair("Item", "${blockTask.item.registryName}"))
         }
+        if (blockTask.isOpen) debugInfos.add(Pair("Open", ""))
+        if (blockTask.isLoaded) debugInfos.add(Pair("Loaded", ""))
         if (blockTask.stuckTicks > 0) debugInfos.add(Pair("Stuck", "${blockTask.stuckTicks}"))
 
         debugInfos.forEachIndexed { index, pair ->
@@ -969,24 +975,8 @@ internal object HighwayTools : PluginModule(
     private fun SafeClientEvent.runTasks() {
         if (player.inventory.isEmpty) return
         when {
-            pendingTasks.isEmpty() -> {
-                if (checkDoneTasks()) doneTasks.clear()
-                refreshData()
-            }
             containerTask.taskState != TaskState.DONE -> {
-                if (containerTask.stuckTicks > containerTask.taskState.stuckTimeout) {
-                    when (containerTask.taskState) {
-                        TaskState.PICKUP -> {
-                            player.inventorySlots.firstEmpty()?.let {
-//                                if (tryRefreshSlots) updateSlot(it.slotNumber)
-                            }
-                            containerTask.updateState(TaskState.DONE)
-                        }
-                        else -> {
-                            // Nothing
-                        }
-                    }
-                }
+                checkStuckTimeout(containerTask)
                 pendingTasks.values.toList().forEach {
                     doTask(it, true)
                 }
@@ -1107,18 +1097,17 @@ internal object HighwayTools : PluginModule(
                     when (blockTask.taskState) {
                         TaskState.PLACE -> {
                             if (dynamicDelay && extraPlaceDelay < 10) extraPlaceDelay += 1
-
-//                            if (tryRefreshSlots) updateSlot()
-                        }
-                        TaskState.BREAK -> {
-//                            if (tryRefreshSlots) updateSlot()
+                            getNeighbourSequence(blockTask.blockPos, placementSearch, maxReach, !illegalPlacements).firstOrNull()?.let {
+                                playerController.processRightClickBlock(player, world, it.pos, it.side, it.hitVec, EnumHand.MAIN_HAND)
+                            }
+                            blockTask.updateState(TaskState.PLACED)
                         }
                         TaskState.PICKUP -> {
                             sendChatMessage("$chatName Can't pickup ${containerTask.item.registryName}@(${containerTask.blockPos.asString()})")
-                            containerTask.updateState(TaskState.DONE)
+                            blockTask.updateState(TaskState.DONE)
                         }
                         else -> {
-                            // Nothing
+                            blockTask.updateState(TaskState.DONE)
                         }
                     }
 
@@ -1163,9 +1152,6 @@ internal object HighwayTools : PluginModule(
                 doPlace(blockTask, updateOnly)
             }
             TaskState.PENDING_BREAK, TaskState.PENDING_PLACE -> {
-//                if (!updateOnly && debugMessages == DebugMessages.ALL) {
-//                    sendChatMessage("$chatName Currently waiting for blockState updates...")
-//                }
                 blockTask.onStuck()
             }
         }
@@ -1284,6 +1270,10 @@ internal object HighwayTools : PluginModule(
         when (world.getBlockState(blockTask.blockPos).block) {
             Blocks.AIR -> {
                 totalBlocksBroken++
+                if (blockTask.blockPos == prePrimedPos) {
+                    primedPos = prePrimedPos
+                    prePrimedPos = BlockPos.NULL_VECTOR
+                }
                 simpleMovingAverageBreaks.add(System.currentTimeMillis())
 
                 when {
@@ -1319,6 +1309,7 @@ internal object HighwayTools : PluginModule(
         when {
             blockTask.block == currentBlock && currentBlock != Blocks.AIR -> {
                 totalBlocksPlaced++
+                prePrimedPos = blockTask.blockPos
                 simpleMovingAveragePlaces.add(System.currentTimeMillis())
 
                 if (dynamicDelay && extraPlaceDelay > 0) extraPlaceDelay -= 1
@@ -1487,14 +1478,21 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun SafeClientEvent.placeBlock(blockTask: BlockTask) {
-        val neighbours = if (illegalPlacements) {
-            getNeighbourSequence(blockTask.blockPos, placementSearch, maxReach)
-        } else {
-            getNeighbourSequence(blockTask.blockPos, placementSearch, maxReach, true)
-        }
+        val neighbours = getNeighbourSequence(blockTask.blockPos, placementSearch, maxReach, !illegalPlacements)
 
         when (neighbours.size) {
             0 -> {
+                if (blockTask.taskState == TaskState.LIQUID_FLOW || blockTask.taskState == TaskState.LIQUID_SOURCE ) {
+                    if (debugMessages == DebugMessages.ALL) {
+                        if (!anonymizeStats) {
+                            sendChatMessage("$chatName Can't replace Liquid@(${blockTask.blockPos})")
+                        } else {
+                            sendChatMessage("$chatName Can't replace Liquid")
+                        }
+                    }
+                    blockTask.updateState(TaskState.DONE)
+                    return
+                }
                 if (debugMessages == DebugMessages.ALL) {
                     if (!anonymizeStats) {
                         sendChatMessage("$chatName No neighbours found for ${blockTask.blockPos}")
@@ -1581,10 +1579,8 @@ internal object HighwayTools : PluginModule(
                 return
             }
 
-            if (containerTask.primed && containerTask.destroy && instantMine) {
+            if (blockTask.blockPos == primedPos && instantMine) {
                 side = side.opposite
-            } else {
-                containerTask.primed
             }
             lastHitVec = getHitVec(blockTask.blockPos, side)
             rotateTimer.reset()
@@ -1695,10 +1691,12 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun SafeClientEvent.shouldBridge(): Boolean {
-        return world.isAirBlock(currentBlockPos.add(startingDirection.directionVec).down()) &&
+        return world.getBlockState(currentBlockPos.add(startingDirection.directionVec).down()).isReplaceable &&
             !sortedTasks.any {
-                it.taskState == TaskState.PLACE &&
-                    getNeighbourSequence(it.blockPos, placementSearch, maxReach, true).isNotEmpty()
+                getNeighbourSequence(it.blockPos, placementSearch, maxReach, !illegalPlacements).isNotEmpty() &&
+                    (it.taskState == TaskState.PLACE ||
+                        it.taskState == TaskState.LIQUID_SOURCE ||
+                        it.taskState == TaskState.LIQUID_FLOW)
             }
     }
 
@@ -1893,8 +1891,8 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun SafeClientEvent.moveToInventory(slot: Slot) {
-        player.hotbarSlots.firstOrNull {
-            slot.stack.item == it.stack.item
+        player.inventorySlots.firstOrNull {
+            slot.stack.item == it.stack.item && it.stack.count < it.slotStackLimit - slot.stack.count
         }?.let {
             clickSlot(player.openContainer.windowId, slot, 0, ClickType.QUICK_MOVE)
         } ?: run {
@@ -1969,24 +1967,24 @@ internal object HighwayTools : PluginModule(
         }
     }
 
-//    private fun SafeClientEvent.updateSlot(slot: Int = player.inventory.currentItem + 36) {
-//        clickSlot(0, slot, 0, ClickType.PICKUP)
-//        connection.sendPacket(CPacketCloseWindow(0))
-//        runBlocking {
-//            onMainThreadSafe { playerController.updateController() }
-//        }
-//    }
-
     private fun SafeClientEvent.handleLiquid(blockTask: BlockTask): Boolean {
         var foundLiquid = false
 
         for (side in EnumFacing.values()) {
+            if (side == EnumFacing.DOWN) continue
             val neighbourPos = blockTask.blockPos.offset(side)
 
             if (world.getBlockState(neighbourPos).block !is BlockLiquid) continue
 
             if (player.distanceTo(neighbourPos) > maxReach) {
                 blockTask.updateState(TaskState.DONE)
+                if (debugMessages == DebugMessages.ALL) {
+                    if (!anonymizeStats) {
+                        sendChatMessage("$chatName Liquid@(${neighbourPos.asString()}) out of reach (${player.distanceTo(neighbourPos)})")
+                    } else {
+                        sendChatMessage("$chatName Liquid out of reach (${player.distanceTo(neighbourPos)})")
+                    }
+                }
                 return true
             }
 
@@ -2327,7 +2325,6 @@ internal object HighwayTools : PluginModule(
         var itemID = 0
         var destroy = false
         var collect = true
-        var primed = false
 
 //      var isBridge = false ToDo: Implement
 
@@ -2368,13 +2365,10 @@ internal object HighwayTools : PluginModule(
                 TaskState.PLACE, TaskState.LIQUID_FLOW, TaskState.LIQUID_SOURCE -> {
                     event.getNeighbourSequence(blockPos, placementSearch, maxReach, true).size
                 }
-                TaskState.BREAK -> {
-                    event.getVisibleSides(blockPos).size
-                }
                 else -> 0
             }
 
-            // ToDo: We need a function that makes a score out of those 3 parameters
+            // ToDo: Function that makes a score out of those 3 parameters
             startDistance = startingBlockPos.distanceTo(blockPos)
             eyeDistance = eyePos.distanceTo(blockPos)
             hitVecDistance = (lastHitVec?.distanceTo(blockPos) ?: 0.0)
