@@ -61,7 +61,10 @@ import net.minecraft.inventory.ClickType
 import net.minecraft.inventory.ItemStackHelper
 import net.minecraft.inventory.Slot
 import net.minecraft.item.*
-import net.minecraft.network.play.client.*
+import net.minecraft.network.play.client.CPacketClientStatus
+import net.minecraft.network.play.client.CPacketEntityAction
+import net.minecraft.network.play.client.CPacketPlayerDigging
+import net.minecraft.network.play.client.CPacketPlayerTryUseItemOnBlock
 import net.minecraft.network.play.server.SPacketBlockChange
 import net.minecraft.network.play.server.SPacketOpenWindow
 import net.minecraft.network.play.server.SPacketPlayerPosLook
@@ -81,7 +84,6 @@ import net.minecraftforge.fml.common.gameevent.TickEvent
 import org.lwjgl.opengl.GL11
 import java.util.*
 import kotlin.collections.ArrayDeque
-import kotlin.collections.LinkedHashMap
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.sin
@@ -113,7 +115,7 @@ internal object HighwayTools : PluginModule(
     )
 
     // build settings
-    val mode by setting("Mode", Mode.HIGHWAY, { page == Page.BUILD }, description = "Choose the structure")
+    private val mode by setting("Mode", Mode.HIGHWAY, { page == Page.BUILD }, description = "Choose the structure")
     private val width by setting("Width", 6, 1..11, 1, { page == Page.BUILD }, description = "Sets the width of blueprint")
     private val height by setting("Height", 4, 1..6, 1, { page == Page.BUILD && clearSpace }, description = "Sets height of blueprint")
     private val backfill by setting("Backfill", false, { page == Page.BUILD && mode == Mode.TUNNEL }, description = "Fills the tunnel behind you")
@@ -229,7 +231,7 @@ internal object HighwayTools : PluginModule(
     private var startingDirection = Direction.NORTH
     private var currentBlockPos = BlockPos(0, -1, 0)
     private var startingBlockPos = BlockPos(0, -1, 0)
-    var targetBlockPos = BlockPos(0, -1, 0)
+    private var targetBlockPos = BlockPos(0, -1, 0)
     var distancePending = 0
     private val blueprint = LinkedHashMap<BlockPos, Block>()
 
@@ -276,9 +278,9 @@ internal object HighwayTools : PluginModule(
     private var fillerMatLeft = 0
     private var lastToolDamage = 0
     private var durabilityUsages = 0
-    var matPlaced = 0
+    private var matPlaced = 0
     private var enderMined = 0
-    var netherrackMined = 0
+    private var netherrackMined = 0
     private var pickaxeBroken = 0
 
     private val stateUpdateMutex = Mutex()
@@ -565,7 +567,7 @@ internal object HighwayTools : PluginModule(
         val color = ColorHolder(255, 255, 255, 255)
 
         val debugInfos = mutableListOf<Pair<String, String>>()
-        if (blockTask.sides > 0 ) debugInfos.add(Pair("Sides", "${blockTask.sides}"))
+        if (blockTask.sides > 0) debugInfos.add(Pair("Sides", "${blockTask.sides}"))
         if (blockTask != containerTask) {
             debugInfos.add(Pair("Distance", "%.2f".format(blockTask.eyeDistance)))
         } else {
@@ -1008,21 +1010,6 @@ internal object HighwayTools : PluginModule(
                 }
             }
         }
-    }
-
-    private fun SafeClientEvent.checkDoneTasks(): Boolean {
-        for (blockTask in doneTasks.values) {
-            val block = world.getBlockState(blockTask.blockPos).block
-            if (ignoreBlocks.contains(block.registryName.toString())) continue
-
-            when {
-                blockTask.block == material && block != material -> return false
-                mode == Mode.TUNNEL && blockTask.block == fillerMat && block != fillerMat -> return false
-                blockTask.block == Blocks.AIR && block != Blocks.AIR -> return false
-            }
-
-        }
-        return true
     }
 
     private fun SafeClientEvent.sortTasks() {
@@ -1482,7 +1469,7 @@ internal object HighwayTools : PluginModule(
 
         when (neighbours.size) {
             0 -> {
-                if (blockTask.taskState == TaskState.LIQUID_FLOW || blockTask.taskState == TaskState.LIQUID_SOURCE ) {
+                if (blockTask.taskState == TaskState.LIQUID_FLOW || blockTask.taskState == TaskState.LIQUID_SOURCE) {
                     if (debugMessages == DebugMessages.ALL) {
                         if (!anonymizeStats) {
                             sendChatMessage("$chatName Can't replace Liquid@(${blockTask.blockPos})")
