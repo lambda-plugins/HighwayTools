@@ -913,21 +913,23 @@ internal object HighwayTools : PluginModule(
     private fun SafeClientEvent.doPathing() {
         when (moveState) {
             MovementState.RUNNING -> {
-                val nextPos = getNextPos()
+                if (grindCycles == 0) {
+                    val nextPos = getNextPos()
 
-                if (currentBlockPos.distanceTo(targetBlockPos) < 2 ||
-                    (distancePending > 0 && startingBlockPos.add(startingDirection.directionVec.multiply(distancePending)).distanceTo(currentBlockPos) == 0.0)) {
-                    sendChatMessage("$chatName Reached target destination")
-                    mc.soundHandler.playSound(PositionedSoundRecord.getRecord(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f))
-                    disable()
-                    return
+                    if (currentBlockPos.distanceTo(targetBlockPos) < 2 ||
+                        (distancePending > 0 && startingBlockPos.add(startingDirection.directionVec.multiply(distancePending)).distanceTo(currentBlockPos) == 0.0)) {
+                        sendChatMessage("$chatName Reached target destination")
+                        mc.soundHandler.playSound(PositionedSoundRecord.getRecord(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f))
+                        disable()
+                        return
+                    }
+
+                    if (player.flooredPosition.distanceTo(nextPos) < 2) {
+                        currentBlockPos = nextPos
+                    }
+
+                    goal = GoalNear(nextPos, 0)
                 }
-
-                if (player.flooredPosition.distanceTo(nextPos) < 2) {
-                    currentBlockPos = nextPos
-                }
-
-                goal = GoalNear(nextPos, 0)
             }
             MovementState.PICKUP -> {
                 val droppedItemPos = getCollectingPosition()
@@ -984,6 +986,16 @@ internal object HighwayTools : PluginModule(
                     doTask(it, true)
                 }
                 doTask(containerTask, false)
+            }
+            grindCycles > 0 -> {
+                if (player.inventorySlots.countItem(Items.DIAMOND_PICKAXE) > saveTools) {
+                    handleRestock(material.item)
+                } else {
+                    handleRestock(Items.DIAMOND_PICKAXE)
+                }
+            }
+            pendingTasks.isEmpty() -> {
+                refreshData()
             }
             else -> {
                 waitTicks--
@@ -1723,13 +1735,9 @@ internal object HighwayTools : PluginModule(
         } else {
             if (storageManagement && grindObsidian &&
                 containerTask.taskState == TaskState.DONE &&
-                (player.inventorySlots.countBlock(material) <= saveMaterial || grindCycles > 0)) {
-                if (player.inventorySlots.countItem(Items.DIAMOND_PICKAXE) > saveTools) {
-                    if (grindCycles == 0) grindCycles = player.inventorySlots.count { it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) } * 8 - 1
-                    handleRestock(material.item)
-                } else {
-                    handleRestock(Items.DIAMOND_PICKAXE)
-                }
+                (player.inventorySlots.countBlock(material) <= saveMaterial &&
+                grindCycles == 0)) {
+                grindCycles = player.inventorySlots.count { it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) } * 8 - 1
                 return false
             }
 
