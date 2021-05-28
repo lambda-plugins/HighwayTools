@@ -86,6 +86,7 @@ import java.util.*
 import kotlin.collections.ArrayDeque
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random.Default.nextInt
 
@@ -180,7 +181,7 @@ internal object HighwayTools : PluginModule(
     private val filled by setting("Filled", true, { page == Page.CONFIG }, description = "Renders colored task surfaces")
     private val outline by setting("Outline", true, { page == Page.CONFIG }, description = "Renders colored task outlines")
     private val popUp by setting("Pop up", true, { page == Page.CONFIG }, description = "Funny render effect")
-    private val popUpSpeed by setting("Pop up speed", 80, 0..1000, 1, { popUp && page == Page.CONFIG }, description = "Sets speed of the pop up effect")
+    private val popUpSpeed by setting("Pop up speed", 150, 0..500, 1, { popUp && page == Page.CONFIG }, description = "Sets speed of the pop up effect")
     private val showDebugRender by setting("Debug Render", false, { page == Page.CONFIG }, description = "Render debug info on tasks")
     private val textScale by setting("Text Scale", 1.0f, 0.0f..4.0f, 0.25f, { showDebugRender && page == Page.CONFIG }, description = "Scale of debug text")
     private val aFilled by setting("Filled Alpha", 26, 0..255, 1, { filled && page == Page.CONFIG }, description = "Sets the opacity")
@@ -489,7 +490,11 @@ internal object HighwayTools : PluginModule(
 
             doneTasks.values.forEach {
                 if (it.block == Blocks.AIR || it.isShulker) return@forEach
-                addToRenderer(it, currentTime)
+                if (it.toRemove) {
+                    addToRenderer(it, currentTime, true)
+                } else {
+                    addToRenderer(it, currentTime)
+                }
             }
             renderer.render(false)
         }
@@ -576,10 +581,16 @@ internal object HighwayTools : PluginModule(
         }
         if (blockTask.isOpen) debugInfos.add(Pair("Open", ""))
         if (blockTask.isLoaded) debugInfos.add(Pair("Loaded", ""))
+        if (blockTask.destroy) debugInfos.add(Pair("Destroy", ""))
         if (blockTask.stuckTicks > 0) debugInfos.add(Pair("Stuck", "${blockTask.stuckTicks}"))
 
         debugInfos.forEachIndexed { index, pair ->
-            val text = "${pair.first}: ${pair.second}"
+
+            val text = if (pair.second == "") {
+                pair.first
+            } else {
+                "${pair.first}: ${pair.second}"
+            }
             val halfWidth = FontRenderAdapter.getStringWidth(text) / -2.0f
             FontRenderAdapter.drawString(text, halfWidth, (FontRenderAdapter.getFontHeight() + 2.0f) * index, color = color)
         }
@@ -587,11 +598,17 @@ internal object HighwayTools : PluginModule(
         GL11.glPopMatrix()
     }
 
-    private fun addToRenderer(blockTask: BlockTask, currentTime: Long) {
+    private fun addToRenderer(blockTask: BlockTask, currentTime: Long, reverse: Boolean = false) {
         if (popUp) {
+            val flip = if (reverse) {
+                cos(((currentTime - blockTask.timestamp).toDouble()
+                    .coerceAtMost(popUpSpeed * PI / 2) / popUpSpeed))
+            } else {
+                sin(((currentTime - blockTask.timestamp).toDouble()
+                    .coerceAtMost(popUpSpeed * PI / 2) / popUpSpeed))
+            }
             renderer.add(blockTask.aabb
-                .shrink((0.5 - sin(((currentTime - blockTask.timestamp).toDouble()
-                    .coerceAtMost(popUpSpeed * PI / 2) / popUpSpeed)) * 0.5)),
+                .shrink((0.5 - flip * 0.5)),
                 blockTask.taskState.color
             )
         } else {
@@ -653,49 +670,66 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun SafeClientEvent.refreshData(originPos: BlockPos = currentBlockPos) {
-        moveState = MovementState.RUNNING
         val toRemove = LinkedList<BlockPos>()
-        doneTasks.forEach { (pos, _) ->
-            if (player.getPositionEyes(1f).distanceTo(pos) > maxReach) {
-                toRemove.add(pos)
+        doneTasks.forEach { (pos, task) ->
+            if (originPos.distanceTo(pos) > maxReach && !task.toRemove) {
+                if (task.toRemove) {
+                    toRemove.add(pos)
+                } else {
+                    task.toRemove = true
+                    task.timestamp = System.currentTimeMillis()
+                }
             }
         }
         toRemove.forEach {
             doneTasks.remove(it)
         }
-        lastTask = null
 
-        blueprint.clear()
+        lastTask = null
+        moveState = MovementState.RUNNING
+
         generateBluePrint(originPos)
 
         blueprint.forEach { (pos, block) ->
-            if (block == Blocks.AIR) {
-                addTaskClear(pos)
-            } else {
-                addTaskBuild(pos, block)
+            if (!(pos == containerTask.blockPos && containerTask.taskState == TaskState.DONE) ||
+                startingBlockPos.add(
+                    startingDirection
+                        .clockwise(4)
+                        .directionVec
+                        .multiply(maxReach.ceilToInt())
+                ).distanceTo(pos) < maxReach) {
+                if (block == Blocks.AIR) {
+                    addTaskClear(pos, originPos)
+                } else {
+                    addTaskBuild(pos, block, originPos)
+                }
             }
         }
     }
 
-    private fun SafeClientEvent.addTaskBuild(pos: BlockPos, block: Block) {
+    private fun SafeClientEvent.addTaskBuild(pos: BlockPos, block: Block, originPos: BlockPos) {
         val blockState = world.getBlockState(pos)
 
         when {
-            blockState.block == block -> {
+            blockState.block == block && originPos.distanceTo(pos) < maxReach -> {
                 addTaskToDone(pos, block)
             }
             world.isPlaceable(pos, true) -> {
-                if (checkSupport(pos, block)) {
-                    addTaskToDone(pos, block)
-                } else {
-                    addTaskToPending(pos, TaskState.PLACE, block)
+                if (originPos.distanceTo(pos) < maxReach - 1) {
+                    if (checkSupport(pos, block)) {
+                        addTaskToDone(pos, block)
+                    } else {
+                        addTaskToPending(pos, TaskState.PLACE, block)
+                    }
                 }
             }
             else -> {
-                if (checkSupport(pos, block)) {
-                    addTaskToDone(pos, block)
-                } else {
-                    addTaskToPending(pos, TaskState.BREAK, block)
+                if (originPos.distanceTo(pos) < maxReach) {
+                    if (checkSupport(pos, block)) {
+                        addTaskToDone(pos, block)
+                    } else {
+                        addTaskToPending(pos, TaskState.BREAK, block)
+                    }
                 }
             }
         }
@@ -708,8 +742,11 @@ internal object HighwayTools : PluginModule(
             block == fillerMat
     }
 
-    private fun SafeClientEvent.addTaskClear(pos: BlockPos) {
+    private fun SafeClientEvent.addTaskClear(pos: BlockPos, originPos: BlockPos) {
         when {
+            originPos.distanceTo(pos) > maxReach -> {
+                //
+            }
             world.isAirBlock(pos) -> {
                 addTaskToDone(pos, Blocks.AIR)
             }
@@ -722,7 +759,8 @@ internal object HighwayTools : PluginModule(
         }
     }
 
-    private fun SafeClientEvent.generateBluePrint(feetPos: BlockPos) {
+    private fun generateBluePrint(feetPos: BlockPos) {
+        blueprint.clear()
         val basePos = feetPos.down()
 
         if (mode != Mode.FLAT) {
@@ -758,24 +796,8 @@ internal object HighwayTools : PluginModule(
                     }
                 }
             }
-
-            pickTasksInRange()
         } else {
             generateFlat(basePos)
-        }
-    }
-
-    private fun SafeClientEvent.pickTasksInRange() {
-        val eyePos = player.getPositionEyes(1f)
-
-        blueprint.keys.removeIf {
-            eyePos.distanceTo(it) > maxReach - 1 ||
-                startingBlockPos.add(
-                    startingDirection
-                        .clockwise(4)
-                        .directionVec
-                        .multiply(maxReach.toInt())
-                ).distanceTo(it) < maxReach - 1
         }
     }
 
@@ -929,7 +951,7 @@ internal object HighwayTools : PluginModule(
                         return
                     }
 
-                    if (player.flooredPosition.distanceTo(nextPos) < 2) {
+                    if (player.distanceTo(nextPos) < 2) {
                         currentBlockPos = nextPos
                     }
 
@@ -962,9 +984,7 @@ internal object HighwayTools : PluginModule(
         if (checkTasks(possiblePos.up())) nextPos = possiblePos
 
         if (currentBlockPos != nextPos) {
-            for (x in 0..currentBlockPos.distanceTo(nextPos).toInt()) {
-                simpleMovingAverageDistance.add(System.currentTimeMillis())
-            }
+            simpleMovingAverageDistance.add(System.currentTimeMillis())
             refreshData()
         }
 
@@ -1070,8 +1090,6 @@ internal object HighwayTools : PluginModule(
                             it.startDistance
                         }.thenBy {
                             it.eyeDistance
-                        }.thenBy {
-                            it.hitVecDistance
                         }
                     )
                 }
@@ -2325,7 +2343,6 @@ internal object HighwayTools : PluginModule(
         var sides = 0; private set
         var startDistance = 0.0; private set
         var eyeDistance = 0.0; private set
-        var hitVecDistance = 0.0; private set
 
         var isShulker = false
         var isOpen = false
@@ -2336,9 +2353,10 @@ internal object HighwayTools : PluginModule(
 
 //      var isBridge = false ToDo: Implement
 
-        // Render
         var timestamp = System.currentTimeMillis()
         var aabb = AxisAlignedBB(1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+
+        var toRemove = false
 
         fun updateState(state: TaskState) {
             if (state == taskState) return
@@ -2379,7 +2397,6 @@ internal object HighwayTools : PluginModule(
             // ToDo: Function that makes a score out of those 3 parameters
             startDistance = startingBlockPos.distanceTo(blockPos)
             eyeDistance = eyePos.distanceTo(blockPos)
-            hitVecDistance = (lastHitVec?.distanceTo(blockPos) ?: 0.0)
         }
 
         fun shuffle() {
