@@ -302,6 +302,7 @@ internal object HighwayTools : PluginModule(
                 startingDirection = Direction.fromEntity(player)
                 primedPos = BlockPos.NULL_VECTOR
                 prePrimedPos = BlockPos.NULL_VECTOR
+                grindCycles = 0
 
                 baritoneSettingAllowPlace = BaritoneUtils.settings?.allowPlace?.value ?: true
                 baritoneSettingAllowBreak = BaritoneUtils.settings?.allowBreak?.value ?: true
@@ -1981,7 +1982,7 @@ internal object HighwayTools : PluginModule(
                 it.block is BlockLiquid && it.getValue(BlockLiquid.LEVEL) != 0
             }
 
-            val filler = if (isInsideBlueprintBuild(neighbourPos)) material else fillerMat
+            val filler = if (isInsideBlueprintBuild(neighbourPos) && mode == Mode.HIGHWAY) material else fillerMat
 
             pendingTasks[neighbourPos]?.let {
                 if (isFlowing) {
@@ -2004,8 +2005,13 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun SafeClientEvent.updateLiquidTask(blockTask: BlockTask) {
-        val filler = if (player.inventorySlots.countBlock(fillerMat) == 0 || isInsideBlueprintBuild(blockTask.blockPos)) material
-        else fillerMat
+        val filler = if (player.inventorySlots.countBlock(fillerMat) == 0 ||
+            (isInsideBlueprintBuild(blockTask.blockPos) &&
+                mode == Mode.HIGHWAY)) {
+                    material
+        } else {
+            fillerMat
+        }
 
         if (world.getBlockState(blockTask.blockPos).getValue(BlockLiquid.LEVEL) != 0) {
             blockTask.updateState(TaskState.LIQUID_FLOW)
