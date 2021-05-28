@@ -142,7 +142,7 @@ internal object HighwayTools : PluginModule(
     private val multiBuilding by setting("Shuffle Tasks", false, { page == Page.BEHAVIOR }, description = "Only activate when working with several players")
     private val taskTimeout by setting("Task Timeout", 8, 0..20, 1, { page == Page.BEHAVIOR }, description = "Timeout for waiting for the server to try again")
     private val rubberbandTimeout by setting("Rubberband Timeout", 50, 5..100, 5, { page == Page.BEHAVIOR }, description = "Timeout for pausing after a lag")
-    private val maxReach by setting("Max Reach", 4.9f, 1.0f..6.0f, 0.1f, { page == Page.BEHAVIOR }, description = "Sets the range of the blueprint. Decrease when tasks fail!")
+    private val maxReach by setting("Max Reach", 4.9f, 1.0f..7.0f, 0.1f, { page == Page.BEHAVIOR }, description = "Sets the range of the blueprint. Decrease when tasks fail!")
     private val maxBreaks by setting("Multi Break", 1, 1..5, 1, { page == Page.BEHAVIOR }, description = "EXPERIMENTAL: Breaks multiple instant breaking blocks per tick in view")
     private val limitOrigin by setting("Limited by", LimitMode.FIXED, { page == Page.BEHAVIOR }, description = "Changes the origin of limit: Client / Server TPS")
     private val limitFactor by setting("Limit Factor", 1.0f, 0.5f..2.0f, 0.01f, { page == Page.BEHAVIOR }, description = "EXPERIMENTAL: Factor for TPS which acts as limit for maximum breaks per second.")
@@ -729,7 +729,7 @@ internal object HighwayTools : PluginModule(
             val zDirection = startingDirection
             val xDirection = zDirection.clockwise(if (zDirection.isDiagonal) 1 else 2)
 
-            for (x in -maxReach.floorToInt() * 2..maxReach.ceilToInt() * 2) {
+            for (x in -maxReach.floorToInt() * 5..maxReach.ceilToInt() * 5) {
                 val thisPos = basePos.add(zDirection.directionVec.multiply(x))
                 if (clearSpace) generateClear(thisPos, xDirection)
                 if (mode == Mode.TUNNEL) {
@@ -769,8 +769,13 @@ internal object HighwayTools : PluginModule(
         val eyePos = player.getPositionEyes(1f)
 
         blueprint.keys.removeIf {
-            eyePos.distanceTo(it) > maxReach - 0.7 ||
-                startingBlockPos.add(startingDirection.clockwise(4).directionVec.multiply(maxReach.toInt())).distanceTo(it) < maxReach - 1
+            eyePos.distanceTo(it) > maxReach - 1 ||
+                startingBlockPos.add(
+                    startingDirection
+                        .clockwise(4)
+                        .directionVec
+                        .multiply(maxReach.toInt())
+                ).distanceTo(it) < maxReach - 1
         }
     }
 
@@ -1736,7 +1741,7 @@ internal object HighwayTools : PluginModule(
             if (storageManagement && grindObsidian &&
                 containerTask.taskState == TaskState.DONE &&
                 (player.inventorySlots.countBlock(material) <= saveMaterial &&
-                grindCycles == 0)) {
+                    grindCycles == 0)) {
                 grindCycles = player.inventorySlots.count { it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) } * 8 - 1
                 return false
             }
@@ -1887,8 +1892,9 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun SafeClientEvent.moveToInventory(slot: Slot) {
-        player.inventorySlots.firstOrNull {
-            slot.stack.item == it.stack.item && it.stack.count < it.slotStackLimit - slot.stack.count
+        player.openContainer.getSlots(27..62).firstOrNull {
+            (slot.stack.item == it.stack.item && it.stack.count < slot.slotStackLimit - slot.stack.count) ||
+                slot.stack.item == Items.AIR
         }?.let {
             clickSlot(player.openContainer.windowId, slot, 0, ClickType.QUICK_MOVE)
         } ?: run {
@@ -1935,11 +1941,12 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun SafeClientEvent.getCollectingPosition(): BlockPos? {
-        getDroppedItems(containerTask.itemID, range = 8f)
+        val range = 8f
+        getDroppedItems(containerTask.itemID, range = range)
             .minByOrNull { player.getDistance(it) }
             ?.positionVector
             ?.let { itemVec ->
-                return VectorUtils.getBlockPosInSphere(itemVec, 5f).asSequence()
+                return VectorUtils.getBlockPosInSphere(itemVec, range).asSequence()
                     .filter { pos ->
                         world.isAirBlock(pos.up()) &&
                             world.isAirBlock(pos) &&
@@ -2016,7 +2023,7 @@ internal object HighwayTools : PluginModule(
         val filler = if (player.inventorySlots.countBlock(fillerMat) == 0 ||
             (isInsideBlueprintBuild(blockTask.blockPos) &&
                 mode == Mode.HIGHWAY)) {
-                    material
+            material
         } else {
             fillerMat
         }
