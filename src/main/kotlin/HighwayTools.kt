@@ -161,18 +161,8 @@ internal object HighwayTools : PluginModule(
     private val proxyCommand by setting("Proxy Command", "/dc", { usingProxy && disableMode == DisableMode.LOGOUT && page == Page.STORAGE_MANAGEMENT }, description = "Command to be sent to log out")
 //    private val tryRefreshSlots by setting("Try refresh slot", false, { page == Page.STORAGE_MANAGEMENT }, description = "Clicks a slot on desync")
 
-    // stat settings
-    val anonymizeStats by setting("Anonymize", false, { page == Page.STATS }, description = "Censors all coordinates in HUD and Chat")
-    private val simpleMovingAverageRange by setting("Moving Average", 60, 5..600, 5, { page == Page.STATS }, description = "Sets the timeframe of the average in seconds")
-    private val showSession by setting("Show Session", true, { page == Page.STATS }, description = "Toggles the Session section in HUD")
-    private val showLifeTime by setting("Show Lifetime", true, { page == Page.STATS }, description = "Toggles the Lifetime section in HUD")
-    private val showPerformance by setting("Show Performance", true, { page == Page.STATS }, description = "Toggles the Performance section in HUD")
-    private val showEnvironment by setting("Show Environment", true, { page == Page.STATS }, description = "Toggles the Environment section in HUD")
-    private val showTask by setting("Show Task", true, { page == Page.STATS }, description = "Toggles the Task section in HUD")
-    private val showEstimations by setting("Show Estimations", true, { page == Page.STATS }, description = "Toggles the Estimations section in HUD")
-    private val resetStats = setting("Reset Stats", false, { page == Page.STATS }, description = "Resets the stats")
-
     // config
+    val anonymizeStats by setting("Anonymize", false, { page == Page.CONFIG }, description = "Censors all coordinates in HUD and Chat")
     private val fakeSounds by setting("Fake Sounds", true, { page == Page.CONFIG }, description = "Adds artificial sounds to the actions")
     private val info by setting("Show Info", true, { page == Page.CONFIG }, description = "Prints session stats in chat")
     private val printDebug by setting("Show Queue", false, { page == Page.CONFIG }, description = "Shows task queue in HUD")
@@ -193,7 +183,7 @@ internal object HighwayTools : PluginModule(
     }
 
     private enum class Page {
-        BUILD, BEHAVIOR, STORAGE_MANAGEMENT, STATS, CONFIG
+        BUILD, BEHAVIOR, STORAGE_MANAGEMENT, CONFIG
     }
 
     @Suppress("UNUSED")
@@ -316,6 +306,7 @@ internal object HighwayTools : PluginModule(
                 }
 
                 pendingTasks.clear()
+                doneTasks.clear()
                 containerTask.updateState(TaskState.DONE)
                 refreshData()
                 printEnable()
@@ -335,11 +326,6 @@ internal object HighwayTools : PluginModule(
 
                 printDisable()
             }
-        }
-
-        resetStats.consumers.add { _, it ->
-            if (it) resetStats()
-            false
         }
     }
 
@@ -573,12 +559,15 @@ internal object HighwayTools : PluginModule(
         val color = ColorHolder(255, 255, 255, 255)
 
         val debugInfos = mutableListOf<Pair<String, String>>()
-        if (blockTask.sides > 0) debugInfos.add(Pair("Sides", "${blockTask.sides}"))
         if (blockTask != containerTask) {
-            debugInfos.add(Pair("Distance", "%.2f".format(blockTask.eyeDistance)))
+            debugInfos.add(Pair("Start Distance", "%.2f".format(blockTask.startDistance)))
+            debugInfos.add(Pair("Eye Distance", "%.2f".format(blockTask.eyeDistance)))
         } else {
             debugInfos.add(Pair("Item", "${blockTask.item.registryName}"))
         }
+        if (blockTask.taskState == TaskState.PLACE ||
+            blockTask.taskState == TaskState.LIQUID_FLOW ||
+            blockTask.taskState == TaskState.LIQUID_SOURCE) debugInfos.add(Pair("Depth", "${blockTask.depth}"))
         if (blockTask.isOpen) debugInfos.add(Pair("Open", ""))
         if (blockTask.isLoaded) debugInfos.add(Pair("Loaded", ""))
         if (blockTask.destroy) debugInfos.add(Pair("Destroy", ""))
@@ -630,7 +619,7 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun updateDequeues() {
-        val removeTime = System.currentTimeMillis() - simpleMovingAverageRange * 1000L
+        val removeTime = System.currentTimeMillis() - HighwayToolsHud.simpleMovingAverageRange * 1000L
 
         updateDeque(simpleMovingAveragePlaces, removeTime)
         updateDeque(simpleMovingAverageBreaks, removeTime)
@@ -672,9 +661,11 @@ internal object HighwayTools : PluginModule(
     private fun SafeClientEvent.refreshData(originPos: BlockPos = currentBlockPos) {
         val toRemove = LinkedList<BlockPos>()
         doneTasks.forEach { (pos, task) ->
-            if (originPos.distanceTo(pos) > maxReach && !task.toRemove) {
+            if (originPos.distanceTo(pos) > maxReach + 2) {
                 if (task.toRemove) {
-                    toRemove.add(pos)
+                    if (System.currentTimeMillis() - task.timestamp > 1000L) {
+                        toRemove.add(pos)
+                    }
                 } else {
                     task.toRemove = true
                     task.timestamp = System.currentTimeMillis()
@@ -686,7 +677,7 @@ internal object HighwayTools : PluginModule(
         }
 
         lastTask = null
-        moveState = MovementState.RUNNING
+        if (!shouldBridge()) moveState = MovementState.RUNNING
 
         generateBluePrint(originPos)
 
@@ -714,7 +705,7 @@ internal object HighwayTools : PluginModule(
             blockState.block == block && originPos.distanceTo(pos) < maxReach -> {
                 addTaskToDone(pos, block)
             }
-            world.isPlaceable(pos, true) -> {
+            world.isPlaceable(pos) -> {
                 if (originPos.distanceTo(pos) < maxReach - 1) {
                     if (checkSupport(pos, block)) {
                         addTaskToDone(pos, block)
@@ -919,7 +910,8 @@ internal object HighwayTools : PluginModule(
 
     private fun addTaskToPending(blockPos: BlockPos, taskState: TaskState, material: Block) {
         pendingTasks[blockPos]?.let {
-            if (it.taskState != taskState || it.stuckTicks > it.taskState.stuckTimeout) {
+            if (it.taskState != taskState ||
+                it.stuckTicks > it.taskState.stuckTimeout) {
                 pendingTasks[blockPos] = (BlockTask(blockPos, taskState, material))
             }
         } ?: run {
@@ -939,9 +931,31 @@ internal object HighwayTools : PluginModule(
 
     private fun SafeClientEvent.doPathing() {
         when (moveState) {
-            MovementState.RUNNING -> {
+            MovementState.RUNNING, MovementState.BRIDGE -> {
                 if (grindCycles == 0) {
-                    val nextPos = getNextPos()
+                    var nextPos = currentBlockPos
+
+                    val possiblePos = nextPos.add(startingDirection.directionVec)
+
+                    if (!isTaskDone(possiblePos) ||
+                        !isTaskDone(possiblePos.up()) ||
+                        !isTaskDone(possiblePos.down())) return
+
+                    if (checkTasks(possiblePos.up())) {
+                        nextPos = if (world.getBlockState(possiblePos.down()).isReplaceable) {
+                            possiblePos.add(startingDirection.directionVec)
+                        } else {
+                            possiblePos
+                        }
+                    }
+
+                    if (currentBlockPos != nextPos && player.positionVector.distanceTo(nextPos) < 2) {
+                        simpleMovingAverageDistance.add(System.currentTimeMillis())
+                        currentBlockPos = nextPos
+                        refreshData()
+                    }
+
+                    goal = GoalNear(currentBlockPos, 0)
 
                     if (currentBlockPos.distanceTo(targetBlockPos) < 2 ||
                         (distancePending > 0 && startingBlockPos.add(startingDirection.directionVec.multiply(distancePending)).distanceTo(currentBlockPos) == 0.0)) {
@@ -950,12 +964,6 @@ internal object HighwayTools : PluginModule(
                         disable()
                         return
                     }
-
-                    if (player.distanceTo(nextPos) < 2) {
-                        currentBlockPos = nextPos
-                    }
-
-                    goal = GoalNear(nextPos, 0)
                 }
             }
             MovementState.PICKUP -> {
@@ -966,29 +974,7 @@ internal object HighwayTools : PluginModule(
                     null
                 }
             }
-            MovementState.BRIDGE -> {
-                // Bridge update
-            }
         }
-    }
-
-    private fun SafeClientEvent.getNextPos(): BlockPos {
-        var nextPos = currentBlockPos
-
-        val possiblePos = currentBlockPos.add(startingDirection.directionVec)
-
-        if (!isTaskDone(possiblePos) ||
-            !isTaskDone(possiblePos.up()) ||
-            !isTaskDone(possiblePos.down())) return nextPos
-
-        if (checkTasks(possiblePos.up())) nextPos = possiblePos
-
-        if (currentBlockPos != nextPos) {
-            simpleMovingAverageDistance.add(System.currentTimeMillis())
-            refreshData()
-        }
-
-        return nextPos
     }
 
     private fun SafeClientEvent.isTaskDone(pos: BlockPos) =
@@ -1034,9 +1020,9 @@ internal object HighwayTools : PluginModule(
                 for (task in sortedTasks) {
                     if (!checkStuckTimeout(task)) return
                     if (task.taskState != TaskState.DONE && waitTicks > 0) return
+//                    if (task.taskState == TaskState.PLACE && task.sides == 69) continue
 
                     doTask(task, false)
-
                     when (task.taskState) {
                         TaskState.DONE, TaskState.BROKEN, TaskState.PLACED -> {
                             continue
@@ -1084,10 +1070,12 @@ internal object HighwayTools : PluginModule(
                             it.taskState.ordinal
                         }.thenBy {
                             it.stuckTicks
-                        }.thenByDescending {
-                            it.sides
                         }.thenBy {
-                            it.startDistance
+                            if (moveState == MovementState.BRIDGE) {
+                                it.depth
+                            } else {
+                                it.startDistance
+                            }
                         }.thenBy {
                             it.eyeDistance
                         }
@@ -1119,11 +1107,7 @@ internal object HighwayTools : PluginModule(
 
                     when (blockTask.taskState) {
                         TaskState.PLACE -> {
-                            if (dynamicDelay && extraPlaceDelay < 10) extraPlaceDelay += 1
-                            getNeighbourSequence(blockTask.blockPos, placementSearch, maxReach, !illegalPlacements).firstOrNull()?.let {
-                                playerController.processRightClickBlock(player, world, it.pos, it.side, it.hitVec, EnumHand.MAIN_HAND)
-                            }
-                            blockTask.updateState(TaskState.PLACED)
+                            if (dynamicDelay && extraPlaceDelay < 10 && moveState != MovementState.BRIDGE) extraPlaceDelay += 1
                         }
                         TaskState.PICKUP -> {
                             sendChatMessage("$chatName Can't pickup ${containerTask.item.registryName}@(${containerTask.blockPos.asString()})")
@@ -1177,6 +1161,9 @@ internal object HighwayTools : PluginModule(
             TaskState.PENDING_BREAK, TaskState.PENDING_PLACE -> {
                 blockTask.onStuck()
             }
+//            TaskState.BLOCKED -> {
+////                refreshData()
+//            }
         }
     }
 
@@ -1233,6 +1220,11 @@ internal object HighwayTools : PluginModule(
         if (getCollectingPosition() == null) {
             moveState = MovementState.RUNNING
             containerTask.updateState(TaskState.DONE)
+            if (grindCycles > 0) {
+                grindCycles = (player.inventorySlots.count { it.stack.isEmpty ||
+                    InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) } - 1) * 8 -
+                    (player.inventorySlots.countBlock(Blocks.OBSIDIAN) / 8)
+            }
         } else {
             if (player.inventorySlots.firstEmpty() == null) {
                 getEjectSlot()?.let {
@@ -1418,7 +1410,10 @@ internal object HighwayTools : PluginModule(
     private fun SafeClientEvent.doPlace(blockTask: BlockTask, updateOnly: Boolean) {
         val currentBlock = world.getBlockState(blockTask.blockPos).block
 
-        if (bridging && player.positionVector.distanceTo(currentBlockPos) < 1 && shouldBridge()) {
+        if (bridging && grindCycles == 0 &&
+            player.positionVector.distanceTo(currentBlockPos) < 1 && shouldBridge()) {
+            moveState = MovementState.BRIDGE
+
             val factor = if (startingDirection.isDiagonal) {
                 0.555
             } else {
@@ -1695,19 +1690,20 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun mineBlockNormal(blockTask: BlockTask, side: EnumFacing) {
-        if (blockTask.taskState == TaskState.BREAK) {
-            blockTask.updateState(TaskState.BREAKING)
-        }
-
         defaultScope.launch {
             delay(20L)
-            sendMiningPackets(blockTask.blockPos, side)
+            if (blockTask.taskState == TaskState.BREAK) {
+                sendMiningPackets(blockTask.blockPos, side)
+                blockTask.updateState(TaskState.BREAKING)
+            } else {
+                sendMiningPackets(blockTask.blockPos, side, false)
+            }
         }
     }
 
-    private suspend fun sendMiningPackets(pos: BlockPos, side: EnumFacing) {
+    private suspend fun sendMiningPackets(pos: BlockPos, side: EnumFacing, both: Boolean = true) {
         onMainThreadSafe {
-            connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.START_DESTROY_BLOCK, pos, side))
+            if (both) connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.START_DESTROY_BLOCK, pos, side))
             connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.STOP_DESTROY_BLOCK, pos, side))
             player.swingArm(EnumHand.MAIN_HAND)
         }
@@ -1759,8 +1755,9 @@ internal object HighwayTools : PluginModule(
             if (storageManagement && grindObsidian &&
                 containerTask.taskState == TaskState.DONE &&
                 (player.inventorySlots.countBlock(material) <= saveMaterial &&
-                    grindCycles == 0)) {
-                grindCycles = player.inventorySlots.count { it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) } * 8 - 1
+                grindCycles == 0)) {
+                    moveState = MovementState.RUNNING
+                    grindCycles = (player.inventorySlots.count { it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) } - 1) * 8
                 return false
             }
 
@@ -1921,7 +1918,9 @@ internal object HighwayTools : PluginModule(
             }?.let {
                 clickSlot(player.openContainer.windowId, slot, it.hotbarSlot, ClickType.SWAP)
             } ?: run {
-                sendChatMessage("To be implemented")
+                sendChatMessage("$chatName Inventory full.")
+                mc.soundHandler.playSound(PositionedSoundRecord.getRecord(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f))
+                disable()
             }
         }
 
@@ -2086,17 +2085,17 @@ internal object HighwayTools : PluginModule(
         val runtimeSec = (runtimeMilliSeconds / 1000) + 0.0001
         val distanceDone = startingBlockPos.distanceTo(currentBlockPos).toInt() + totalDistance
 
-        if (showSession) gatherSession(displayText, runtimeSec)
+        if (HighwayToolsHud.showSession) gatherSession(displayText, runtimeSec)
 
-        if (showLifeTime) gatherLifeTime(displayText)
+        if (HighwayToolsHud.showLifeTime) gatherLifeTime(displayText)
 
-        if (showPerformance) gatherPerformance(displayText, runtimeSec, distanceDone)
+        if (HighwayToolsHud.showPerformance) gatherPerformance(displayText, runtimeSec, distanceDone)
 
-        if (showEnvironment) gatherEnvironment(displayText)
+        if (HighwayToolsHud.showEnvironment) gatherEnvironment(displayText)
 
-        if (showTask) gatherTask(displayText)
+        if (HighwayToolsHud.showTask) gatherTask(displayText)
 
-        if (showEstimations) gatherEstimations(displayText, runtimeSec, distanceDone)
+        if (HighwayToolsHud.showEstimations) gatherEstimations(displayText, runtimeSec, distanceDone)
 
         if (printDebug) {
             if (containerTask.taskState != TaskState.DONE) {
@@ -2185,13 +2184,13 @@ internal object HighwayTools : PluginModule(
         displayText.addLine("Performance", primaryColor)
 
         displayText.add("    Placements / s: ", primaryColor)
-        displayText.addLine("%.2f SMA(%.2f)".format(totalBlocksPlaced / runtimeSec, simpleMovingAveragePlaces.size / simpleMovingAverageRange.toDouble()), secondaryColor)
+        displayText.addLine("%.2f SMA(%.2f)".format(totalBlocksPlaced / runtimeSec, simpleMovingAveragePlaces.size / HighwayToolsHud.simpleMovingAverageRange.toDouble()), secondaryColor)
 
         displayText.add("    Breaks / s:", primaryColor)
-        displayText.addLine("%.2f SMA(%.2f)".format(totalBlocksBroken / runtimeSec, simpleMovingAverageBreaks.size / simpleMovingAverageRange.toDouble()), secondaryColor)
+        displayText.addLine("%.2f SMA(%.2f)".format(totalBlocksBroken / runtimeSec, simpleMovingAverageBreaks.size / HighwayToolsHud.simpleMovingAverageRange.toDouble()), secondaryColor)
 
         displayText.add("    Distance km / h:", primaryColor)
-        displayText.addLine("%.3f SMA(%.3f)".format((distanceDone / runtimeSec * 60.0 * 60.0) / 1000.0, (simpleMovingAverageDistance.size / simpleMovingAverageRange * 60.0 * 60.0) / 1000.0), secondaryColor)
+        displayText.addLine("%.3f SMA(%.3f)".format((distanceDone / runtimeSec * 60.0 * 60.0) / 1000.0, (simpleMovingAverageDistance.size / HighwayToolsHud.simpleMovingAverageRange * 60.0 * 60.0) / 1000.0), secondaryColor)
 
         displayText.add("    Food level loss / h:", primaryColor)
         displayText.addLine("%.2f".format(totalBlocksBroken / foodLoss.toDouble()), secondaryColor)
@@ -2309,7 +2308,7 @@ internal object HighwayTools : PluginModule(
         }
     }
 
-    private fun resetStats() {
+    fun resetStats() {
         simpleMovingAveragePlaces.clear()
         simpleMovingAverageBreaks.clear()
         simpleMovingAverageDistance.clear()
@@ -2340,7 +2339,6 @@ internal object HighwayTools : PluginModule(
         private var ranTicks = 0
         var stuckTicks = 0; private set
         var shuffle = 0; private set
-        var sides = 0; private set
         var startDistance = 0.0; private set
         var eyeDistance = 0.0; private set
 
@@ -2350,6 +2348,7 @@ internal object HighwayTools : PluginModule(
         var itemID = 0
         var destroy = false
         var collect = true
+        var depth = 0
 
 //      var isBridge = false ToDo: Implement
 
@@ -2387,11 +2386,20 @@ internal object HighwayTools : PluginModule(
         }
 
         fun prepareSortInfo(event: SafeClientEvent, eyePos: Vec3d) {
-            sides = when (taskState) {
+            when (taskState) {
                 TaskState.PLACE, TaskState.LIQUID_FLOW, TaskState.LIQUID_SOURCE -> {
-                    event.getNeighbourSequence(blockPos, placementSearch, maxReach, true).size
+                    val sequence = event.getNeighbourSequence(blockPos, placementSearch, maxReach, true).size
+                    if (sequence == 0) {
+//                        taskState = TaskState.BLOCKED
+//                        taskState = TaskState.DONE
+                        depth = 69
+                    } else {
+                        depth = sequence
+                    }
                 }
-                else -> 0
+                else -> {
+                    //
+                }
             }
 
             // ToDo: Function that makes a score out of those 3 parameters
@@ -2441,6 +2449,7 @@ internal object HighwayTools : PluginModule(
         PLACE(20, 20, ColorHolder(35, 188, 254)),
         PENDING_BREAK(100, 100, ColorHolder(0, 0, 0)),
         PENDING_PLACE(100, 100, ColorHolder(0, 0, 0))
+//        BLOCKED(100, 100, ColorHolder(150, 150, 50))
     }
 
 }
