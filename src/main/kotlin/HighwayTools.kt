@@ -567,7 +567,7 @@ internal object HighwayTools : PluginModule(
         }
         if (blockTask.taskState == TaskState.PLACE ||
             blockTask.taskState == TaskState.LIQUID_FLOW ||
-            blockTask.taskState == TaskState.LIQUID_SOURCE) debugInfos.add(Pair("Depth", "${blockTask.depth}"))
+            blockTask.taskState == TaskState.LIQUID_SOURCE) debugInfos.add(Pair("Depth", "${blockTask.sequence.size}"))
         if (blockTask.isOpen) debugInfos.add(Pair("Open", ""))
         if (blockTask.isLoaded) debugInfos.add(Pair("Loaded", ""))
         if (blockTask.destroy) debugInfos.add(Pair("Destroy", ""))
@@ -698,28 +698,28 @@ internal object HighwayTools : PluginModule(
         }
     }
 
-    private fun SafeClientEvent.addTaskBuild(pos: BlockPos, block: Block, originPos: BlockPos) {
-        val blockState = world.getBlockState(pos)
+    private fun SafeClientEvent.addTaskBuild(blockPos: BlockPos, block: Block, originPos: BlockPos) {
+        val blockState = world.getBlockState(blockPos)
 
         when {
-            blockState.block == block && originPos.distanceTo(pos) < maxReach -> {
-                addTaskToDone(pos, block)
+            blockState.block == block && originPos.distanceTo(blockPos) < maxReach -> {
+                addTaskToDone(blockPos, block)
             }
-            world.isPlaceable(pos) -> {
-                if (originPos.distanceTo(pos) < maxReach - 1) {
-                    if (checkSupport(pos, block)) {
-                        addTaskToDone(pos, block)
+            world.isPlaceable(blockPos) -> {
+                if (originPos.distanceTo(blockPos) < maxReach) {
+                    if (checkSupport(blockPos, block)) {
+                        addTaskToDone(blockPos, block)
                     } else {
-                        addTaskToPending(pos, TaskState.PLACE, block)
+                        addTaskToPending(blockPos, TaskState.PLACE, block)
                     }
                 }
             }
             else -> {
-                if (originPos.distanceTo(pos) < maxReach) {
-                    if (checkSupport(pos, block)) {
-                        addTaskToDone(pos, block)
+                if (originPos.distanceTo(blockPos) < maxReach) {
+                    if (checkSupport(blockPos, block)) {
+                        addTaskToDone(blockPos, block)
                     } else {
-                        addTaskToPending(pos, TaskState.BREAK, block)
+                        addTaskToPending(blockPos, TaskState.BREAK, block)
                     }
                 }
             }
@@ -949,7 +949,7 @@ internal object HighwayTools : PluginModule(
                         }
                     }
 
-                    if (currentBlockPos != nextPos && player.positionVector.distanceTo(nextPos) < 2) {
+                    if (currentBlockPos != nextPos && player.positionVector.distanceTo(nextPos) < 3) {
                         simpleMovingAverageDistance.add(System.currentTimeMillis())
                         currentBlockPos = nextPos
                         refreshData()
@@ -1020,7 +1020,7 @@ internal object HighwayTools : PluginModule(
                 for (task in sortedTasks) {
                     if (!checkStuckTimeout(task)) return
                     if (task.taskState != TaskState.DONE && waitTicks > 0) return
-//                    if (task.taskState == TaskState.PLACE && task.sides == 69) continue
+                    if (task.taskState == TaskState.PLACE && task.sequence.isEmpty()) continue
 
                     doTask(task, false)
                     when (task.taskState) {
@@ -1060,7 +1060,7 @@ internal object HighwayTools : PluginModule(
             val eyePos = player.getPositionEyes(1.0f)
 
             pendingTasks.values.forEach {
-                it.prepareSortInfo(this, eyePos)
+                it.updateTask(this, eyePos)
             }
 
             runBlocking {
@@ -1072,7 +1072,11 @@ internal object HighwayTools : PluginModule(
                             it.stuckTicks
                         }.thenBy {
                             if (moveState == MovementState.BRIDGE) {
-                                it.depth
+                                if (it.sequence.isEmpty()) {
+                                    69
+                                } else {
+                                    it.sequence.size
+                                }
                             } else {
                                 it.startDistance
                             }
@@ -1496,9 +1500,7 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun SafeClientEvent.placeBlock(blockTask: BlockTask) {
-        val neighbours = getNeighbourSequence(blockTask.blockPos, placementSearch, maxReach, !illegalPlacements)
-
-        when (neighbours.size) {
+        when (blockTask.sequence.size) {
             0 -> {
                 if (blockTask.taskState == TaskState.LIQUID_FLOW || blockTask.taskState == TaskState.LIQUID_SOURCE) {
                     if (debugMessages == DebugMessages.ALL) {
@@ -1523,14 +1525,14 @@ internal object HighwayTools : PluginModule(
                 return
             }
             1 -> {
-                val last = neighbours.last()
+                val last = blockTask.sequence.last()
                 lastHitVec = getHitVec(last.pos, last.side)
                 rotateTimer.reset()
 
                 placeBlockNormal(blockTask, last.pos, last.side)
             }
             else -> {
-                neighbours.forEach {
+                blockTask.sequence.forEach {
                     addTaskToPending(it.pos, TaskState.PLACE, fillerMat)
                 }
             }
@@ -1581,7 +1583,7 @@ internal object HighwayTools : PluginModule(
         val blockState = world.getBlockState(blockTask.blockPos)
 
         if (blockState.block == Blocks.FIRE) {
-            val sides = getNeighbourSequence(blockTask.blockPos, 1, maxReach, true)
+            val sides = getNeighbourSequence(blockTask.blockPos, 1, maxReach, !illegalPlacements)
             if (sides.isEmpty()) {
                 blockTask.updateState(TaskState.PLACE)
                 return
@@ -1712,7 +1714,7 @@ internal object HighwayTools : PluginModule(
     private fun SafeClientEvent.shouldBridge(): Boolean {
         return world.getBlockState(currentBlockPos.add(startingDirection.directionVec).down()).isReplaceable &&
             !sortedTasks.any {
-                getNeighbourSequence(it.blockPos, placementSearch, maxReach, !illegalPlacements).isNotEmpty() &&
+                it.sequence.isNotEmpty() &&
                     (it.taskState == TaskState.PLACE ||
                         it.taskState == TaskState.LIQUID_SOURCE ||
                         it.taskState == TaskState.LIQUID_FLOW)
@@ -2342,15 +2344,14 @@ internal object HighwayTools : PluginModule(
         var startDistance = 0.0; private set
         var eyeDistance = 0.0; private set
 
+        var sequence: List<PlaceInfo> = emptyList(); private set
+
         var isShulker = false
         var isOpen = false
         var isLoaded = false
         var itemID = 0
         var destroy = false
         var collect = true
-        var depth = 0
-
-//      var isBridge = false ToDo: Implement
 
         var timestamp = System.currentTimeMillis()
         var aabb = AxisAlignedBB(1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
@@ -2385,24 +2386,14 @@ internal object HighwayTools : PluginModule(
             stuckTicks += weight
         }
 
-        fun prepareSortInfo(event: SafeClientEvent, eyePos: Vec3d) {
+        fun updateTask(event: SafeClientEvent, eyePos: Vec3d) {
             when (taskState) {
                 TaskState.PLACE, TaskState.LIQUID_FLOW, TaskState.LIQUID_SOURCE -> {
-                    val sequence = event.getNeighbourSequence(blockPos, placementSearch, maxReach, true).size
-                    if (sequence == 0) {
-//                        taskState = TaskState.BLOCKED
-//                        taskState = TaskState.DONE
-                        depth = 69
-                    } else {
-                        depth = sequence
-                    }
+                    sequence = event.getNeighbourSequence(blockPos, placementSearch, maxReach, !illegalPlacements)
                 }
-                else -> {
-                    //
-                }
+                else -> {}
             }
 
-            // ToDo: Function that makes a score out of those 3 parameters
             startDistance = startingBlockPos.distanceTo(blockPos)
             eyeDistance = eyePos.distanceTo(blockPos)
         }
