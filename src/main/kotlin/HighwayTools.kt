@@ -992,6 +992,8 @@ internal object HighwayTools : PluginModule(
         if (player.inventory.isEmpty) return
         when {
             containerTask.taskState != TaskState.DONE -> {
+                val eyePos = player.getPositionEyes(1.0f)
+                containerTask.updateTask(this, eyePos)
                 checkStuckTimeout(containerTask)
                 pendingTasks.values.toList().forEach {
                     doTask(it, true)
@@ -1037,6 +1039,10 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun SafeClientEvent.sortTasks() {
+        val eyePos = player.getPositionEyes(1.0f)
+        pendingTasks.values.forEach {
+            it.updateTask(this, eyePos)
+        }
 
         if (multiBuilding) {
             pendingTasks.values.forEach {
@@ -1057,12 +1063,6 @@ internal object HighwayTools : PluginModule(
                 }
             }
         } else {
-            val eyePos = player.getPositionEyes(1.0f)
-
-            pendingTasks.values.forEach {
-                it.updateTask(this, eyePos)
-            }
-
             runBlocking {
                 stateUpdateMutex.withLock {
                     sortedTasks = pendingTasks.values.sortedWith(
