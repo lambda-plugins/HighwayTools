@@ -1777,7 +1777,13 @@ internal object HighwayTools : PluginModule(
             }
 
             val useBlock = when {
-                blockTask.isFiller -> fillerMat
+                blockTask.isFiller -> {
+                    if (isInsideBlueprintBuild(blockTask.blockPos)) {
+                        material
+                    } else {
+                        fillerMat
+                    }
+                }
                 player.inventorySlots.countBlock(blockTask.block) > 0 -> blockTask.block
                 else -> return false
             }
