@@ -2022,7 +2022,7 @@ internal object HighwayTools : PluginModule(
                         sendChatMessage("$chatName Liquid out of reach (${player.distanceTo(neighbourPos)})")
                     }
                 }
-                return true
+                return false
             }
 
             foundLiquid = true
@@ -2030,8 +2030,14 @@ internal object HighwayTools : PluginModule(
             pendingTasks[neighbourPos]?.let {
                 updateLiquidTask(it)
             } ?: run {
-//                pendingTasks[neighbourPos] = BlockTask(neighbourPos, TaskState.LIQUID, Blocks.AIR)
-//                pendingTasks[neighbourPos]?.updateLiquid(this)
+                // ToDo: Add new liquids without crash
+//                val event = this
+//                runBlocking {
+//                    stateUpdateMutex.withLock {
+//                        pendingTasks[neighbourPos] = BlockTask(neighbourPos, TaskState.LIQUID, Blocks.AIR)
+//                        pendingTasks[neighbourPos]?.updateLiquid(event)
+//                    }
+//                }
             }
         }
 
