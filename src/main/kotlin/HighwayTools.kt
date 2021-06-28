@@ -463,7 +463,7 @@ internal object HighwayTools : PluginModule(
             renderer.thickness = thickness
             val currentTime = System.currentTimeMillis()
 
-//        renderer.add(world.getBlockState(currentBlockPos).getSelectedBoundingBox(world, currentBlockPos), ColorHolder(255, 255, 255))
+            renderer.add(currentBlockPos, ColorHolder(255, 255, 255))
 
             if (containerTask.taskState != TaskState.DONE) {
                 addToRenderer(containerTask, currentTime)
@@ -566,8 +566,10 @@ internal object HighwayTools : PluginModule(
             debugInfos.add(Pair("Item", "${blockTask.item.registryName}"))
         }
         if (blockTask.taskState == TaskState.PLACE ||
-            blockTask.taskState == TaskState.LIQUID_FLOW ||
-            blockTask.taskState == TaskState.LIQUID_SOURCE) debugInfos.add(Pair("Depth", "${blockTask.sequence.size}"))
+            blockTask.taskState == TaskState.LIQUID) {
+                debugInfos.add(Pair("Depth", "${blockTask.sequence.size}"))
+            if (blockTask.isLiquidSource) debugInfos.add(Pair("Liquid Source", ""))
+        }
         if (blockTask.isOpen) debugInfos.add(Pair("Open", ""))
         if (blockTask.isLoaded) debugInfos.add(Pair("Loaded", ""))
         if (blockTask.destroy) debugInfos.add(Pair("Destroy", ""))
@@ -677,7 +679,6 @@ internal object HighwayTools : PluginModule(
         }
 
         lastTask = null
-        if (!shouldBridge()) moveState = MovementState.RUNNING
 
         generateBluePrint(originPos)
 
@@ -933,8 +934,23 @@ internal object HighwayTools : PluginModule(
         when (moveState) {
             MovementState.RUNNING, MovementState.BRIDGE -> {
                 if (grindCycles == 0) {
-                    var nextPos = currentBlockPos
+                    if (!shouldBridge() && moveState == MovementState.BRIDGE) moveState = MovementState.RUNNING
 
+                    if (moveState == MovementState.BRIDGE &&
+                        bridging && player.positionVector.distanceTo(currentBlockPos) < 1) {
+                        val factor = if (startingDirection.isDiagonal) {
+                            0.555
+                        } else {
+                            0.505
+                        }
+
+                        val target = currentBlockPos.toVec3dCenter().add(Vec3d(startingDirection.directionVec).scale(factor))
+
+                        player.motionX = (target.x - player.posX).coerceIn(-0.2, 0.2)
+                        player.motionZ = (target.z - player.posZ).coerceIn(-0.2, 0.2)
+                    }
+
+                    var nextPos = currentBlockPos
                     val possiblePos = nextPos.add(startingDirection.directionVec)
 
                     if (!isTaskDone(possiblePos) ||
@@ -1071,6 +1087,12 @@ internal object HighwayTools : PluginModule(
                         }.thenBy {
                             it.stuckTicks
                         }.thenBy {
+                            if (it.isLiquidSource) {
+                                0
+                            } else {
+                                1
+                            }
+                        }.thenBy {
                             if (moveState == MovementState.BRIDGE) {
                                 if (it.sequence.isEmpty()) {
                                     69
@@ -1159,7 +1181,7 @@ internal object HighwayTools : PluginModule(
             TaskState.BREAK -> {
                 doBreak(blockTask, updateOnly)
             }
-            TaskState.PLACE, TaskState.LIQUID_SOURCE, TaskState.LIQUID_FLOW -> {
+            TaskState.PLACE, TaskState.LIQUID -> {
                 doPlace(blockTask, updateOnly)
             }
             TaskState.PENDING_BREAK, TaskState.PENDING_PLACE -> {
@@ -1332,6 +1354,7 @@ internal object HighwayTools : PluginModule(
                 simpleMovingAveragePlaces.add(System.currentTimeMillis())
 
                 if (dynamicDelay && extraPlaceDelay > 0) extraPlaceDelay -= 1
+                if (blockTask.isFiller) blockTask.isFiller = false
 
                 if (blockTask == containerTask) {
                     if (blockTask.destroy) {
@@ -1417,19 +1440,9 @@ internal object HighwayTools : PluginModule(
         if (bridging && grindCycles == 0 &&
             player.positionVector.distanceTo(currentBlockPos) < 1 && shouldBridge()) {
             moveState = MovementState.BRIDGE
-
-            val factor = if (startingDirection.isDiagonal) {
-                0.555
-            } else {
-                0.505
-            }
-            val target = currentBlockPos.toVec3dCenter().add(Vec3d(startingDirection.directionVec).scale(factor))
-            player.motionX = (target.x - player.posX).coerceIn(-0.2, 0.2)
-            player.motionZ = (target.z - player.posZ).coerceIn(-0.2, 0.2)
         }
 
-        if ((blockTask.taskState == TaskState.LIQUID_FLOW ||
-                blockTask.taskState == TaskState.LIQUID_SOURCE) &&
+        if (blockTask.taskState == TaskState.LIQUID &&
             !world.isLiquid(blockTask.blockPos)) {
             blockTask.updateState(TaskState.DONE)
             return
@@ -1502,7 +1515,7 @@ internal object HighwayTools : PluginModule(
     private fun SafeClientEvent.placeBlock(blockTask: BlockTask) {
         when (blockTask.sequence.size) {
             0 -> {
-                if (blockTask.taskState == TaskState.LIQUID_FLOW || blockTask.taskState == TaskState.LIQUID_SOURCE) {
+                if (blockTask.taskState == TaskState.LIQUID) {
                     if (debugMessages == DebugMessages.ALL) {
                         if (!anonymizeStats) {
                             sendChatMessage("$chatName Can't replace Liquid@(${blockTask.blockPos})")
@@ -1716,8 +1729,7 @@ internal object HighwayTools : PluginModule(
             !sortedTasks.any {
                 it.sequence.isNotEmpty() &&
                     (it.taskState == TaskState.PLACE ||
-                        it.taskState == TaskState.LIQUID_SOURCE ||
-                        it.taskState == TaskState.LIQUID_FLOW)
+                        it.taskState == TaskState.LIQUID)
             }
     }
 
@@ -1756,7 +1768,8 @@ internal object HighwayTools : PluginModule(
         } else {
             if (storageManagement && grindObsidian &&
                 containerTask.taskState == TaskState.DONE &&
-                (player.inventorySlots.countBlock(material) <= saveMaterial &&
+                material == Blocks.OBSIDIAN &&
+                (player.inventorySlots.countBlock(Blocks.OBSIDIAN) <= saveMaterial &&
                 grindCycles == 0)) {
                     moveState = MovementState.RUNNING
                     grindCycles = (player.inventorySlots.count { it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) } - 1) * 8
@@ -1764,10 +1777,9 @@ internal object HighwayTools : PluginModule(
             }
 
             val useBlock = when {
+                blockTask.isFiller -> fillerMat
                 player.inventorySlots.countBlock(blockTask.block) > 0 -> blockTask.block
-                player.inventorySlots.countBlock(material) > 0 -> material
-                player.inventorySlots.countBlock(fillerMat) > 0 && mode == Mode.TUNNEL -> fillerMat
-                else -> blockTask.block
+                else -> return false
             }
 
             val success = swapToBlockOrMove(useBlock, predicateSlot = {
@@ -2012,26 +2024,11 @@ internal object HighwayTools : PluginModule(
 
             foundLiquid = true
 
-            val isFlowing = world.getBlockState(blockTask.blockPos).let {
-                it.block is BlockLiquid && it.getValue(BlockLiquid.LEVEL) != 0
-            }
-
-            val filler = if (isInsideBlueprintBuild(neighbourPos) && mode == Mode.HIGHWAY) material else fillerMat
-
             pendingTasks[neighbourPos]?.let {
-                if (isFlowing) {
-                    it.updateState(TaskState.LIQUID_FLOW)
-                } else {
-                    it.updateState(TaskState.LIQUID_FLOW)
-                }
-
-                it.updateMaterial(filler)
+                updateLiquidTask(it)
             } ?: run {
-                if (isFlowing) {
-                    addTaskToPending(neighbourPos, TaskState.LIQUID_FLOW, filler)
-                } else {
-                    addTaskToPending(neighbourPos, TaskState.LIQUID_SOURCE, filler)
-                }
+//                pendingTasks[neighbourPos] = BlockTask(neighbourPos, TaskState.LIQUID, Blocks.AIR)
+//                pendingTasks[neighbourPos]?.updateLiquid(this)
             }
         }
 
@@ -2039,21 +2036,8 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun SafeClientEvent.updateLiquidTask(blockTask: BlockTask) {
-        val filler = if (player.inventorySlots.countBlock(fillerMat) == 0 ||
-            (isInsideBlueprintBuild(blockTask.blockPos) &&
-                mode == Mode.HIGHWAY)) {
-            material
-        } else {
-            fillerMat
-        }
-
-        if (world.getBlockState(blockTask.blockPos).getValue(BlockLiquid.LEVEL) != 0) {
-            blockTask.updateState(TaskState.LIQUID_FLOW)
-            blockTask.updateMaterial(filler)
-        } else {
-            blockTask.updateState(TaskState.LIQUID_SOURCE)
-            blockTask.updateMaterial(filler)
-        }
+        blockTask.updateState(TaskState.LIQUID)
+        blockTask.updateLiquid(this)
     }
 
     private fun isInsideBlueprint(pos: BlockPos): Boolean {
@@ -2345,6 +2329,9 @@ internal object HighwayTools : PluginModule(
         var eyeDistance = 0.0; private set
 
         var sequence: List<PlaceInfo> = emptyList(); private set
+        var isFiller = false
+        var isLiquidSource = false
+        var isSupport = false
 
         var isShulker = false
         var isOpen = false
@@ -2368,13 +2355,6 @@ internal object HighwayTools : PluginModule(
             }
         }
 
-        fun updateMaterial(material: Block) {
-            if (material == block) return
-
-            block = material
-            onUpdate()
-        }
-
         fun onTick() {
             ranTicks++
             if (ranTicks > taskState.stuckThreshold) {
@@ -2388,7 +2368,7 @@ internal object HighwayTools : PluginModule(
 
         fun updateTask(event: SafeClientEvent, eyePos: Vec3d) {
             when (taskState) {
-                TaskState.PLACE, TaskState.LIQUID_FLOW, TaskState.LIQUID_SOURCE -> {
+                TaskState.PLACE, TaskState.LIQUID -> {
                     sequence = event.getNeighbourSequence(blockPos, placementSearch, maxReach, !illegalPlacements)
                 }
                 else -> {}
@@ -2396,6 +2376,13 @@ internal object HighwayTools : PluginModule(
 
             startDistance = startingBlockPos.distanceTo(blockPos)
             eyeDistance = eyePos.distanceTo(blockPos)
+        }
+
+        fun updateLiquid(event: SafeClientEvent) {
+            isLiquidSource = event.world.getBlockState(blockPos).let {
+                it.block is BlockLiquid && it.getValue(BlockLiquid.LEVEL) == 0
+            }
+            isFiller = true
         }
 
         fun shuffle() {
@@ -2430,8 +2417,7 @@ internal object HighwayTools : PluginModule(
         DONE(69420, 0x22, ColorHolder(50, 50, 50)),
         BROKEN(1000, 1000, ColorHolder(111, 0, 0)),
         PLACED(1000, 1000, ColorHolder(53, 222, 66)),
-        LIQUID_SOURCE(100, 100, ColorHolder(114, 27, 255)),
-        LIQUID_FLOW(100, 100, ColorHolder(68, 27, 255)),
+        LIQUID(100, 100, ColorHolder(114, 27, 255)),
         PICKUP(500, 500, ColorHolder(252, 3, 207)),
         RESTOCK(500, 500, ColorHolder(252, 3, 207)),
         OPEN_CONTAINER(500, 500, ColorHolder(252, 3, 207)),
