@@ -502,6 +502,7 @@ internal object HighwayTools : PluginModule(
             updateFood()
 
             if (!rubberbandTimer.tick(rubberbandTimeout.toLong(), false) ||
+                player.inventory.isEmpty ||
                 PauseProcess.isActive ||
                 AutoObsidian.isActive() ||
                 (world.difficulty == EnumDifficulty.PEACEFUL &&
@@ -933,53 +934,51 @@ internal object HighwayTools : PluginModule(
     private fun SafeClientEvent.doPathing() {
         when (moveState) {
             MovementState.RUNNING, MovementState.BRIDGE -> {
-                if (grindCycles == 0) {
-                    if (!shouldBridge() && moveState == MovementState.BRIDGE) moveState = MovementState.RUNNING
+                if (!shouldBridge() && moveState == MovementState.BRIDGE) moveState = MovementState.RUNNING
 
-                    if (moveState == MovementState.BRIDGE &&
-                        bridging && player.positionVector.distanceTo(currentBlockPos) < 1) {
-                        val factor = if (startingDirection.isDiagonal) {
-                            0.555
-                        } else {
-                            0.505
-                        }
-
-                        val target = currentBlockPos.toVec3dCenter().add(Vec3d(startingDirection.directionVec).scale(factor))
-
-                        player.motionX = (target.x - player.posX).coerceIn(-0.2, 0.2)
-                        player.motionZ = (target.z - player.posZ).coerceIn(-0.2, 0.2)
+                if (moveState == MovementState.BRIDGE &&
+                    bridging && player.positionVector.distanceTo(currentBlockPos) < 1) {
+                    val factor = if (startingDirection.isDiagonal) {
+                        0.555
+                    } else {
+                        0.505
                     }
 
-                    var nextPos = currentBlockPos
-                    val possiblePos = nextPos.add(startingDirection.directionVec)
+                    val target = currentBlockPos.toVec3dCenter().add(Vec3d(startingDirection.directionVec).scale(factor))
 
-                    if (!isTaskDone(possiblePos) ||
-                        !isTaskDone(possiblePos.up()) ||
-                        !isTaskDone(possiblePos.down())) return
+                    player.motionX = (target.x - player.posX).coerceIn(-0.2, 0.2)
+                    player.motionZ = (target.z - player.posZ).coerceIn(-0.2, 0.2)
+                }
 
-                    if (checkTasks(possiblePos.up())) {
-                        nextPos = if (world.getBlockState(possiblePos.down()).isReplaceable) {
-                            possiblePos.add(startingDirection.directionVec)
-                        } else {
-                            possiblePos
-                        }
+                var nextPos = currentBlockPos
+                val possiblePos = nextPos.add(startingDirection.directionVec)
+
+                if (!isTaskDone(possiblePos) ||
+                    !isTaskDone(possiblePos.up()) ||
+                    !isTaskDone(possiblePos.down())) return
+
+                if (checkTasks(possiblePos.up())) {
+                    nextPos = if (world.getBlockState(possiblePos.down()).isReplaceable) {
+                        possiblePos.add(startingDirection.directionVec)
+                    } else {
+                        possiblePos
                     }
+                }
 
-                    if (currentBlockPos != nextPos && player.positionVector.distanceTo(nextPos) < 3) {
-                        simpleMovingAverageDistance.add(System.currentTimeMillis())
-                        currentBlockPos = nextPos
-                        refreshData()
-                    }
+                if (currentBlockPos != nextPos && player.positionVector.distanceTo(nextPos) < 3) {
+                    simpleMovingAverageDistance.add(System.currentTimeMillis())
+                    currentBlockPos = nextPos
+                    refreshData()
+                }
 
-                    goal = GoalNear(currentBlockPos, 0)
+                goal = GoalNear(currentBlockPos, 0)
 
-                    if (currentBlockPos.distanceTo(targetBlockPos) < 2 ||
-                        (distancePending > 0 && startingBlockPos.add(startingDirection.directionVec.multiply(distancePending)).distanceTo(currentBlockPos) == 0.0)) {
-                        sendChatMessage("$chatName Reached target destination")
-                        mc.soundHandler.playSound(PositionedSoundRecord.getRecord(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f))
-                        disable()
-                        return
-                    }
+                if (currentBlockPos.distanceTo(targetBlockPos) < 2 ||
+                    (distancePending > 0 && startingBlockPos.add(startingDirection.directionVec.multiply(distancePending)).distanceTo(currentBlockPos) == 0.0)) {
+                    sendChatMessage("$chatName Reached target destination")
+                    mc.soundHandler.playSound(PositionedSoundRecord.getRecord(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f))
+                    disable()
+                    return
                 }
             }
             MovementState.PICKUP -> {
@@ -1005,7 +1004,6 @@ internal object HighwayTools : PluginModule(
     }
 
     private fun SafeClientEvent.runTasks() {
-        if (player.inventory.isEmpty) return
         when {
             containerTask.taskState != TaskState.DONE -> {
                 val eyePos = player.getPositionEyes(1.0f)
@@ -1354,7 +1352,6 @@ internal object HighwayTools : PluginModule(
                 simpleMovingAveragePlaces.add(System.currentTimeMillis())
 
                 if (dynamicDelay && extraPlaceDelay > 0) extraPlaceDelay -= 1
-                if (blockTask.isFiller) blockTask.isFiller = false
 
                 if (blockTask == containerTask) {
                     if (blockTask.destroy) {
