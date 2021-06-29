@@ -2030,6 +2030,8 @@ internal object HighwayTools : PluginModule(
             pendingTasks[neighbourPos]?.let {
                 updateLiquidTask(it)
             } ?: run {
+                pendingTasks[neighbourPos] = BlockTask(neighbourPos, TaskState.LIQUID, Blocks.AIR)
+                pendingTasks[neighbourPos]?.updateLiquid(this)
                 // ToDo: Add new liquids without crash
 //                val event = this
 //                runBlocking {
