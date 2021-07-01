@@ -168,6 +168,7 @@ internal object HighwayTools : PluginModule(
     private val printDebug by setting("Show Queue", false, { page == Page.CONFIG }, description = "Shows task queue in HUD")
     private val debugMessages by setting("Debug Messages", DebugMessages.IMPORTANT, { page == Page.CONFIG }, description = "Sets the debug log depth level")
     private val goalRender by setting("Goal Render", false, { page == Page.CONFIG }, description = "Renders the baritone goal")
+    private val showCurrentPos by setting("Current Pos Render", false, { page == Page.CONFIG }, description = "Renders the current position")
     private val filled by setting("Filled", true, { page == Page.CONFIG }, description = "Renders colored task surfaces")
     private val outline by setting("Outline", true, { page == Page.CONFIG }, description = "Renders colored task outlines")
     private val popUp by setting("Pop up", true, { page == Page.CONFIG }, description = "Funny render effect")
@@ -463,7 +464,7 @@ internal object HighwayTools : PluginModule(
             renderer.thickness = thickness
             val currentTime = System.currentTimeMillis()
 
-            renderer.add(currentBlockPos, ColorHolder(255, 255, 255))
+            if (showCurrentPos) renderer.add(currentBlockPos, ColorHolder(255, 255, 255))
 
             if (containerTask.taskState != TaskState.DONE) {
                 addToRenderer(containerTask, currentTime)
@@ -934,7 +935,9 @@ internal object HighwayTools : PluginModule(
     private fun SafeClientEvent.doPathing() {
         when (moveState) {
             MovementState.RUNNING, MovementState.BRIDGE -> {
-                if (!shouldBridge() && moveState == MovementState.BRIDGE) moveState = MovementState.RUNNING
+                if (!shouldBridge() && moveState == MovementState.BRIDGE) {
+                    moveState = MovementState.RUNNING
+                }
 
                 if (moveState == MovementState.BRIDGE &&
                     bridging && player.positionVector.distanceTo(currentBlockPos) < 1) {
@@ -949,6 +952,8 @@ internal object HighwayTools : PluginModule(
                     player.motionX = (target.x - player.posX).coerceIn(-0.2, 0.2)
                     player.motionZ = (target.z - player.posZ).coerceIn(-0.2, 0.2)
                 }
+
+                goal = GoalNear(currentBlockPos, 0)
 
                 var nextPos = currentBlockPos
                 val possiblePos = nextPos.add(startingDirection.directionVec)
@@ -970,8 +975,6 @@ internal object HighwayTools : PluginModule(
                     currentBlockPos = nextPos
                     refreshData()
                 }
-
-                goal = GoalNear(currentBlockPos, 0)
 
                 if (currentBlockPos.distanceTo(targetBlockPos) < 2 ||
                     (distancePending > 0 && startingBlockPos.add(startingDirection.directionVec.multiply(distancePending)).distanceTo(currentBlockPos) == 0.0)) {
