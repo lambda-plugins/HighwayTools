@@ -1,5 +1,8 @@
 package trombone.task
 
+import HighwayTools.illegalPlacements
+import HighwayTools.maxReach
+import HighwayTools.placementSearch
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.math.VectorUtils.distanceTo
@@ -12,6 +15,7 @@ import net.minecraft.item.Item
 import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
+import trombone.Pathfinder.startingBlockPos
 import kotlin.random.Random
 
 class BlockTask(
@@ -67,12 +71,12 @@ class BlockTask(
     fun updateTask(event: SafeClientEvent, eyePos: Vec3d) {
         when (taskState) {
             TaskState.PLACE -> {
-//                sequence = event.getNeighbourSequence(blockPos, placementSearch, maxReach, !illegalPlacements)
+                sequence = event.getNeighbourSequence(blockPos, placementSearch, maxReach, !illegalPlacements)
             }
             else -> {}
         }
 
-//        startDistance = startingBlockPos.distanceTo(blockPos)
+        startDistance = startingBlockPos.distanceTo(blockPos)
         eyeDistance = eyePos.distanceTo(blockPos)
     }
 

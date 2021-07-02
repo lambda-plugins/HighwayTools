@@ -6,6 +6,7 @@ enum class TaskState(val stuckThreshold: Int, val stuckTimeout: Int, val color: 
     DONE(69420, 0x22, ColorHolder(50, 50, 50)),
     BROKEN(1000, 1000, ColorHolder(111, 0, 0)),
     PLACED(1000, 1000, ColorHolder(53, 222, 66)),
+    LIQUID(100, 100, ColorHolder(114, 27, 255)),
     PICKUP(500, 500, ColorHolder(252, 3, 207)),
     RESTOCK(500, 500, ColorHolder(252, 3, 207)),
     OPEN_CONTAINER(500, 500, ColorHolder(252, 3, 207)),
