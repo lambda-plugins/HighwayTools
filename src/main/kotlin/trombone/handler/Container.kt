@@ -27,6 +27,7 @@ import trombone.IO.disableError
 import trombone.Pathfinder.currentBlockPos
 import trombone.task.BlockTask
 import trombone.task.TaskState
+import kotlin.math.abs
 
 object Container {
     var containerTask = BlockTask(BlockPos.ORIGIN, TaskState.DONE, Blocks.AIR, Items.AIR)
@@ -111,7 +112,7 @@ object Container {
                 }.thenBy {
                     it.distanceSqToCenter(origin.x, origin.y, origin.z).ceilToInt()
                 }.thenBy {
-                    it.y
+                    abs(it.y - player.posY)
                 }
             ).firstOrNull()
     }

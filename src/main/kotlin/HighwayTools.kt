@@ -78,6 +78,7 @@ object HighwayTools : PluginModule(
     val illegalPlacements by setting("Illegal Placements", false, { page == Page.BEHAVIOR }, description = "Do not use on 2b2t. Tries to interact with invisible surfaces")
     val bridging by setting("Bridging", true, { page == Page.BEHAVIOR }, description = "Tries to bridge / scaffold when stuck placing")
     val instantMine by setting("Instant Mine", false, { page == Page.BEHAVIOR }, description = "Instant mine NCP exploit.")
+    val alwaysBoth by setting("More Packets", true, { page == Page.BEHAVIOR }, description = "Exploit for faster breaks.")
     val multiBuilding by setting("Shuffle Tasks", false, { page == Page.BEHAVIOR }, description = "Only activate when working with several players")
     val taskTimeout by setting("Task Timeout", 8, 0..20, 1, { page == Page.BEHAVIOR }, description = "Timeout for waiting for the server to try again")
     val rubberbandTimeout by setting("Rubberband Timeout", 50, 5..100, 5, { page == Page.BEHAVIOR }, description = "Timeout for pausing after a lag")
