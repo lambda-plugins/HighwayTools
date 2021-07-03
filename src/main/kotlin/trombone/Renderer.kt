@@ -6,6 +6,7 @@ import HighwayTools.filled
 import HighwayTools.outline
 import HighwayTools.popUp
 import HighwayTools.popUpSpeed
+import HighwayTools.showCurrentPos
 import HighwayTools.showDebugRender
 import HighwayTools.textScale
 import HighwayTools.thickness
@@ -39,7 +40,7 @@ object Renderer {
         renderer.thickness = thickness
         val currentTime = System.currentTimeMillis()
 
-        renderer.add(currentBlockPos, ColorHolder(255, 255, 255))
+        if (showCurrentPos) renderer.add(currentBlockPos, ColorHolder(255, 255, 255))
 
         if (containerTask.taskState != TaskState.DONE) {
             addToRenderer(containerTask, currentTime)

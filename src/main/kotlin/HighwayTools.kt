@@ -106,6 +106,7 @@ object HighwayTools : PluginModule(
     val printDebug by setting("Show Queue", false, { page == Page.CONFIG }, description = "Shows task queue in HUD")
     val debugMessages by setting("Debug Messages", DebugMessages.IMPORTANT, { page == Page.CONFIG }, description = "Sets the debug log depth level")
     val goalRender by setting("Goal Render", false, { page == Page.CONFIG }, description = "Renders the baritone goal")
+    val showCurrentPos by setting("Current Pos Render", false, { page == Page.CONFIG }, description = "Renders the current position")
     val filled by setting("Filled", true, { page == Page.CONFIG }, description = "Renders colored task surfaces")
     val outline by setting("Outline", true, { page == Page.CONFIG }, description = "Renders colored task outlines")
     val popUp by setting("Pop up", true, { page == Page.CONFIG }, description = "Funny render effect")
