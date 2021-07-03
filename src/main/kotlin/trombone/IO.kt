@@ -10,14 +10,17 @@ import HighwayTools.material
 import HighwayTools.mode
 import HighwayTools.multiBuilding
 import HighwayTools.proxyCommand
+import HighwayTools.rubberbandTimeout
 import HighwayTools.usingProxy
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.module.modules.combat.AutoLog
 import com.lambda.client.module.modules.misc.AntiAFK
+import com.lambda.client.module.modules.misc.AutoObsidian
 import com.lambda.client.module.modules.movement.AntiHunger
 import com.lambda.client.module.modules.movement.Velocity
 import com.lambda.client.module.modules.player.AutoEat
 import com.lambda.client.module.modules.player.LagNotifier
+import com.lambda.client.process.PauseProcess
 import com.lambda.client.util.math.Direction
 import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.text.MessageSendHelper
@@ -28,6 +31,7 @@ import kotlinx.coroutines.launch
 import net.minecraft.client.audio.PositionedSoundRecord
 import net.minecraft.init.SoundEvents
 import net.minecraft.util.text.TextComponentString
+import net.minecraft.world.EnumDifficulty
 import trombone.Pathfinder.currentBlockPos
 import trombone.Pathfinder.startingBlockPos
 import trombone.Pathfinder.startingDirection
@@ -45,6 +49,16 @@ object IO {
     enum class DebugMessages {
         OFF, IMPORTANT, ALL
     }
+
+    fun SafeClientEvent.pauseCheck(): Boolean =
+        !Pathfinder.rubberbandTimer.tick(rubberbandTimeout.toLong(), false) ||
+            player.inventory.isEmpty ||
+            PauseProcess.isActive ||
+            AutoObsidian.isActive() ||
+            (world.difficulty == EnumDifficulty.PEACEFUL &&
+                player.dimension == 1 &&
+                @Suppress("UNNECESSARY_SAFE_CALL")
+                player.serverBrand?.contains("2b2t") == true)
 
     fun printEnable() {
         if (info) {

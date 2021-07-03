@@ -1,4 +1,5 @@
 import com.lambda.client.event.events.PacketEvent
+import com.lambda.client.event.events.PlayerTravelEvent
 import com.lambda.client.event.events.RenderOverlayEvent
 import com.lambda.client.event.events.RenderWorldEvent
 import com.lambda.client.module.Category
@@ -14,12 +15,14 @@ import net.minecraft.init.Blocks
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import trombone.IO.DebugMessages
 import trombone.IO.DisableMode
+import trombone.Pathfinder.updatePathing
 import trombone.Renderer.renderOverlay
 import trombone.Renderer.renderWorld
 import trombone.Trombone.Mode
 import trombone.Trombone.active
 import trombone.Trombone.onDisable
 import trombone.Trombone.onEnable
+import trombone.Trombone.pauseCheck
 import trombone.Trombone.tick
 import trombone.handler.Packet.handlePacket
 import trombone.handler.Player.LimitMode
@@ -166,6 +169,10 @@ object HighwayTools : PluginModule(
 
         safeListener<TickEvent.ClientTickEvent> { event ->
             if (event.phase == TickEvent.Phase.START) tick()
+        }
+
+        safeListener<PlayerTravelEvent> {
+            if (!pauseCheck()) updatePathing()
         }
     }
 }

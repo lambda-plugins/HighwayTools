@@ -10,9 +10,15 @@ import HighwayTools.mode
 import HighwayTools.placeDelay
 import HighwayTools.printDebug
 import HighwayTools.width
-import HighwayToolsHud
+import HighwayToolsHud.showEnvironment
+import HighwayToolsHud.showEstimations
+import HighwayToolsHud.showLifeTime
+import HighwayToolsHud.showPerformance
+import HighwayToolsHud.showSession
+import HighwayToolsHud.showTask
 import com.lambda.client.event.SafeClientEvent
-import com.lambda.client.module.modules.client.Hud
+import com.lambda.client.module.modules.client.Hud.primaryColor
+import com.lambda.client.module.modules.client.Hud.secondaryColor
 import com.lambda.client.util.graphics.font.TextComponent
 import com.lambda.client.util.items.countBlock
 import com.lambda.client.util.items.countItem
@@ -114,36 +120,36 @@ object Statistics {
         val runtimeSec = (runtimeMilliSeconds / 1000) + 0.0001
         val distanceDone = startingBlockPos.distanceTo(currentBlockPos).toInt() + totalDistance
 
-        if (HighwayToolsHud.showSession) gatherSession(displayText, runtimeSec)
+        if (showSession) gatherSession(displayText, runtimeSec)
 
-        if (HighwayToolsHud.showLifeTime) gatherLifeTime(displayText)
+        if (showLifeTime) gatherLifeTime(displayText)
 
-        if (HighwayToolsHud.showPerformance) gatherPerformance(displayText, runtimeSec, distanceDone)
+        if (showPerformance) gatherPerformance(displayText, runtimeSec, distanceDone)
 
-        if (HighwayToolsHud.showEnvironment) gatherEnvironment(displayText)
+        if (showEnvironment) gatherEnvironment(displayText)
 
-        if (HighwayToolsHud.showTask) gatherTask(displayText)
+        if (showTask) gatherTask(displayText)
 
-        if (HighwayToolsHud.showEstimations) gatherEstimations(displayText, runtimeSec, distanceDone)
+        if (showEstimations) gatherEstimations(displayText, runtimeSec, distanceDone)
 
         if (printDebug) {
             if (containerTask.taskState != TaskState.DONE) {
-                displayText.addLine("Container", Hud.primaryColor, scale = 0.6f)
-                displayText.addLine(containerTask.prettyPrint(), Hud.primaryColor, scale = 0.6f)
+                displayText.addLine("Container", primaryColor, scale = 0.6f)
+                displayText.addLine(containerTask.prettyPrint(), primaryColor, scale = 0.6f)
             }
 
             if (sortedTasks.isNotEmpty()) {
-                displayText.addLine("Pending", Hud.primaryColor, scale = 0.6f)
+                displayText.addLine("Pending", primaryColor, scale = 0.6f)
                 addTaskComponentList(displayText, sortedTasks)
             }
 
             if (sortedTasks.isNotEmpty()) {
-                displayText.addLine("Done", Hud.primaryColor, scale = 0.6f)
+                displayText.addLine("Done", primaryColor, scale = 0.6f)
                 addTaskComponentList(displayText, doneTasks.values)
             }
         }
 
-        displayText.addLine("by Constructor#9948/Avanatiker", Hud.primaryColor, scale = 0.6f)
+        displayText.addLine("by Constructor#9948/Avanatiker", primaryColor, scale = 0.6f)
     }
 
     private fun gatherSession(displayText: TextComponent, runtimeSec: Double) {
@@ -151,19 +157,19 @@ object Statistics {
         val minutes = ((runtimeSec % 3600.0) / 60.0).toInt().toString().padStart(2, '0')
         val hours = (runtimeSec / 3600.0).toInt().toString().padStart(2, '0')
 
-        displayText.addLine("Session", Hud.primaryColor)
+        displayText.addLine("Session", primaryColor)
 
-        displayText.add("    Runtime:", Hud.primaryColor)
-        displayText.addLine("$hours:$minutes:$seconds", Hud.secondaryColor)
+        displayText.add("    Runtime:", primaryColor)
+        displayText.addLine("$hours:$minutes:$seconds", secondaryColor)
 
-        displayText.add("    Direction:", Hud.primaryColor)
-        displayText.addLine("${startingDirection.displayName} / ${startingDirection.displayNameXY}", Hud.secondaryColor)
+        displayText.add("    Direction:", primaryColor)
+        displayText.addLine("${startingDirection.displayName} / ${startingDirection.displayNameXY}", secondaryColor)
 
-        if (!anonymizeStats) displayText.add("    Start:", Hud.primaryColor)
-        if (!anonymizeStats) displayText.addLine("(${startingBlockPos.asString()})", Hud.secondaryColor)
+        if (!anonymizeStats) displayText.add("    Start:", primaryColor)
+        if (!anonymizeStats) displayText.addLine("(${startingBlockPos.asString()})", secondaryColor)
 
-        displayText.add("    Session placed / destroyed:", Hud.primaryColor)
-        displayText.addLine("%,d".format(totalBlocksPlaced) + " / " + "%,d".format(totalBlocksBroken), Hud.secondaryColor)
+        displayText.add("    Session placed / destroyed:", primaryColor)
+        displayText.addLine("%,d".format(totalBlocksPlaced) + " / " + "%,d".format(totalBlocksBroken), secondaryColor)
 
 
     }
@@ -183,86 +189,86 @@ object Statistics {
         } ?: 0
 
         if (matPlaced + enderMined + netherrackMined + pickaxeBroken > 0) {
-            displayText.addLine("Lifetime", Hud.primaryColor)
+            displayText.addLine("Lifetime", primaryColor)
         }
 
         if (mode == Mode.HIGHWAY || mode == Mode.FLAT) {
             if (matPlaced > 0) {
-                displayText.add("    ${material.localizedName} placed:", Hud.primaryColor)
-                displayText.addLine("%,d".format(matPlaced), Hud.secondaryColor)
+                displayText.add("    ${material.localizedName} placed:", primaryColor)
+                displayText.addLine("%,d".format(matPlaced), secondaryColor)
             }
 
             if (enderMined > 0) {
-                displayText.add("    ${Blocks.ENDER_CHEST.localizedName} mined:", Hud.primaryColor)
-                displayText.addLine("%,d".format(enderMined), Hud.secondaryColor)
+                displayText.add("    ${Blocks.ENDER_CHEST.localizedName} mined:", primaryColor)
+                displayText.addLine("%,d".format(enderMined), secondaryColor)
             }
         }
 
         if (netherrackMined > 0) {
-            displayText.add("    ${Blocks.NETHERRACK.localizedName} mined:", Hud.primaryColor)
-            displayText.addLine("%,d".format(netherrackMined), Hud.secondaryColor)
+            displayText.add("    ${Blocks.NETHERRACK.localizedName} mined:", primaryColor)
+            displayText.addLine("%,d".format(netherrackMined), secondaryColor)
         }
 
         if (pickaxeBroken > 0) {
-            displayText.add("    Diamond Pickaxe broken:", Hud.primaryColor)
-            displayText.addLine("%,d".format(pickaxeBroken), Hud.secondaryColor)
+            displayText.add("    Diamond Pickaxe broken:", primaryColor)
+            displayText.addLine("%,d".format(pickaxeBroken), secondaryColor)
         }
     }
 
     private fun gatherPerformance(displayText: TextComponent, runtimeSec: Double, distanceDone: Double) {
-        displayText.addLine("Performance", Hud.primaryColor)
+        displayText.addLine("Performance", primaryColor)
 
-        displayText.add("    Placements / s: ", Hud.primaryColor)
-        displayText.addLine("%.2f SMA(%.2f)".format(totalBlocksPlaced / runtimeSec, simpleMovingAveragePlaces.size / HighwayToolsHud.simpleMovingAverageRange.toDouble()), Hud.secondaryColor)
+        displayText.add("    Placements / s: ", primaryColor)
+        displayText.addLine("%.2f SMA(%.2f)".format(totalBlocksPlaced / runtimeSec, simpleMovingAveragePlaces.size / HighwayToolsHud.simpleMovingAverageRange.toDouble()), secondaryColor)
 
-        displayText.add("    Breaks / s:", Hud.primaryColor)
-        displayText.addLine("%.2f SMA(%.2f)".format(totalBlocksBroken / runtimeSec, simpleMovingAverageBreaks.size / HighwayToolsHud.simpleMovingAverageRange.toDouble()), Hud.secondaryColor)
+        displayText.add("    Breaks / s:", primaryColor)
+        displayText.addLine("%.2f SMA(%.2f)".format(totalBlocksBroken / runtimeSec, simpleMovingAverageBreaks.size / HighwayToolsHud.simpleMovingAverageRange.toDouble()), secondaryColor)
 
-        displayText.add("    Distance km / h:", Hud.primaryColor)
-        displayText.addLine("%.3f SMA(%.3f)".format((distanceDone / runtimeSec * 60.0 * 60.0) / 1000.0, (simpleMovingAverageDistance.size / HighwayToolsHud.simpleMovingAverageRange * 60.0 * 60.0) / 1000.0), Hud.secondaryColor)
+        displayText.add("    Distance km / h:", primaryColor)
+        displayText.addLine("%.3f SMA(%.3f)".format((distanceDone / runtimeSec * 60.0 * 60.0) / 1000.0, (simpleMovingAverageDistance.size / HighwayToolsHud.simpleMovingAverageRange * 60.0 * 60.0) / 1000.0), secondaryColor)
 
-        displayText.add("    Food level loss / h:", Hud.primaryColor)
-        displayText.addLine("%.2f".format(totalBlocksBroken / foodLoss.toDouble()), Hud.secondaryColor)
+        displayText.add("    Food level loss / h:", primaryColor)
+        displayText.addLine("%.2f".format(totalBlocksBroken / foodLoss.toDouble()), secondaryColor)
 
-        displayText.add("    Pickaxes / h:", Hud.primaryColor)
-        displayText.addLine("%.2f".format((durabilityUsages / runtimeSec) * 60.0 * 60.0 / 1561.0), Hud.secondaryColor)
+        displayText.add("    Pickaxes / h:", primaryColor)
+        displayText.addLine("%.2f".format((durabilityUsages / runtimeSec) * 60.0 * 60.0 / 1561.0), secondaryColor)
     }
 
     private fun gatherEnvironment(displayText: TextComponent) {
-        displayText.addLine("Environment", Hud.primaryColor)
+        displayText.addLine("Environment", primaryColor)
 
-        displayText.add("    Materials:", Hud.primaryColor)
-        displayText.addLine("Main(${material.localizedName}) Filler(${fillerMat.localizedName})", Hud.secondaryColor)
+        displayText.add("    Materials:", primaryColor)
+        displayText.addLine("Main(${material.localizedName}) Filler(${fillerMat.localizedName})", secondaryColor)
 
-        displayText.add("    Dimensions:", Hud.primaryColor)
-        displayText.addLine("Width($width) Height($height)", Hud.secondaryColor)
+        displayText.add("    Dimensions:", primaryColor)
+        displayText.addLine("Width($width) Height($height)", secondaryColor)
 
-        displayText.add("    Delays:", Hud.primaryColor)
+        displayText.add("    Delays:", primaryColor)
         if (dynamicDelay) {
-            displayText.addLine("Place(${placeDelay + extraPlaceDelay}) Break($breakDelay)", Hud.secondaryColor)
+            displayText.addLine("Place(${placeDelay + extraPlaceDelay}) Break($breakDelay)", secondaryColor)
         } else {
-            displayText.addLine("Place($placeDelay) Break($breakDelay)", Hud.secondaryColor)
+            displayText.addLine("Place($placeDelay) Break($breakDelay)", secondaryColor)
         }
 
-        displayText.add("    Movement:", Hud.primaryColor)
-        displayText.addLine("$moveState", Hud.secondaryColor)
+        displayText.add("    Movement:", primaryColor)
+        displayText.addLine("$moveState", secondaryColor)
     }
 
     private fun gatherTask(displayText: TextComponent) {
         sortedTasks.firstOrNull()?.let {
-            displayText.addLine("Task", Hud.primaryColor)
+            displayText.addLine("Task", primaryColor)
 
-            displayText.add("    Status:", Hud.primaryColor)
-            displayText.addLine("${it.taskState}", Hud.secondaryColor)
+            displayText.add("    Status:", primaryColor)
+            displayText.addLine("${it.taskState}", secondaryColor)
 
-            displayText.add("    Target block:", Hud.primaryColor)
-            displayText.addLine(it.block.localizedName, Hud.secondaryColor)
+            displayText.add("    Target block:", primaryColor)
+            displayText.addLine(it.block.localizedName, secondaryColor)
 
-            if (!anonymizeStats) displayText.add("    Position:", Hud.primaryColor)
-            if (!anonymizeStats) displayText.addLine("(${it.blockPos.asString()})", Hud.secondaryColor)
+            if (!anonymizeStats) displayText.add("    Position:", primaryColor)
+            if (!anonymizeStats) displayText.addLine("(${it.blockPos.asString()})", secondaryColor)
 
-            displayText.add("    Ticks stuck:", Hud.primaryColor)
-            displayText.addLine("${it.stuckTicks}", Hud.secondaryColor)
+            displayText.add("    Ticks stuck:", primaryColor)
+            displayText.addLine("${it.stuckTicks}", secondaryColor)
         }
     }
 
@@ -284,30 +290,30 @@ object Statistics {
                 val minutesLeft = ((secLeft % 3600) / 60).toInt().toString().padStart(2, '0')
                 val hoursLeft = (secLeft / 3600).toInt().toString().padStart(2, '0')
 
-                displayText.addLine("Refill", Hud.primaryColor)
-                displayText.add("    ${material.localizedName}:", Hud.primaryColor)
+                displayText.addLine("Refill", primaryColor)
+                displayText.add("    ${material.localizedName}:", primaryColor)
 
                 if (material == Blocks.OBSIDIAN) {
-                    displayText.addLine("Direct($materialLeft) Indirect($indirectMaterialLeft)", Hud.secondaryColor)
+                    displayText.addLine("Direct($materialLeft) Indirect($indirectMaterialLeft)", secondaryColor)
                 } else {
-                    displayText.addLine("$materialLeft", Hud.secondaryColor)
+                    displayText.addLine("$materialLeft", secondaryColor)
                 }
 
-                displayText.add("    ${fillerMat.localizedName}:", Hud.primaryColor)
-                displayText.addLine("$fillerMatLeft", Hud.secondaryColor)
+                displayText.add("    ${fillerMat.localizedName}:", primaryColor)
+                displayText.addLine("$fillerMatLeft", secondaryColor)
 
                 if (grindCycles > 0) {
-                    displayText.add("    Ender Chest cycles:", Hud.primaryColor)
-                    displayText.addLine("$grindCycles", Hud.secondaryColor)
+                    displayText.add("    Ender Chest cycles:", primaryColor)
+                    displayText.addLine("$grindCycles", secondaryColor)
                 } else {
-                    displayText.add("    Distance left:", Hud.primaryColor)
-                    displayText.addLine("${pavingLeft.toInt()}", Hud.secondaryColor)
+                    displayText.add("    Distance left:", primaryColor)
+                    displayText.addLine("${pavingLeft.toInt()}", secondaryColor)
 
-                    if (!anonymizeStats) displayText.add("    Destination:", Hud.primaryColor)
-                    if (!anonymizeStats) displayText.addLine("(${currentBlockPos.add(startingDirection.directionVec.multiply(pavingLeft.toInt())).asString()})", Hud.secondaryColor)
+                    if (!anonymizeStats) displayText.add("    Destination:", primaryColor)
+                    if (!anonymizeStats) displayText.addLine("(${currentBlockPos.add(startingDirection.directionVec.multiply(pavingLeft.toInt())).asString()})", secondaryColor)
 
-                    displayText.add("    ETA:", Hud.primaryColor)
-                    displayText.addLine("$hoursLeft:$minutesLeft:$secondsLeft", Hud.secondaryColor)
+                    displayText.add("    ETA:", primaryColor)
+                    displayText.addLine("$hoursLeft:$minutesLeft:$secondsLeft", secondaryColor)
                 }
             }
             Mode.TUNNEL -> {
@@ -320,26 +326,26 @@ object Statistics {
                 val minutesLeft = ((secLeft % 3600) / 60).toInt().toString().padStart(2, '0')
                 val hoursLeft = (secLeft / 3600).toInt().toString().padStart(2, '0')
 
-                displayText.addLine("Destination:", Hud.primaryColor)
+                displayText.addLine("Destination:", primaryColor)
 
-                displayText.add("    Pickaxes:", Hud.primaryColor)
-                displayText.addLine("$pickaxesLeft", Hud.secondaryColor)
+                displayText.add("    Pickaxes:", primaryColor)
+                displayText.addLine("$pickaxesLeft", secondaryColor)
 
-                displayText.add("    Distance left:", Hud.primaryColor)
-                displayText.addLine("${tunnelingLeft.toInt()}", Hud.secondaryColor)
+                displayText.add("    Distance left:", primaryColor)
+                displayText.addLine("${tunnelingLeft.toInt()}", secondaryColor)
 
-                if (!anonymizeStats) displayText.add("    Destination:", Hud.primaryColor)
-                if (!anonymizeStats) displayText.addLine("(${currentBlockPos.add(startingDirection.directionVec.multiply(tunnelingLeft.toInt())).asString()})", Hud.secondaryColor)
+                if (!anonymizeStats) displayText.add("    Destination:", primaryColor)
+                if (!anonymizeStats) displayText.addLine("(${currentBlockPos.add(startingDirection.directionVec.multiply(tunnelingLeft.toInt())).asString()})", secondaryColor)
 
-                displayText.add("    ETA:", Hud.primaryColor)
-                displayText.addLine("$hoursLeft:$minutesLeft:$secondsLeft", Hud.secondaryColor)
+                displayText.add("    ETA:", primaryColor)
+                displayText.addLine("$hoursLeft:$minutesLeft:$secondsLeft", secondaryColor)
             }
         }
     }
 
     private fun addTaskComponentList(displayText: TextComponent, tasks: Collection<BlockTask>) {
         tasks.forEach {
-            displayText.addLine(it.prettyPrint(), Hud.primaryColor, scale = 0.6f)
+            displayText.addLine(it.prettyPrint(), primaryColor, scale = 0.6f)
         }
     }
 

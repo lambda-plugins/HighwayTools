@@ -621,8 +621,9 @@ object Tasks {
     private fun SafeClientEvent.doPlace(blockTask: BlockTask, updateOnly: Boolean) {
         val currentBlock = world.getBlockState(blockTask.blockPos).block
 
-        if (bridging && grindCycles == 0 &&
-            player.positionVector.distanceTo(currentBlockPos) < 1 && shouldBridge()) {
+        if (shouldBridge() &&
+            grindCycles == 0 &&
+            player.positionVector.distanceTo(currentBlockPos) < 1) {
             moveState = MovementState.BRIDGE
         }
 

@@ -2,10 +2,8 @@ package trombone
 
 import HighwayTools.bridging
 import com.lambda.client.event.SafeClientEvent
-import com.lambda.client.util.BaritoneUtils
+import com.lambda.client.util.*
 import com.lambda.client.util.EntityUtils.flooredPosition
-import com.lambda.client.util.TickTimer
-import com.lambda.client.util.TimeUnit
 import com.lambda.client.util.math.Direction
 import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.math.VectorUtils.multiply
@@ -35,6 +33,10 @@ object Pathfinder {
     private var targetBlockPos = BlockPos(0, -1, 0)
     var distancePending = 0
 
+    enum class MovementState {
+        RUNNING, PICKUP, BRIDGE
+    }
+
     fun SafeClientEvent.setupPathing() {
         startingBlockPos = player.flooredPosition
         currentBlockPos = startingBlockPos
@@ -43,22 +45,8 @@ object Pathfinder {
 
     fun SafeClientEvent.updatePathing() {
         when (moveState) {
-            MovementState.RUNNING, MovementState.BRIDGE -> {
-                if (!shouldBridge() && moveState == MovementState.BRIDGE) moveState = MovementState.RUNNING
-
-                if (moveState == MovementState.BRIDGE &&
-                    bridging && player.positionVector.distanceTo(currentBlockPos) < 1) {
-                    val factor = if (startingDirection.isDiagonal) {
-                        0.555
-                    } else {
-                        0.505
-                    }
-
-                    val target = currentBlockPos.toVec3dCenter().add(Vec3d(startingDirection.directionVec).scale(factor))
-
-                    player.motionX = (target.x - player.posX).coerceIn(-0.2, 0.2)
-                    player.motionZ = (target.z - player.posZ).coerceIn(-0.2, 0.2)
-                }
+            MovementState.RUNNING -> {
+                goal = currentBlockPos
 
                 var nextPos = currentBlockPos
                 val possiblePos = nextPos.add(startingDirection.directionVec)
@@ -81,12 +69,30 @@ object Pathfinder {
                     updateTasks()
                 }
 
-                goal = currentBlockPos
-
                 if (currentBlockPos.distanceTo(targetBlockPos) < 2 ||
-                    (distancePending > 0 && startingBlockPos.add(startingDirection.directionVec.multiply(distancePending)).distanceTo(currentBlockPos) == 0.0)) {
+                    (distancePending > 0 &&
+                        startingBlockPos.add(
+                            startingDirection.directionVec.multiply(distancePending)
+                        ).distanceTo(currentBlockPos) == 0.0)) {
                     disableError("Reached target destination")
                     return
+                }
+            }
+            MovementState.BRIDGE -> {
+                goal = null
+                player.movementInput?.sneak = true
+                if (shouldBridge()) {
+                    val target = currentBlockPos.toVec3dCenter().add(Vec3d(startingDirection.directionVec))
+
+                    player.motionX = (target.x - player.posX).coerceIn(-0.2, 0.2)
+                    player.motionZ = (target.z - player.posZ).coerceIn(-0.2, 0.2)
+                } else {
+                    val target = currentBlockPos.toVec3dCenter()
+
+                    player.motionX = (target.x - player.posX).coerceIn(-0.2, 0.2)
+                    player.motionZ = (target.z - player.posZ).coerceIn(-0.2, 0.2)
+
+                    if (player.positionVector.distanceTo(target) < 1) moveState = MovementState.RUNNING
                 }
             }
             MovementState.PICKUP -> {
@@ -96,11 +102,16 @@ object Pathfinder {
     }
 
     fun SafeClientEvent.shouldBridge(): Boolean {
-        return world.getBlockState(currentBlockPos.add(startingDirection.directionVec).down()).isReplaceable &&
-            !sortedTasks.any {
-                it.sequence.isNotEmpty() &&
-                    (it.taskState == TaskState.PLACE ||
-                        it.taskState == TaskState.LIQUID)
+        return bridging &&
+            world.getBlockState(currentBlockPos.add(startingDirection.directionVec).down()).isReplaceable &&
+            sortedTasks.filter {
+                it.taskState == TaskState.PLACE ||
+                it.taskState == TaskState.LIQUID
+            }.none {
+                it.sequence.isNotEmpty()
+            } &&
+            sortedTasks.none {
+                it.taskState == TaskState.PENDING_PLACE
             }
     }
 
@@ -114,9 +125,5 @@ object Pathfinder {
     fun clearProcess() {
         active = false
         goal = null
-    }
-
-    enum class MovementState {
-        RUNNING, PICKUP, BRIDGE
     }
 }
