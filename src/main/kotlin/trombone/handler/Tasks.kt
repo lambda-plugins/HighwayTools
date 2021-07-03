@@ -622,7 +622,7 @@ object Tasks {
         val currentBlock = world.getBlockState(blockTask.blockPos).block
 
         if (shouldBridge() &&
-            grindCycles == 0 &&
+            moveState != MovementState.RESTOCK &&
             player.positionVector.distanceTo(currentBlockPos) < 1) {
             moveState = MovementState.BRIDGE
         }

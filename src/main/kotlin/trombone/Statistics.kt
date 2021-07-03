@@ -302,7 +302,7 @@ object Statistics {
                 displayText.add("    ${fillerMat.localizedName}:", primaryColor)
                 displayText.addLine("$fillerMatLeft", secondaryColor)
 
-                if (grindCycles > 0) {
+                if (moveState == Pathfinder.MovementState.RESTOCK) {
                     displayText.add("    Ender Chest cycles:", primaryColor)
                     displayText.addLine("$grindCycles", secondaryColor)
                 } else {

@@ -34,10 +34,11 @@ object Pathfinder {
     var distancePending = 0
 
     enum class MovementState {
-        RUNNING, PICKUP, BRIDGE
+        RUNNING, PICKUP, BRIDGE, RESTOCK
     }
 
     fun SafeClientEvent.setupPathing() {
+        moveState = MovementState.RUNNING
         startingBlockPos = player.flooredPosition
         currentBlockPos = startingBlockPos
         startingDirection = Direction.fromEntity(player)
@@ -83,20 +84,23 @@ object Pathfinder {
                 player.movementInput?.sneak = true
                 if (shouldBridge()) {
                     val target = currentBlockPos.toVec3dCenter().add(Vec3d(startingDirection.directionVec))
-
-                    player.motionX = (target.x - player.posX).coerceIn(-0.2, 0.2)
-                    player.motionZ = (target.z - player.posZ).coerceIn(-0.2, 0.2)
+                    moveTo(target)
                 } else {
                     val target = currentBlockPos.toVec3dCenter()
-
-                    player.motionX = (target.x - player.posX).coerceIn(-0.2, 0.2)
-                    player.motionZ = (target.z - player.posZ).coerceIn(-0.2, 0.2)
-
+                    moveTo(target)
                     if (player.positionVector.distanceTo(target) < 1) moveState = MovementState.RUNNING
                 }
             }
             MovementState.PICKUP -> {
                 goal = getCollectingPosition()
+            }
+            MovementState.RESTOCK -> {
+                val target = currentBlockPos.toVec3dCenter()
+                if (player.positionVector.distanceTo(target) < 2) {
+                    moveTo(target)
+                } else {
+                    goal = currentBlockPos
+                }
             }
         }
     }
@@ -113,6 +117,11 @@ object Pathfinder {
             sortedTasks.none {
                 it.taskState == TaskState.PENDING_PLACE
             }
+    }
+
+    private fun SafeClientEvent.moveTo(target: Vec3d) {
+        player.motionX = (target.x - player.posX).coerceIn(-0.2, 0.2)
+        player.motionZ = (target.z - player.posZ).coerceIn(-0.2, 0.2)
     }
 
     fun updateProcess() {

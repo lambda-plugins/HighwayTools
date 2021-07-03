@@ -24,7 +24,7 @@ import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.RayTraceResult
 import trombone.Blueprint.isInsideBlueprintBuild
 import trombone.IO.disableError
-import trombone.Pathfinder
+import trombone.Pathfinder.currentBlockPos
 import trombone.task.BlockTask
 import trombone.task.TaskState
 
@@ -94,24 +94,35 @@ object Container {
     }
 
     private fun SafeClientEvent.getRemotePos(): BlockPos? {
-        val origin = Pathfinder.currentBlockPos.up().toVec3dCenter()
+        val origin = currentBlockPos.up().toVec3dCenter()
 
         return VectorUtils.getBlockPosInSphere(origin, maxReach).asSequence()
             .filter { pos ->
                 !isInsideBlueprintBuild(pos) &&
-                    pos != Pathfinder.currentBlockPos &&
+                    pos != currentBlockPos &&
                     world.isPlaceable(pos) &&
                     !world.getBlockState(pos.down()).isReplaceable &&
                     world.isAirBlock(pos.up()) &&
                     world.rayTraceBlocks(origin, pos.toVec3dCenter())?.let { it.typeOfHit == RayTraceResult.Type.MISS } ?: true
             }
             .sortedWith(
-                compareBy<BlockPos> {
+                compareByDescending <BlockPos> {
+                    safeValue(it)
+                }.thenBy {
                     it.distanceSqToCenter(origin.x, origin.y, origin.z).ceilToInt()
                 }.thenBy {
                     it.y
                 }
             ).firstOrNull()
+    }
+
+    private fun SafeClientEvent.safeValue(pos: BlockPos): Int {
+        var safe = 0
+        if (!world.getBlockState(pos.down().north()).isReplaceable) safe++
+        if (!world.getBlockState(pos.down().east()).isReplaceable) safe++
+        if (!world.getBlockState(pos.down().south()).isReplaceable) safe++
+        if (!world.getBlockState(pos.down().west()).isReplaceable) safe++
+        return safe
     }
 
     fun getShulkerWith(slots: List<Slot>, item: Item): Slot? {

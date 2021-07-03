@@ -117,8 +117,13 @@ object Player {
                 material == Blocks.OBSIDIAN &&
                 (player.inventorySlots.countBlock(Blocks.OBSIDIAN) <= saveMaterial &&
                     grindCycles == 0)) {
-                moveState = MovementState.RUNNING
-                grindCycles = (player.inventorySlots.count { it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) } - 1) * 8
+                val cycles = (player.inventorySlots.count { it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) } - 1) * 8
+                if (cycles > 0) {
+                    moveState = MovementState.RESTOCK
+                    grindCycles = cycles
+                } else {
+                    disableError("No free inventory space.")
+                }
                 return false
             }
 
