@@ -19,7 +19,6 @@ import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.math.RotationUtils.getRotationTo
 import com.lambda.client.util.text.MessageSendHelper
 import kotlinx.coroutines.sync.Mutex
-import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
 import net.minecraft.enchantment.EnchantmentHelper
 import net.minecraft.init.Blocks
 import net.minecraft.init.Enchantments
@@ -65,9 +64,9 @@ object Player {
 
         when (interacting) {
             RotationMode.SPOOF -> {
-                sendPlayerPacket {
-                    rotate(rotation)
-                }
+//                sendPlayerPacket {
+//                    rotate(rotation)
+//                }
             }
             RotationMode.VIEW_LOCK -> {
                 player.rotationYaw = rotation.x

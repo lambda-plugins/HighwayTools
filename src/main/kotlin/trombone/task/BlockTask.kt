@@ -73,7 +73,7 @@ class BlockTask(
             TaskState.PLACE -> {
                 sequence = event.getNeighbourSequence(blockPos, placementSearch, maxReach, !illegalPlacements)
             }
-            else -> {}
+            else -> { }
         }
 
         startDistance = startingBlockPos.distanceTo(blockPos)

@@ -46,9 +46,9 @@ import trombone.Blueprint.isInsideBlueprintBuild
 import trombone.IO.DebugMessages
 import trombone.IO.disableError
 import trombone.Pathfinder
-import trombone.Pathfinder.moveState
 import trombone.Pathfinder.MovementState
 import trombone.Pathfinder.currentBlockPos
+import trombone.Pathfinder.moveState
 import trombone.Pathfinder.shouldBridge
 import trombone.Statistics.simpleMovingAverageBreaks
 import trombone.Statistics.simpleMovingAveragePlaces

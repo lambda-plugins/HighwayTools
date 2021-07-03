@@ -33,8 +33,8 @@ import trombone.Pathfinder.startingBlockPos
 import trombone.Pathfinder.startingDirection
 import trombone.Statistics.totalBlocksBroken
 import trombone.Statistics.totalBlocksPlaced
-import trombone.Trombone.module
 import trombone.Trombone.Mode
+import trombone.Trombone.module
 import kotlin.math.abs
 
 object IO {

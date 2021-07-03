@@ -3,7 +3,6 @@ package trombone.handler
 import com.lambda.client.event.SafeClientEvent
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.withLock
-import trombone.task.TaskState
 import net.minecraft.init.Blocks
 import net.minecraft.network.Packet
 import net.minecraft.network.play.server.SPacketBlockChange
@@ -15,6 +14,7 @@ import trombone.Pathfinder.rubberbandTimer
 import trombone.handler.Container.containerTask
 import trombone.handler.Tasks.pendingTasks
 import trombone.handler.Tasks.stateUpdateMutex
+import trombone.task.TaskState
 
 object Packet {
     fun SafeClientEvent.handlePacket(packet: Packet<*>) {

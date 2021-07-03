@@ -10,6 +10,7 @@ import HighwayTools.mode
 import HighwayTools.placeDelay
 import HighwayTools.printDebug
 import HighwayTools.width
+import HighwayToolsHud
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.module.modules.client.Hud
 import com.lambda.client.util.graphics.font.TextComponent
@@ -32,7 +33,6 @@ import trombone.Pathfinder.currentBlockPos
 import trombone.Pathfinder.moveState
 import trombone.Pathfinder.startingBlockPos
 import trombone.Pathfinder.startingDirection
-import trombone.task.BlockTask
 import trombone.Trombone.Mode
 import trombone.handler.Container.containerTask
 import trombone.handler.Container.grindCycles
@@ -41,6 +41,7 @@ import trombone.handler.Player.packetLimiterMutex
 import trombone.handler.Tasks.doneTasks
 import trombone.handler.Tasks.sortedTasks
 import trombone.interaction.Place.extraPlaceDelay
+import trombone.task.BlockTask
 import trombone.task.TaskState
 
 object Statistics {
