@@ -238,7 +238,7 @@ object Tasks {
         pendingTasks[blockPos]?.let {
             if ((it.taskState != taskState &&
                     (it.taskState != TaskState.PENDING_BREAK || it.taskState != TaskState.PENDING_PLACE)) ||
-                    it.stuckTicks > it.taskState.stuckTimeout) {
+                it.stuckTicks > it.taskState.stuckTimeout) {
                 pendingTasks[blockPos] = (BlockTask(blockPos, taskState, material))
             }
         } ?: run {

@@ -3,8 +3,10 @@ package trombone
 import HighwayTools.bridging
 import HighwayTools.moveSpeed
 import com.lambda.client.event.SafeClientEvent
-import com.lambda.client.util.*
+import com.lambda.client.util.BaritoneUtils
 import com.lambda.client.util.EntityUtils.flooredPosition
+import com.lambda.client.util.TickTimer
+import com.lambda.client.util.TimeUnit
 import com.lambda.client.util.math.Direction
 import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.math.VectorUtils.multiply
@@ -18,7 +20,6 @@ import trombone.Trombone.active
 import trombone.handler.Container.getCollectingPosition
 import trombone.handler.Tasks.checkTasks
 import trombone.handler.Tasks.isTaskDone
-import trombone.handler.Tasks.pendingTasks
 import trombone.handler.Tasks.sortedTasks
 import trombone.handler.Tasks.updateTasks
 import trombone.task.TaskState
@@ -112,7 +113,7 @@ object Pathfinder {
             world.getBlockState(currentBlockPos.add(startingDirection.directionVec).down()).isReplaceable &&
             sortedTasks.filter {
                 it.taskState == TaskState.PLACE ||
-                it.taskState == TaskState.LIQUID
+                    it.taskState == TaskState.LIQUID
             }.none {
                 it.sequence.isNotEmpty()
             }

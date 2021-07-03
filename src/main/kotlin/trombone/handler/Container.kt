@@ -107,7 +107,7 @@ object Container {
                     world.rayTraceBlocks(origin, pos.toVec3dCenter())?.let { it.typeOfHit == RayTraceResult.Type.MISS } ?: true
             }
             .sortedWith(
-                compareByDescending <BlockPos> {
+                compareByDescending<BlockPos> {
                     safeValue(it)
                 }.thenBy {
                     it.distanceSqToCenter(origin.x, origin.y, origin.z).ceilToInt()
