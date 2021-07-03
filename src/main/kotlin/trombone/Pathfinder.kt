@@ -1,6 +1,7 @@
 package trombone
 
 import HighwayTools.bridging
+import HighwayTools.moveSpeed
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.*
 import com.lambda.client.util.EntityUtils.flooredPosition
@@ -17,6 +18,7 @@ import trombone.Trombone.active
 import trombone.handler.Container.getCollectingPosition
 import trombone.handler.Tasks.checkTasks
 import trombone.handler.Tasks.isTaskDone
+import trombone.handler.Tasks.pendingTasks
 import trombone.handler.Tasks.sortedTasks
 import trombone.handler.Tasks.updateTasks
 import trombone.task.TaskState
@@ -113,15 +115,12 @@ object Pathfinder {
                 it.taskState == TaskState.LIQUID
             }.none {
                 it.sequence.isNotEmpty()
-            } &&
-            sortedTasks.none {
-                it.taskState == TaskState.PENDING_PLACE
             }
     }
 
     private fun SafeClientEvent.moveTo(target: Vec3d) {
-        player.motionX = (target.x - player.posX).coerceIn(-0.2, 0.2)
-        player.motionZ = (target.z - player.posZ).coerceIn(-0.2, 0.2)
+        player.motionX = (target.x - player.posX).coerceIn((-moveSpeed).toDouble(), moveSpeed.toDouble())
+        player.motionZ = (target.z - player.posZ).coerceIn((-moveSpeed).toDouble(), moveSpeed.toDouble())
     }
 
     fun updateProcess() {

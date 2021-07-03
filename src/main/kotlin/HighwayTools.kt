@@ -86,6 +86,7 @@ object HighwayTools : PluginModule(
     val limitOrigin by setting("Limited by", LimitMode.FIXED, { page == Page.BEHAVIOR }, description = "Changes the origin of limit: Client / Server TPS")
     val limitFactor by setting("Limit Factor", 1.0f, 0.5f..2.0f, 0.01f, { page == Page.BEHAVIOR }, description = "EXPERIMENTAL: Factor for TPS which acts as limit for maximum breaks per second.")
     val placementSearch by setting("Place Deep Search", 2, 1..4, 1, { page == Page.BEHAVIOR }, description = "EXPERIMENTAL: Attempts to find a support block for placing against")
+    val moveSpeed by setting("Packet Move Speed", 0.2f, 0.0f..1.0f, 0.01f, { page == Page.BEHAVIOR }, description = "Maximum player velocity per tick")
 
     // storage management
     val storageManagement by setting("Manage Storage", true, { page == Page.STORAGE_MANAGEMENT }, description = "Choose to interact with container using only packets.")
