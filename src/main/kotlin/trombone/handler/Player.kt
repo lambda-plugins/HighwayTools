@@ -11,6 +11,7 @@ import HighwayTools.saveMaterial
 import HighwayTools.saveTools
 import HighwayTools.storageManagement
 import com.lambda.client.event.SafeClientEvent
+import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
 import com.lambda.client.module.modules.player.InventoryManager
 import com.lambda.client.util.TickTimer
 import com.lambda.client.util.TimeUnit
@@ -64,9 +65,9 @@ object Player {
 
         when (interacting) {
             RotationMode.SPOOF -> {
-//                sendPlayerPacket {
-//                    rotate(rotation)
-//                }
+                module.sendPlayerPacket {
+                    rotate(rotation)
+                }
             }
             RotationMode.VIEW_LOCK -> {
                 player.rotationYaw = rotation.x
