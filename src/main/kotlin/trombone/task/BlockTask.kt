@@ -70,7 +70,7 @@ class BlockTask(
 
     fun updateTask(event: SafeClientEvent, eyePos: Vec3d) {
         when (taskState) {
-            TaskState.PLACE -> {
+            TaskState.PLACE, TaskState.LIQUID -> {
                 sequence = event.getNeighbourSequence(blockPos, placementSearch, maxReach, !illegalPlacements)
             }
             else -> { }

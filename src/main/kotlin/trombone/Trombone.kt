@@ -30,6 +30,7 @@ object Trombone {
         setupPathing()
         setupBaritone()
         printEnable()
+        updateTasks()
     }
 
     fun onDisable() {
@@ -42,7 +43,7 @@ object Trombone {
 
     fun SafeClientEvent.tick() {
         updateRenderer()
-        updateTasks()
+//        updateTasks()
         updateStats()
 
         if (pauseCheck()) return

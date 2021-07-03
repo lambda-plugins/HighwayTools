@@ -56,7 +56,7 @@ object Container {
                     }
                 } else {
                     getRemotePos()?.let { pos ->
-                        containerTask = BlockTask(pos, TaskState.PLACE, Blocks.ENDER_CHEST)
+                        containerTask = BlockTask(pos, TaskState.PLACE, Blocks.ENDER_CHEST, Blocks.OBSIDIAN.item)
                         containerTask.destroy = true
                         if (grindCycles > 1) containerTask.collect = false
                         containerTask.itemID = Blocks.OBSIDIAN.id

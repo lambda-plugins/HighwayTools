@@ -2,7 +2,6 @@ package trombone.handler
 
 import HighwayTools.anonymizeStats
 import HighwayTools.breakDelay
-import HighwayTools.bridging
 import HighwayTools.debugMessages
 import HighwayTools.dynamicDelay
 import HighwayTools.fakeSounds
@@ -45,11 +44,12 @@ import trombone.Blueprint.generateBluePrint
 import trombone.Blueprint.isInsideBlueprintBuild
 import trombone.IO.DebugMessages
 import trombone.IO.disableError
-import trombone.Pathfinder
 import trombone.Pathfinder.MovementState
 import trombone.Pathfinder.currentBlockPos
 import trombone.Pathfinder.moveState
 import trombone.Pathfinder.shouldBridge
+import trombone.Pathfinder.startingBlockPos
+import trombone.Pathfinder.startingDirection
 import trombone.Statistics.simpleMovingAverageBreaks
 import trombone.Statistics.simpleMovingAveragePlaces
 import trombone.Statistics.totalBlocksBroken
@@ -114,14 +114,12 @@ object Tasks {
             doneTasks.remove(it)
         }
 
-        lastTask = null
-
         generateBluePrint(originPos)
 
         blueprint.forEach { (pos, block) ->
             if (!(pos == containerTask.blockPos && containerTask.taskState == TaskState.DONE) ||
-                Pathfinder.startingBlockPos.add(
-                    Pathfinder.startingDirection
+                startingBlockPos.add(
+                    startingDirection
                         .clockwise(4)
                         .directionVec
                         .multiply(maxReach.ceilToInt())
@@ -165,7 +163,7 @@ object Tasks {
 
     private fun SafeClientEvent.checkSupport(pos: BlockPos, block: Block): Boolean {
         return mode == Mode.HIGHWAY &&
-            Pathfinder.startingDirection.isDiagonal &&
+            startingDirection.isDiagonal &&
             world.getBlockState(pos.up()).block == material &&
             block == fillerMat
     }
@@ -192,7 +190,7 @@ object Tasks {
             containerTask.taskState != TaskState.DONE -> {
                 val eyePos = player.getPositionEyes(1.0f)
                 containerTask.updateTask(this, eyePos)
-                checkStuckTimeout(containerTask)
+                if (!checkStuckTimeout(containerTask)) return
                 pendingTasks.values.toList().forEach {
                     doTask(it, true)
                 }
@@ -238,8 +236,9 @@ object Tasks {
 
     fun addTaskToPending(blockPos: BlockPos, taskState: TaskState, material: Block) {
         pendingTasks[blockPos]?.let {
-            if (it.taskState != taskState ||
-                it.stuckTicks > it.taskState.stuckTimeout) {
+            if ((it.taskState != taskState &&
+                    (it.taskState != TaskState.PENDING_BREAK || it.taskState != TaskState.PENDING_PLACE)) ||
+                    it.stuckTicks > it.taskState.stuckTimeout) {
                 pendingTasks[blockPos] = (BlockTask(blockPos, taskState, material))
             }
         } ?: run {
@@ -352,6 +351,7 @@ object Tasks {
                         TaskState.PICKUP -> {
                             MessageSendHelper.sendChatMessage("${module.chatName} Can't pickup ${containerTask.item.registryName}@(${containerTask.blockPos.asString()})")
                             blockTask.updateState(TaskState.DONE)
+                            moveState = MovementState.RUNNING
                         }
                         else -> {
                             blockTask.updateState(TaskState.DONE)
