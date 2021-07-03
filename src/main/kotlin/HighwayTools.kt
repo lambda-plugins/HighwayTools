@@ -15,6 +15,7 @@ import net.minecraft.init.Blocks
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import trombone.IO.DebugMessages
 import trombone.IO.DisableMode
+import trombone.IO.pauseCheck
 import trombone.Pathfinder.updatePathing
 import trombone.Renderer.renderOverlay
 import trombone.Renderer.renderWorld
@@ -22,7 +23,6 @@ import trombone.Trombone.Mode
 import trombone.Trombone.active
 import trombone.Trombone.onDisable
 import trombone.Trombone.onEnable
-import trombone.Trombone.pauseCheck
 import trombone.Trombone.tick
 import trombone.handler.Packet.handlePacket
 import trombone.handler.Player.LimitMode
