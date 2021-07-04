@@ -12,6 +12,7 @@ import com.lambda.client.util.math.Direction
 import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.math.VectorUtils.multiply
 import com.lambda.client.util.math.VectorUtils.toVec3dCenter
+import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.world.isReplaceable
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
@@ -54,21 +55,21 @@ object Pathfinder {
                 goal = currentBlockPos
 
                 val current = currentBlockPos
-                var possiblePos = current.add(startingDirection.directionVec)
+                val possiblePos = current.add(startingDirection.directionVec)
 
                 if (!isTaskDone(possiblePos) ||
                     !isTaskDone(possiblePos.up()) ||
                     !isTaskDone(possiblePos.down())) return
 
-                // ToDo: Fix pathing on entites blocking and left outs
-//                if (!checkTasks(possiblePos.up())) {
+                if (!checkTasks(possiblePos.up())) {
+                    // ToDo: Fix pathing on entites blocking path. mark blocked as property
 //                    possiblePos = if (world.getBlockState(possiblePos.down()).isReplaceable) {
 //                        possiblePos.add(startingDirection.directionVec)
 //                    } else {
 //                        possiblePos
 //                    }
-//                    return
-//                }
+                    return
+                }
 
                 if (current != possiblePos && player.positionVector.distanceTo(possiblePos) < 3) {
                     simpleMovingAverageDistance.add(System.currentTimeMillis())
@@ -103,6 +104,7 @@ object Pathfinder {
             MovementState.RESTOCK -> {
                 val target = currentBlockPos.toVec3dCenter()
                 if (player.positionVector.distanceTo(target) < 2) {
+                    goal = null
                     moveTo(target)
                 } else {
                     goal = currentBlockPos
@@ -113,7 +115,7 @@ object Pathfinder {
 
     private fun checkTasks(pos: BlockPos): Boolean {
         return pendingTasks.values.all {
-            it.taskState == TaskState.DONE || pos.distanceTo(it.blockPos) < maxReach - 0.7
+            it.taskState == TaskState.DONE || pos.distanceTo(it.blockPos) < maxReach
         }
     }
 

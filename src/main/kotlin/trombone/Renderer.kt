@@ -16,6 +16,7 @@ import com.lambda.client.util.graphics.ESPRenderer
 import com.lambda.client.util.graphics.GlStateUtils
 import com.lambda.client.util.graphics.ProjectionUtils
 import com.lambda.client.util.graphics.font.FontRenderAdapter
+import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.math.VectorUtils.toVec3dCenter
 import net.minecraft.init.Blocks
 import net.minecraft.util.math.BlockPos
@@ -99,6 +100,7 @@ object Renderer {
         val color = ColorHolder(255, 255, 255, 255)
 
         val debugInfos = mutableListOf<Pair<String, String>>()
+        debugInfos.add(Pair("Pos", pos.asString()))
         if (blockTask != containerTask) {
             debugInfos.add(Pair("Start Distance", "%.2f".format(blockTask.startDistance)))
             debugInfos.add(Pair("Eye Distance", "%.2f".format(blockTask.eyeDistance)))

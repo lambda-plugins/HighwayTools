@@ -14,6 +14,7 @@ import HighwayTools.multiBuilding
 import HighwayTools.saveTools
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.module.modules.player.InventoryManager
+import com.lambda.client.util.Wrapper
 import com.lambda.client.util.items.*
 import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.math.VectorUtils.distanceTo
@@ -38,6 +39,7 @@ import net.minecraft.network.play.client.CPacketPlayerTryUseItemOnBlock
 import net.minecraft.util.EnumFacing
 import net.minecraft.util.EnumHand
 import net.minecraft.util.SoundCategory
+import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
 import trombone.Blueprint.blueprint
 import trombone.Blueprint.generateBluePrint
@@ -134,15 +136,17 @@ object Tasks {
     }
 
     private fun SafeClientEvent.addTaskBuild(blockPos: BlockPos, block: Block, originPos: BlockPos) {
-        val blockState = world.getBlockState(blockPos)
-
+        val state = world.getBlockState(blockPos)
         when {
-            blockState.block == block && originPos.distanceTo(blockPos) < maxReach -> {
+            state.block == block &&
+                originPos.distanceTo(blockPos) < maxReach -> {
                 addTaskToDone(blockPos, block)
             }
-            world.isPlaceable(blockPos) -> {
+            state.isReplaceable -> {
                 if (originPos.distanceTo(blockPos) < maxReach) {
-                    if (checkSupport(blockPos, block)) {
+                    // ToDo: Rewrite checkSupport with isSupport property
+                    if (checkSupport(blockPos, block) ||
+                        !world.checkNoEntityCollision(AxisAlignedBB(blockPos), null)) {
                         addTaskToDone(blockPos, block)
                     } else {
                         addTaskToPending(blockPos, TaskState.PLACE, block)
