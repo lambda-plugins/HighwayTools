@@ -261,12 +261,6 @@ object Tasks {
             it.taskState == TaskState.DONE && world.getBlockState(pos).block != Blocks.PORTAL
         } ?: false
 
-    fun checkTasks(pos: BlockPos): Boolean {
-        return pendingTasks.values.all {
-            it.taskState == TaskState.DONE || pos.distanceTo(it.blockPos) < maxReach - 0.7
-        }
-    }
-
     private fun SafeClientEvent.sortTasks() {
         val eyePos = player.getPositionEyes(1.0f)
         pendingTasks.values.forEach {

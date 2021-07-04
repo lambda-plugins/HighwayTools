@@ -1,6 +1,7 @@
 package trombone
 
 import HighwayTools.bridging
+import HighwayTools.maxReach
 import HighwayTools.moveSpeed
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.BaritoneUtils
@@ -18,8 +19,8 @@ import trombone.IO.disableError
 import trombone.Statistics.simpleMovingAverageDistance
 import trombone.Trombone.active
 import trombone.handler.Container.getCollectingPosition
-import trombone.handler.Tasks.checkTasks
 import trombone.handler.Tasks.isTaskDone
+import trombone.handler.Tasks.pendingTasks
 import trombone.handler.Tasks.sortedTasks
 import trombone.handler.Tasks.updateTasks
 import trombone.task.TaskState
@@ -52,24 +53,26 @@ object Pathfinder {
             MovementState.RUNNING -> {
                 goal = currentBlockPos
 
-                var nextPos = currentBlockPos
-                val possiblePos = nextPos.add(startingDirection.directionVec)
+                val current = currentBlockPos
+                var possiblePos = current.add(startingDirection.directionVec)
 
                 if (!isTaskDone(possiblePos) ||
                     !isTaskDone(possiblePos.up()) ||
                     !isTaskDone(possiblePos.down())) return
 
-                if (checkTasks(possiblePos.up())) {
-                    nextPos = if (world.getBlockState(possiblePos.down()).isReplaceable) {
-                        possiblePos.add(startingDirection.directionVec)
-                    } else {
-                        possiblePos
-                    }
-                }
+                // ToDo: Fix pathing on entites blocking and left outs
+//                if (!checkTasks(possiblePos.up())) {
+//                    possiblePos = if (world.getBlockState(possiblePos.down()).isReplaceable) {
+//                        possiblePos.add(startingDirection.directionVec)
+//                    } else {
+//                        possiblePos
+//                    }
+//                    return
+//                }
 
-                if (currentBlockPos != nextPos && player.positionVector.distanceTo(nextPos) < 3) {
+                if (current != possiblePos && player.positionVector.distanceTo(possiblePos) < 3) {
                     simpleMovingAverageDistance.add(System.currentTimeMillis())
-                    currentBlockPos = nextPos
+                    currentBlockPos = possiblePos
                     updateTasks()
                 }
 
@@ -105,6 +108,12 @@ object Pathfinder {
                     goal = currentBlockPos
                 }
             }
+        }
+    }
+
+    private fun checkTasks(pos: BlockPos): Boolean {
+        return pendingTasks.values.all {
+            it.taskState == TaskState.DONE || pos.distanceTo(it.blockPos) < maxReach - 0.7
         }
     }
 
