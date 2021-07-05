@@ -14,7 +14,6 @@ import HighwayTools.multiBuilding
 import HighwayTools.saveTools
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.module.modules.player.InventoryManager
-import com.lambda.client.util.Wrapper
 import com.lambda.client.util.items.*
 import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.math.VectorUtils.distanceTo
@@ -143,7 +142,7 @@ object Tasks {
                 addTaskToDone(blockPos, block)
             }
             state.isReplaceable -> {
-                if (originPos.distanceTo(blockPos) < maxReach) {
+                if (originPos.distanceTo(blockPos) < maxReach - 0.7) {
                     // ToDo: Rewrite checkSupport with isSupport property
                     if (checkSupport(blockPos, block) ||
                         !world.checkNoEntityCollision(AxisAlignedBB(blockPos), null)) {
@@ -154,7 +153,7 @@ object Tasks {
                 }
             }
             else -> {
-                if (originPos.distanceTo(blockPos) < maxReach) {
+                if (originPos.distanceTo(blockPos) < maxReach - 0.7) {
                     if (checkSupport(blockPos, block)) {
                         addTaskToDone(blockPos, block)
                     } else {

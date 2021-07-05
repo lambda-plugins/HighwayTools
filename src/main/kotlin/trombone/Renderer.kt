@@ -2,6 +2,7 @@ package trombone
 
 import HighwayTools.aFilled
 import HighwayTools.aOutline
+import HighwayTools.anonymizeStats
 import HighwayTools.filled
 import HighwayTools.outline
 import HighwayTools.popUp
@@ -100,7 +101,7 @@ object Renderer {
         val color = ColorHolder(255, 255, 255, 255)
 
         val debugInfos = mutableListOf<Pair<String, String>>()
-        debugInfos.add(Pair("Pos", pos.asString()))
+        if (!anonymizeStats) debugInfos.add(Pair("Pos", pos.asString()))
         if (blockTask != containerTask) {
             debugInfos.add(Pair("Start Distance", "%.2f".format(blockTask.startDistance)))
             debugInfos.add(Pair("Eye Distance", "%.2f".format(blockTask.eyeDistance)))

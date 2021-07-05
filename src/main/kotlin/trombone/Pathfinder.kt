@@ -115,7 +115,8 @@ object Pathfinder {
 
     private fun checkTasks(pos: BlockPos): Boolean {
         return pendingTasks.values.all {
-            it.taskState == TaskState.DONE || pos.distanceTo(it.blockPos) < maxReach
+            it.taskState == TaskState.DONE ||
+                pos.toVec3dCenter().distanceTo(it.blockPos.toVec3dCenter()) < maxReach - 0.5
         }
     }
 
