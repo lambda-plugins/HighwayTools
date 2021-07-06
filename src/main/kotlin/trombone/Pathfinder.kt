@@ -88,14 +88,15 @@ object Pathfinder {
             }
             MovementState.BRIDGE -> {
                 goal = null
-                player.movementInput?.sneak = true
+                val isAboveAir = world.getBlockState(player.flooredPosition.down()).isReplaceable
+                if (isAboveAir) player.movementInput?.sneak = true
                 if (shouldBridge()) {
                     val target = currentBlockPos.toVec3dCenter().add(Vec3d(startingDirection.directionVec))
                     moveTo(target)
                 } else {
-                    val target = currentBlockPos.toVec3dCenter()
-                    moveTo(target)
-                    if (player.positionVector.distanceTo(target) < 1) moveState = MovementState.RUNNING
+                    if (!isAboveAir) {
+                        moveState = MovementState.RUNNING
+                    }
                 }
             }
             MovementState.PICKUP -> {
@@ -123,11 +124,14 @@ object Pathfinder {
     fun SafeClientEvent.shouldBridge(): Boolean {
         return bridging &&
             world.getBlockState(currentBlockPos.add(startingDirection.directionVec).down()).isReplaceable &&
-            sortedTasks.filter {
+            pendingTasks.values.filter {
                 it.taskState == TaskState.PLACE ||
                     it.taskState == TaskState.LIQUID
             }.none {
                 it.sequence.isNotEmpty()
+            } &&
+            pendingTasks.values.none {
+                it.taskState == TaskState.PENDING_PLACE
             }
     }
 

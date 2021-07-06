@@ -25,7 +25,6 @@ import trombone.IO.DebugMessages
 import trombone.Trombone.module
 import trombone.handler.Container.containerTask
 import trombone.handler.Player.lastHitVec
-import trombone.handler.Player.rotateTimer
 import trombone.handler.Player.waitTicks
 import trombone.handler.Tasks.addTaskToPending
 import trombone.handler.Tasks.stateUpdateMutex
@@ -63,7 +62,6 @@ object Place {
             1 -> {
                 val last = blockTask.sequence.last()
                 lastHitVec = getHitVec(last.pos, last.side)
-                rotateTimer.reset()
 
                 placeBlockNormal(blockTask, last.pos, last.side)
             }

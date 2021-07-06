@@ -13,8 +13,6 @@ import HighwayTools.storageManagement
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
 import com.lambda.client.module.modules.player.InventoryManager
-import com.lambda.client.util.TickTimer
-import com.lambda.client.util.TimeUnit
 import com.lambda.client.util.items.*
 import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.math.RotationUtils.getRotationTo
@@ -43,7 +41,6 @@ import trombone.task.TaskState
 
 object Player {
     var lastHitVec = Vec3d.ZERO!!
-    val rotateTimer = TickTimer(TimeUnit.TICKS)
 
     var waitTicks = 0
 
@@ -60,7 +57,6 @@ object Player {
     }
 
     fun SafeClientEvent.updateRotation() {
-        if (rotateTimer.tick(20L, false)) return
         val rotation = getRotationTo(lastHitVec)
 
         when (interacting) {

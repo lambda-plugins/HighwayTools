@@ -1,6 +1,5 @@
 package trombone.interaction
 
-import HighwayTools.alwaysBoth
 import HighwayTools.breakDelay
 import HighwayTools.debugMessages
 import HighwayTools.illegalPlacements
@@ -36,7 +35,6 @@ import trombone.handler.Player.LimitMode
 import trombone.handler.Player.lastHitVec
 import trombone.handler.Player.packetLimiter
 import trombone.handler.Player.packetLimiterMutex
-import trombone.handler.Player.rotateTimer
 import trombone.handler.Player.waitTicks
 import trombone.handler.Tasks.sortedTasks
 import trombone.handler.Tasks.stateUpdateMutex
@@ -58,7 +56,6 @@ object Break {
             }
 
             lastHitVec = getHitVec(sides.last().pos, sides.last().side)
-            rotateTimer.reset()
 
             mineBlockNormal(blockTask, sides.last().side)
         } else {
@@ -71,7 +68,6 @@ object Break {
                 side = side.opposite
             }
             lastHitVec = getHitVec(blockTask.blockPos, side)
-            rotateTimer.reset()
 
             if (blockState.getPlayerRelativeBlockHardness(player, world, blockTask.blockPos) > 2.8) {
                 mineBlockInstant(blockTask, side)
@@ -90,8 +86,7 @@ object Break {
                 packetLimiter.add(System.currentTimeMillis())
             }
 
-            delay(20L)
-            sendMiningPackets(blockTask.blockPos, side)
+            sendMiningPackets(blockTask.blockPos, side, start = true)
 
             if (maxBreaks > 1) {
                 tryMultiBreak(blockTask)
@@ -146,7 +141,7 @@ object Break {
                 }
 
                 defaultScope.launch {
-                    sendMiningPackets(task.blockPos, rayTraceResult.sideHit)
+                    sendMiningPackets(task.blockPos, rayTraceResult.sideHit, start = true)
 
                     delay(50L * taskTimeout)
                     if (blockTask.taskState == TaskState.PENDING_BREAK) {
@@ -161,20 +156,19 @@ object Break {
 
     private fun mineBlockNormal(blockTask: BlockTask, side: EnumFacing) {
         defaultScope.launch {
-            delay(20L)
             if (blockTask.taskState == TaskState.BREAK) {
-                sendMiningPackets(blockTask.blockPos, side)
+                sendMiningPackets(blockTask.blockPos, side, start = true)
                 blockTask.updateState(TaskState.BREAKING)
             } else {
-                sendMiningPackets(blockTask.blockPos, side, false)
+                sendMiningPackets(blockTask.blockPos, side, stop = true)
             }
         }
     }
 
-    private suspend fun sendMiningPackets(pos: BlockPos, side: EnumFacing, both: Boolean = true) {
+    private suspend fun sendMiningPackets(pos: BlockPos, side: EnumFacing, start: Boolean = false, stop: Boolean = false) {
         onMainThreadSafe {
-            if (both || alwaysBoth) connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.START_DESTROY_BLOCK, pos, side))
-            connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.STOP_DESTROY_BLOCK, pos, side))
+            if (start) connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.START_DESTROY_BLOCK, pos, side))
+            if (stop) connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.STOP_DESTROY_BLOCK, pos, side))
             player.swingArm(EnumHand.MAIN_HAND)
         }
     }

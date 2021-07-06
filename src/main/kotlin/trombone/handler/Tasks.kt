@@ -68,7 +68,6 @@ import trombone.handler.Liquid.updateLiquidTask
 import trombone.handler.Player.getEjectSlot
 import trombone.handler.Player.lastHitVec
 import trombone.handler.Player.moveToInventory
-import trombone.handler.Player.rotateTimer
 import trombone.handler.Player.swapOrMoveBestTool
 import trombone.handler.Player.swapOrMoveBlock
 import trombone.handler.Player.waitTicks
@@ -118,6 +117,7 @@ object Tasks {
         generateBluePrint(originPos)
 
         blueprint.forEach { (pos, block) ->
+            // ToDo: Fix overlapping of tasks
             if (!(pos == containerTask.blockPos && containerTask.taskState == TaskState.DONE) ||
                 startingBlockPos.add(
                     startingDirection
@@ -457,7 +457,6 @@ object Tasks {
             val hitVecOffset = getHitVecOffset(side)
 
             lastHitVec = getHitVec(containerTask.blockPos, side)
-            rotateTimer.reset()
 
             if (shulkerOpenTimer.tick(50)) {
                 defaultScope.launch {
