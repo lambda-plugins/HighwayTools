@@ -120,7 +120,7 @@ object Pathfinder {
 
     fun SafeClientEvent.shouldBridge(): Boolean {
         return bridging &&
-            world.getBlockState(currentBlockPos.add(startingDirection.directionVec).down()).isReplaceable &&
+            world.isAirBlock(currentBlockPos.add(startingDirection.directionVec).down()) &&
             tasks.values.filter {
                 it.taskState == TaskState.PLACE ||
                     it.taskState == TaskState.LIQUID

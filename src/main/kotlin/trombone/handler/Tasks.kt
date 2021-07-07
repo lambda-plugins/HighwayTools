@@ -122,6 +122,7 @@ object Tasks {
         val currentState = world.getBlockState(blockPos)
         when {
             /* Out of range, or is container pos and start padding */
+            // ToDo: Fix padding for diagonal
             currentBlockPos.distanceTo(blockPos) > maxReach ||
                 (blockPos == containerTask.blockPos && containerTask.taskState != TaskState.DONE) ||
                 startingBlockPos.add(
