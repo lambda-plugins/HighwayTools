@@ -3,7 +3,6 @@ package trombone.interaction
 import HighwayTools.anonymizeStats
 import HighwayTools.debugMessages
 import HighwayTools.dynamicDelay
-import HighwayTools.fillerMat
 import HighwayTools.placeDelay
 import HighwayTools.taskTimeout
 import com.lambda.client.event.SafeClientEvent
@@ -26,7 +25,6 @@ import trombone.Trombone.module
 import trombone.handler.Container.containerTask
 import trombone.handler.Player.lastHitVec
 import trombone.handler.Player.waitTicks
-import trombone.handler.Tasks.addTaskToPending
 import trombone.handler.Tasks.stateUpdateMutex
 import trombone.task.BlockTask
 import trombone.task.TaskState

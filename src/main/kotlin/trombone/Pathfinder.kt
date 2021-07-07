@@ -12,7 +12,6 @@ import com.lambda.client.util.math.Direction
 import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.math.VectorUtils.multiply
 import com.lambda.client.util.math.VectorUtils.toVec3dCenter
-import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.world.isReplaceable
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
@@ -21,8 +20,7 @@ import trombone.Statistics.simpleMovingAverageDistance
 import trombone.Trombone.active
 import trombone.handler.Container.getCollectingPosition
 import trombone.handler.Tasks.isTaskDone
-import trombone.handler.Tasks.pendingTasks
-import trombone.handler.Tasks.sortedTasks
+import trombone.handler.Tasks.tasks
 import trombone.handler.Tasks.updateTasks
 import trombone.task.TaskState
 
@@ -115,7 +113,7 @@ object Pathfinder {
     }
 
     private fun checkTasks(pos: BlockPos): Boolean {
-        return pendingTasks.values.all {
+        return tasks.values.all {
             it.taskState == TaskState.DONE ||
                 pos.toVec3dCenter().distanceTo(it.blockPos.toVec3dCenter()) < maxReach - 0.5
         }
@@ -124,13 +122,13 @@ object Pathfinder {
     fun SafeClientEvent.shouldBridge(): Boolean {
         return bridging &&
             world.getBlockState(currentBlockPos.add(startingDirection.directionVec).down()).isReplaceable &&
-            pendingTasks.values.filter {
+            tasks.values.filter {
                 it.taskState == TaskState.PLACE ||
                     it.taskState == TaskState.LIQUID
             }.none {
                 it.sequence.isNotEmpty()
             } &&
-            pendingTasks.values.none {
+            tasks.values.none {
                 it.taskState == TaskState.PENDING_PLACE
             }
     }

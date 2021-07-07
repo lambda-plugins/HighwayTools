@@ -44,7 +44,7 @@ object Trombone {
 
     fun SafeClientEvent.tick() {
         updateRenderer()
-//        updateTasks()
+        updateTasks()
         updateStats()
 
         if (pauseCheck()) return

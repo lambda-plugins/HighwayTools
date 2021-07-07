@@ -12,7 +12,7 @@ import net.minecraft.network.play.server.SPacketWindowItems
 import trombone.Blueprint.isInsideBlueprint
 import trombone.Pathfinder.rubberbandTimer
 import trombone.handler.Container.containerTask
-import trombone.handler.Tasks.pendingTasks
+import trombone.handler.Tasks.tasks
 import trombone.handler.Tasks.stateUpdateMutex
 import trombone.task.TaskState
 
@@ -30,7 +30,7 @@ object Packet {
                     val task = if (pos == containerTask.blockPos) {
                         containerTask
                     } else {
-                        pendingTasks[pos] ?: return
+                        tasks[pos] ?: return
                     }
 
                     when (task.taskState) {

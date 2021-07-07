@@ -10,9 +10,11 @@ import com.lambda.client.util.text.MessageSendHelper
 import net.minecraft.block.BlockLiquid
 import net.minecraft.init.Blocks
 import net.minecraft.util.EnumFacing
+import net.minecraft.util.math.BlockPos
 import trombone.IO
 import trombone.Trombone.module
-import trombone.handler.Tasks.pendingTasks
+import trombone.handler.Tasks.safeTask
+import trombone.handler.Tasks.tasks
 import trombone.task.BlockTask
 import trombone.task.TaskState
 
@@ -40,19 +42,10 @@ object Liquid {
 
             foundLiquid = true
 
-            pendingTasks[neighbourPos]?.let {
+            tasks[neighbourPos]?.let {
                 updateLiquidTask(it)
             } ?: run {
-                pendingTasks[neighbourPos] = BlockTask(neighbourPos, TaskState.LIQUID, Blocks.AIR)
-                pendingTasks[neighbourPos]?.updateLiquid(this)
-                // ToDo: Add new liquids without crash
-//                val event = this
-//                runBlocking {
-//                    stateUpdateMutex.withLock {
-//                        pendingTasks[neighbourPos] = BlockTask(neighbourPos, TaskState.LIQUID, Blocks.AIR)
-//                        pendingTasks[neighbourPos]?.updateLiquid(event)
-//                    }
-//                }
+                safeTask(neighbourPos, TaskState.LIQUID, Blocks.AIR).updateLiquid(this)
             }
         }
 

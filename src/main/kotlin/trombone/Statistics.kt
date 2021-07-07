@@ -44,7 +44,6 @@ import trombone.handler.Container.containerTask
 import trombone.handler.Container.grindCycles
 import trombone.handler.Player.packetLimiter
 import trombone.handler.Player.packetLimiterMutex
-import trombone.handler.Tasks.doneTasks
 import trombone.handler.Tasks.sortedTasks
 import trombone.interaction.Place.extraPlaceDelay
 import trombone.task.BlockTask
@@ -141,11 +140,6 @@ object Statistics {
             if (sortedTasks.isNotEmpty()) {
                 displayText.addLine("Pending", primaryColor, scale = 0.6f)
                 addTaskComponentList(displayText, sortedTasks)
-            }
-
-            if (sortedTasks.isNotEmpty()) {
-                displayText.addLine("Done", primaryColor, scale = 0.6f)
-                addTaskComponentList(displayText, doneTasks.values)
             }
         }
 

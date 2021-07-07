@@ -81,37 +81,39 @@ import trombone.task.TaskState
 import java.util.*
 
 object Tasks {
-    val pendingTasks = LinkedHashMap<BlockPos, BlockTask>()
-    val doneTasks = LinkedHashMap<BlockPos, BlockTask>()
+    val tasks = LinkedHashMap<BlockPos, BlockTask>()
     var sortedTasks: List<BlockTask> = emptyList()
     var lastTask: BlockTask? = null
 
     val stateUpdateMutex = Mutex()
 
     fun clearTasks() {
-        pendingTasks.clear()
-        doneTasks.clear()
+        tasks.clear()
+        sortedTasks = emptyList()
         containerTask.updateState(TaskState.DONE)
         lastTask = null
         grindCycles = 0
     }
 
     fun SafeClientEvent.updateTasks() {
+        MessageSendHelper.sendChatMessage("Tasks updated (${tasks.size} Tasks)")
         val toRemove = LinkedList<BlockPos>()
-        doneTasks.forEach { (pos, task) ->
-            if (currentBlockPos.distanceTo(pos) > maxReach + 2) {
-                if (task.toRemove) {
-                    if (System.currentTimeMillis() - task.timestamp > 1000L) {
-                        toRemove.add(pos)
+        tasks.filter {
+            it.value.taskState == TaskState.DONE
+        }.forEach {
+            if (currentBlockPos.distanceTo(it.key) > maxReach + 2) {
+                if (it.value.toRemove) {
+                    if (System.currentTimeMillis() - it.value.timestamp > 1000L) {
+                        toRemove.add(it.key)
                     }
                 } else {
-                    task.toRemove = true
-                    task.timestamp = System.currentTimeMillis()
+                    it.value.toRemove = true
+                    it.value.timestamp = System.currentTimeMillis()
                 }
             }
         }
         toRemove.forEach {
-            doneTasks.remove(it)
+            tasks.remove(it)
         }
 
         generateBluePrint()
@@ -137,37 +139,34 @@ object Tasks {
             }
             /* Ignored blocks */
             ignoreBlocks.contains(currentState.block.registryName.toString()) -> {
-                addTaskToDone(blockPos, currentState.block)
+                safeTask(blockPos, TaskState.DONE, currentState.block)
             }
             /* Is in desired state */
             currentState.block == targetBlock -> {
-                addTaskToDone(blockPos, currentState.block)
+                safeTask(blockPos, TaskState.DONE, currentState.block)
             }
             /* To place */
             currentState.isReplaceable && targetBlock != Blocks.AIR -> {
                 if (checkSupport(blockPos, targetBlock) ||
                     !world.checkNoEntityCollision(AxisAlignedBB(blockPos), null)) {
-                    addTaskToDone(blockPos, targetBlock)
+                    safeTask(blockPos, TaskState.DONE, targetBlock)
                 } else {
-                    addTaskToPending(blockPos, TaskState.PLACE, targetBlock)
+                    safeTask(blockPos, TaskState.PLACE, targetBlock)
                 }
+            }
+            /* Is liquid */
+            currentState.block is BlockLiquid -> {
+                safeTask(blockPos, TaskState.LIQUID, Blocks.AIR).updateLiquid(this)
             }
             /* Break to place */
             else -> {
                 if (checkSupport(blockPos, targetBlock)) {
-                    addTaskToDone(blockPos, targetBlock)
+                    safeTask(blockPos, TaskState.DONE, currentState.block)
                 } else {
-                    addTaskToPending(blockPos, TaskState.BREAK, targetBlock)
+                    safeTask(blockPos, TaskState.BREAK, targetBlock)
                 }
             }
         }
-    }
-
-    private fun SafeClientEvent.checkSupport(pos: BlockPos, block: Block): Boolean {
-        return mode == Mode.HIGHWAY &&
-            startingDirection.isDiagonal &&
-            world.getBlockState(pos.up()).block == material &&
-            block == fillerMat
     }
 
     fun SafeClientEvent.runTasks() {
@@ -176,7 +175,7 @@ object Tasks {
                 val eyePos = player.getPositionEyes(1.0f)
                 containerTask.updateTask(this, eyePos)
                 if (!checkStuckTimeout(containerTask)) return
-                pendingTasks.values.toList().forEach {
+                tasks.values.toList().forEach {
                     doTask(it, true)
                 }
                 doTask(containerTask, false)
@@ -188,13 +187,13 @@ object Tasks {
                     handleRestock(Items.DIAMOND_PICKAXE)
                 }
             }
-            pendingTasks.isEmpty() -> {
+            tasks.values.all { it.taskState == TaskState.DONE } -> {
                 updateTasks()
             }
             else -> {
                 waitTicks--
 
-                pendingTasks.values.toList().forEach {
+                tasks.values.toList().forEach {
                     doTask(it, true)
                 }
 
@@ -219,47 +218,52 @@ object Tasks {
         }
     }
 
-    fun addTaskToPending(blockPos: BlockPos, taskState: TaskState, material: Block) {
-        pendingTasks[blockPos]?.let {
-            if ((it.taskState != taskState &&
-                    (it.taskState != TaskState.PENDING_BREAK || it.taskState != TaskState.PENDING_PLACE)) ||
-                it.stuckTicks > it.taskState.stuckTimeout) {
-                pendingTasks[blockPos] = (BlockTask(blockPos, taskState, material))
-            }
-        } ?: run {
-            pendingTasks[blockPos] = (BlockTask(blockPos, taskState, material))
-        }
+    private fun SafeClientEvent.checkSupport(pos: BlockPos, block: Block): Boolean {
+        return mode == Mode.HIGHWAY &&
+            startingDirection.isDiagonal &&
+            world.getBlockState(pos.up()).block == material &&
+            block == fillerMat
     }
 
-    private fun addTaskToDone(blockPos: BlockPos, material: Block) {
-        doneTasks[blockPos]?.let {
-            if (it.taskState != TaskState.DONE) {
-                doneTasks[blockPos] = (BlockTask(blockPos, TaskState.DONE, material))
+    fun safeTask(blockPos: BlockPos, taskState: TaskState, material: Block): BlockTask {
+        val task = BlockTask(blockPos, taskState, material)
+        tasks[blockPos]?.let {
+            if (it.stuckTicks > it.taskState.stuckTimeout ||
+                taskState == TaskState.LIQUID) {
+                    tasks[blockPos] = task
             }
+//            if ((it.taskState != taskState &&
+//                    (it.taskState != TaskState.PENDING_BREAK ||
+//                     it.taskState != TaskState.PENDING_PLACE ||
+//                        it.taskState != TaskState.BREAKING)) ||
+//                it.stuckTicks > it.taskState.stuckTimeout) {
+//                tasks[blockPos] = (BlockTask(blockPos, taskState, material))
+//            }
         } ?: run {
-            doneTasks[blockPos] = (BlockTask(blockPos, TaskState.DONE, material))
+            tasks[blockPos] = task
         }
+        return task
     }
 
     fun SafeClientEvent.isTaskDone(pos: BlockPos) =
-        (pendingTasks[pos] ?: doneTasks[pos])?.let {
+        tasks[pos]?.let {
             it.taskState == TaskState.DONE && world.getBlockState(pos).block != Blocks.PORTAL
         } ?: false
 
     private fun SafeClientEvent.sortTasks() {
         val eyePos = player.getPositionEyes(1.0f)
-        pendingTasks.values.forEach {
+        tasks.values.forEach {
             it.updateTask(this, eyePos)
         }
 
         if (multiBuilding) {
-            pendingTasks.values.forEach {
+            tasks.values.forEach {
                 it.shuffle()
             }
 
             runBlocking {
                 stateUpdateMutex.withLock {
-                    sortedTasks = pendingTasks.values.sortedWith(
+                    sortedTasks = tasks.values.sortedWith(
                         compareBy<BlockTask> {
                             it.taskState.ordinal
                         }.thenBy {
@@ -273,7 +277,7 @@ object Tasks {
         } else {
             runBlocking {
                 stateUpdateMutex.withLock {
-                    sortedTasks = pendingTasks.values.sortedWith(
+                    sortedTasks = tasks.values.sortedWith(
                         compareBy<BlockTask> {
                             it.taskState.ordinal
                         }.thenBy {
@@ -350,9 +354,6 @@ object Tasks {
         if (!updateOnly) blockTask.onTick()
 
         when (blockTask.taskState) {
-            TaskState.DONE -> {
-                doDone(blockTask)
-            }
             TaskState.RESTOCK -> {
                 doRestock()
             }
@@ -380,12 +381,8 @@ object Tasks {
             TaskState.PENDING_BREAK, TaskState.PENDING_PLACE -> {
                 blockTask.onStuck()
             }
+            else -> { }
         }
-    }
-
-    private fun doDone(blockTask: BlockTask) {
-        pendingTasks.remove(blockTask.blockPos)
-        doneTasks[blockTask.blockPos] = blockTask
     }
 
     private fun SafeClientEvent.doRestock() {
@@ -606,7 +603,7 @@ object Tasks {
         }
 
         if (blockTask.taskState == TaskState.LIQUID &&
-            !world.isLiquid(blockTask.blockPos)) {
+            world.getBlockState(blockTask.blockPos).block !is BlockLiquid) {
             blockTask.updateState(TaskState.DONE)
             return
         }
@@ -616,7 +613,8 @@ object Tasks {
                 if (currentBlock == material) {
                     blockTask.updateState(TaskState.PLACED)
                     return
-                } else if (currentBlock != Blocks.AIR && !world.isLiquid(blockTask.blockPos)) {
+                } else if (currentBlock != Blocks.AIR &&
+                    world.getBlockState(blockTask.blockPos).block !is BlockLiquid) {
                     blockTask.updateState(TaskState.BREAK)
                     return
                 }
@@ -661,7 +659,7 @@ object Tasks {
                         containerTask.updateState(TaskState.DONE)
                     }
                 } else {
-                    pendingTasks.remove(blockTask.blockPos)
+                    tasks.remove(blockTask.blockPos)
                 }
                 return
             }

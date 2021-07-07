@@ -24,8 +24,7 @@ import net.minecraft.util.math.BlockPos
 import org.lwjgl.opengl.GL11
 import trombone.Pathfinder.currentBlockPos
 import trombone.handler.Container.containerTask
-import trombone.handler.Tasks.doneTasks
-import trombone.handler.Tasks.pendingTasks
+import trombone.handler.Tasks.tasks
 import trombone.task.BlockTask
 import trombone.task.TaskState
 import kotlin.math.PI
@@ -48,13 +47,8 @@ object Renderer {
             addToRenderer(containerTask, currentTime)
         }
 
-        pendingTasks.values.forEach {
-            if (it.taskState == TaskState.DONE) return@forEach
-            addToRenderer(it, currentTime)
-        }
-
-        doneTasks.values.forEach {
-            if (it.block == Blocks.AIR || it.isShulker) return@forEach
+        tasks.values.forEach {
+            if (it.block == Blocks.AIR && it.taskState == TaskState.DONE) return@forEach
             if (it.toRemove) {
                 addToRenderer(it, currentTime, true)
             } else {
@@ -68,8 +62,12 @@ object Renderer {
         if (!showDebugRender) return
         GlStateUtils.rescaleActual()
 
-        if (containerTask.taskState != TaskState.DONE) updateOverlay(containerTask.blockPos, containerTask)
-        pendingTasks.forEach { (pos, blockTask) ->
+        if (containerTask.taskState != TaskState.DONE) {
+            updateOverlay(containerTask.blockPos, containerTask)
+        }
+
+        tasks.forEach { (pos, blockTask) ->
+            if (blockTask.taskState == TaskState.DONE) return@forEach
             updateOverlay(pos, blockTask)
         }
     }
@@ -79,16 +77,10 @@ object Renderer {
             .getBlockState(containerTask.blockPos)
             .getSelectedBoundingBox(world, containerTask.blockPos)
 
-        pendingTasks.forEach { (_, task) ->
-            task.aabb = world
-                .getBlockState(task.blockPos)
-                .getSelectedBoundingBox(world, task.blockPos)
-        }
-
-        doneTasks.forEach { (_, task) ->
-            task.aabb = world
-                .getBlockState(task.blockPos)
-                .getSelectedBoundingBox(world, task.blockPos)
+        tasks.values.forEach {
+            it.aabb = world
+                .getBlockState(it.blockPos)
+                .getSelectedBoundingBox(world, it.blockPos)
         }
     }
 
@@ -119,7 +111,6 @@ object Renderer {
         if (blockTask.stuckTicks > 0) debugInfos.add(Pair("Stuck", "${blockTask.stuckTicks}"))
 
         debugInfos.forEachIndexed { index, pair ->
-
             val text = if (pair.second == "") {
                 pair.first
             } else {
