@@ -9,6 +9,7 @@ import com.lambda.client.util.TimeUnit
 import com.lambda.client.util.items.*
 import com.lambda.client.util.math.VectorUtils
 import com.lambda.client.util.math.VectorUtils.toVec3dCenter
+import com.lambda.client.util.world.getVisibleSides
 import com.lambda.client.util.world.isPlaceable
 import com.lambda.client.util.world.isReplaceable
 import com.lambda.commons.extension.ceilToInt
@@ -19,6 +20,7 @@ import net.minecraft.inventory.Slot
 import net.minecraft.item.Item
 import net.minecraft.item.ItemShulkerBox
 import net.minecraft.item.ItemStack
+import net.minecraft.util.EnumFacing
 import net.minecraft.util.NonNullList
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.RayTraceResult
@@ -104,15 +106,14 @@ object Container {
                     world.isPlaceable(pos) &&
                     !world.getBlockState(pos.down()).isReplaceable &&
                     world.isAirBlock(pos.up()) &&
-                    world.rayTraceBlocks(origin, pos.toVec3dCenter())?.let { it.typeOfHit == RayTraceResult.Type.MISS } ?: true
-            }
-            .sortedWith(
+                    getVisibleSides(pos.down()).contains(EnumFacing.UP)
+            }.sortedWith(
                 compareByDescending<BlockPos> {
                     safeValue(it)
                 }.thenBy {
                     it.distanceSqToCenter(origin.x, origin.y, origin.z).ceilToInt()
                 }.thenBy {
-                    abs(it.y - player.posY)
+                    abs(it.y - currentBlockPos.y)
                 }
             ).firstOrNull()
     }

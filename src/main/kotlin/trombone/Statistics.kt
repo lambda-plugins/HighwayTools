@@ -249,7 +249,12 @@ object Statistics {
     }
 
     private fun gatherTask(displayText: TextComponent) {
-        sortedTasks.firstOrNull()?.let {
+        val task: BlockTask? = if (containerTask.taskState != TaskState.DONE) {
+            containerTask
+        } else {
+            sortedTasks.firstOrNull()
+        }
+        task?.let {
             displayText.addLine("Task", primaryColor)
 
             displayText.add("    Status:", primaryColor)

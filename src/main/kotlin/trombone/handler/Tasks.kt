@@ -96,7 +96,6 @@ object Tasks {
     }
 
     fun SafeClientEvent.updateTasks() {
-        MessageSendHelper.sendChatMessage("Tasks updated (${tasks.size} Tasks)")
         val toRemove = LinkedList<BlockPos>()
         tasks.filter {
             it.value.taskState == TaskState.DONE
@@ -229,7 +228,8 @@ object Tasks {
         val task = BlockTask(blockPos, taskState, material)
         tasks[blockPos]?.let {
             if (it.stuckTicks > it.taskState.stuckTimeout ||
-                taskState == TaskState.LIQUID) {
+                taskState == TaskState.LIQUID ||
+                (it.taskState == TaskState.DONE && it.taskState != taskState)) {
                     tasks[blockPos] = task
             }
 //            if ((it.taskState != taskState &&
@@ -437,14 +437,9 @@ object Tasks {
 
             lastHitVec = getHitVec(containerTask.blockPos, side)
 
-            if (shulkerOpenTimer.tick(50)) {
-                defaultScope.launch {
-                    delay(20L)
-                    onMainThreadSafe {
-                        connection.sendPacket(CPacketPlayerTryUseItemOnBlock(containerTask.blockPos, side, EnumHand.MAIN_HAND, hitVecOffset.x.toFloat(), hitVecOffset.y.toFloat(), hitVecOffset.z.toFloat()))
-                        player.swingArm(EnumHand.MAIN_HAND)
-                    }
-                }
+            if (shulkerOpenTimer.tick(20)) {
+                connection.sendPacket(CPacketPlayerTryUseItemOnBlock(containerTask.blockPos, side, EnumHand.MAIN_HAND, hitVecOffset.x.toFloat(), hitVecOffset.y.toFloat(), hitVecOffset.z.toFloat()))
+                player.swingArm(EnumHand.MAIN_HAND)
             }
         }
     }

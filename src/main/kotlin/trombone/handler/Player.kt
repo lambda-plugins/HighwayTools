@@ -40,8 +40,7 @@ import trombone.task.BlockTask
 import trombone.task.TaskState
 
 object Player {
-    var lastHitVec = Vec3d.ZERO!!
-
+    var lastHitVec: Vec3d = Vec3d.ZERO
     var waitTicks = 0
 
     val packetLimiterMutex = Mutex()
@@ -57,6 +56,7 @@ object Player {
     }
 
     fun SafeClientEvent.updateRotation() {
+        if (lastHitVec == Vec3d.ZERO) return
         val rotation = getRotationTo(lastHitVec)
 
         when (interacting) {

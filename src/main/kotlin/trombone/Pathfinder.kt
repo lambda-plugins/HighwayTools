@@ -13,12 +13,14 @@ import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.math.VectorUtils.multiply
 import com.lambda.client.util.math.VectorUtils.toVec3dCenter
 import com.lambda.client.util.world.isReplaceable
+import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
 import trombone.IO.disableError
 import trombone.Statistics.simpleMovingAverageDistance
 import trombone.Trombone.active
 import trombone.handler.Container.getCollectingPosition
+import trombone.handler.Player.lastHitVec
 import trombone.handler.Tasks.isTaskDone
 import trombone.handler.Tasks.tasks
 import trombone.handler.Tasks.updateTasks
@@ -59,18 +61,16 @@ object Pathfinder {
                     !isTaskDone(possiblePos.up()) ||
                     !isTaskDone(possiblePos.down())) return
 
-                if (!checkTasks(possiblePos.up())) {
-                    // ToDo: Fix pathing on entites blocking path. mark blocked as property
-//                    possiblePos = if (world.getBlockState(possiblePos.down()).isReplaceable) {
-//                        possiblePos.add(startingDirection.directionVec)
-//                    } else {
-//                        possiblePos
-//                    }
-                    return
-                }
+                if (!checkTasks(possiblePos.up())) return
+
+                // ToDo: Blocked by entities
+//                if (!world.checkNoEntityCollision(AxisAlignedBB(possiblePos.down()), null)) {
+//                    possiblePos = possiblePos.add(startingDirection.directionVec)
+//                }
 
                 if (current != possiblePos && player.positionVector.distanceTo(possiblePos) < 3) {
                     simpleMovingAverageDistance.add(System.currentTimeMillis())
+                    lastHitVec = Vec3d.ZERO
                     currentBlockPos = possiblePos
                     updateTasks()
                 }

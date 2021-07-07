@@ -11,8 +11,8 @@ object BaritoneHelper {
     fun setupBaritone() {
         baritoneSettingAllowPlace = BaritoneUtils.settings?.allowPlace?.value ?: true
         baritoneSettingAllowBreak = BaritoneUtils.settings?.allowBreak?.value ?: true
-        BaritoneUtils.settings?.allowPlace?.value = false
-        BaritoneUtils.settings?.allowBreak?.value = false
+//        BaritoneUtils.settings?.allowPlace?.value = false
+//        BaritoneUtils.settings?.allowBreak?.value = false
 
         if (!goalRender) {
             baritoneSettingRenderGoal = BaritoneUtils.settings?.renderGoal?.value ?: true
@@ -21,8 +21,8 @@ object BaritoneHelper {
     }
 
     fun resetBaritone() {
-        BaritoneUtils.settings?.allowPlace?.value = baritoneSettingAllowPlace
-        BaritoneUtils.settings?.allowBreak?.value = baritoneSettingAllowBreak
+//        BaritoneUtils.settings?.allowPlace?.value = baritoneSettingAllowPlace
+//        BaritoneUtils.settings?.allowBreak?.value = baritoneSettingAllowBreak
         BaritoneUtils.settings?.renderGoal?.value = baritoneSettingRenderGoal
     }
 }
