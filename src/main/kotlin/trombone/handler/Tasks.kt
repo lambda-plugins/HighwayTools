@@ -20,12 +20,8 @@ import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.math.VectorUtils.multiply
 import com.lambda.client.util.math.VectorUtils.toVec3dCenter
 import com.lambda.client.util.text.MessageSendHelper
-import com.lambda.client.util.threads.defaultScope
-import com.lambda.client.util.threads.onMainThreadSafe
 import com.lambda.client.util.world.*
 import com.lambda.commons.extension.ceilToInt
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -230,7 +226,7 @@ object Tasks {
             if (it.stuckTicks > it.taskState.stuckTimeout ||
                 taskState == TaskState.LIQUID ||
                 (it.taskState == TaskState.DONE && it.taskState != taskState)) {
-                    tasks[blockPos] = task
+                tasks[blockPos] = task
             }
 //            if ((it.taskState != taskState &&
 //                    (it.taskState != TaskState.PENDING_BREAK ||

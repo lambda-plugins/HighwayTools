@@ -12,8 +12,8 @@ import net.minecraft.network.play.server.SPacketWindowItems
 import trombone.Blueprint.isInsideBlueprint
 import trombone.Pathfinder.rubberbandTimer
 import trombone.handler.Container.containerTask
-import trombone.handler.Tasks.tasks
 import trombone.handler.Tasks.stateUpdateMutex
+import trombone.handler.Tasks.tasks
 import trombone.task.TaskState
 
 object Packet {

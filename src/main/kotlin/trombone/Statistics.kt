@@ -10,6 +10,7 @@ import HighwayTools.mode
 import HighwayTools.placeDelay
 import HighwayTools.printDebug
 import HighwayTools.width
+import HighwayToolsHud
 import HighwayToolsHud.showEnvironment
 import HighwayToolsHud.showEstimations
 import HighwayToolsHud.showLifeTime
