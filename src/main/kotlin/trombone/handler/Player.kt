@@ -126,13 +126,26 @@ object Player {
             val useBlock = when {
                 blockTask.isFiller -> {
                     if (isInsideBlueprintBuild(blockTask.blockPos)) {
-                        material
+                        if (player.inventorySlots.countBlock(material) > 0) {
+                            material
+                        } else {
+                            disableError("No ${blockTask.block.localizedName} was found in inventory.")
+                            return false
+                        }
                     } else {
-                        fillerMat
+                        if (player.inventorySlots.countBlock(fillerMat) > 0) {
+                            fillerMat
+                        } else {
+                            disableError("No ${blockTask.block.localizedName} was found in inventory.")
+                            return false
+                        }
                     }
                 }
                 player.inventorySlots.countBlock(blockTask.block) > 0 -> blockTask.block
-                else -> return false
+                else -> {
+                    disableError("No ${blockTask.block.localizedName} was found in inventory.")
+                    return false
+                }
             }
 
             val success = swapToBlockOrMove(useBlock, predicateSlot = {

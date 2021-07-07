@@ -27,6 +27,7 @@ object Trombone {
     }
 
     fun SafeClientEvent.onEnable() {
+        clearTasks()
         setupPathing()
         setupBaritone()
         printEnable()

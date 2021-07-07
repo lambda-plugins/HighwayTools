@@ -23,15 +23,16 @@ import com.lambda.commons.extension.floorToInt
 import net.minecraft.block.Block
 import net.minecraft.init.Blocks
 import net.minecraft.util.math.BlockPos
+import trombone.Pathfinder.currentBlockPos
 import trombone.Pathfinder.startingDirection
 import trombone.Trombone.Mode
 
 object Blueprint {
     val blueprint = LinkedHashMap<BlockPos, Block>()
 
-    fun generateBluePrint(feetPos: BlockPos) {
+    fun generateBluePrint() {
         blueprint.clear()
-        val basePos = feetPos.down()
+        val basePos = currentBlockPos.down()
 
         if (mode != Mode.FLAT) {
             val zDirection = startingDirection

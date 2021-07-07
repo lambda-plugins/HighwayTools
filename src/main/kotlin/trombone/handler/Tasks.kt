@@ -96,10 +96,10 @@ object Tasks {
         grindCycles = 0
     }
 
-    fun SafeClientEvent.updateTasks(originPos: BlockPos = currentBlockPos) {
+    fun SafeClientEvent.updateTasks() {
         val toRemove = LinkedList<BlockPos>()
         doneTasks.forEach { (pos, task) ->
-            if (originPos.distanceTo(pos) > maxReach + 2) {
+            if (currentBlockPos.distanceTo(pos) > maxReach + 2) {
                 if (task.toRemove) {
                     if (System.currentTimeMillis() - task.timestamp > 1000L) {
                         toRemove.add(pos)
@@ -114,51 +114,50 @@ object Tasks {
             doneTasks.remove(it)
         }
 
-        generateBluePrint(originPos)
+        generateBluePrint()
 
         blueprint.forEach { (pos, block) ->
-            // ToDo: Fix overlapping of tasks
-            if (!(pos == containerTask.blockPos && containerTask.taskState == TaskState.DONE) ||
+            addTask(pos, block)
+        }
+    }
+
+    private fun SafeClientEvent.addTask(blockPos: BlockPos, targetBlock: Block) {
+        val currentState = world.getBlockState(blockPos)
+        when {
+            /* Out of range, or is container pos and start padding */
+            currentBlockPos.distanceTo(blockPos) > maxReach ||
+                (blockPos == containerTask.blockPos && containerTask.taskState != TaskState.DONE) ||
                 startingBlockPos.add(
                     startingDirection
                         .clockwise(4)
                         .directionVec
-                        .multiply(maxReach.ceilToInt())
-                ).distanceTo(pos) < maxReach) {
-                if (block == Blocks.AIR) {
-                    addTaskClear(pos, originPos)
+                        .multiply((maxReach * 2).ceilToInt() - 1)
+                ).distanceTo(blockPos) < maxReach * 2 -> {
+                //
+            }
+            /* Ignored blocks */
+            ignoreBlocks.contains(currentState.block.registryName.toString()) -> {
+                addTaskToDone(blockPos, currentState.block)
+            }
+            /* Is in desired state */
+            currentState.block == targetBlock -> {
+                addTaskToDone(blockPos, currentState.block)
+            }
+            /* To place */
+            currentState.isReplaceable && targetBlock != Blocks.AIR -> {
+                if (checkSupport(blockPos, targetBlock) ||
+                    !world.checkNoEntityCollision(AxisAlignedBB(blockPos), null)) {
+                    addTaskToDone(blockPos, targetBlock)
                 } else {
-                    addTaskBuild(pos, block, originPos)
+                    addTaskToPending(blockPos, TaskState.PLACE, targetBlock)
                 }
             }
-        }
-    }
-
-    private fun SafeClientEvent.addTaskBuild(blockPos: BlockPos, block: Block, originPos: BlockPos) {
-        val state = world.getBlockState(blockPos)
-        when {
-            state.block == block &&
-                originPos.distanceTo(blockPos) < maxReach -> {
-                addTaskToDone(blockPos, block)
-            }
-            state.isReplaceable -> {
-                if (originPos.distanceTo(blockPos) < maxReach - 0.7) {
-                    // ToDo: Rewrite checkSupport with isSupport property
-                    if (checkSupport(blockPos, block) ||
-                        !world.checkNoEntityCollision(AxisAlignedBB(blockPos), null)) {
-                        addTaskToDone(blockPos, block)
-                    } else {
-                        addTaskToPending(blockPos, TaskState.PLACE, block)
-                    }
-                }
-            }
+            /* Break to place */
             else -> {
-                if (originPos.distanceTo(blockPos) < maxReach - 0.7) {
-                    if (checkSupport(blockPos, block)) {
-                        addTaskToDone(blockPos, block)
-                    } else {
-                        addTaskToPending(blockPos, TaskState.BREAK, block)
-                    }
+                if (checkSupport(blockPos, targetBlock)) {
+                    addTaskToDone(blockPos, targetBlock)
+                } else {
+                    addTaskToPending(blockPos, TaskState.BREAK, targetBlock)
                 }
             }
         }
@@ -169,23 +168,6 @@ object Tasks {
             startingDirection.isDiagonal &&
             world.getBlockState(pos.up()).block == material &&
             block == fillerMat
-    }
-
-    private fun SafeClientEvent.addTaskClear(pos: BlockPos, originPos: BlockPos) {
-        when {
-            originPos.distanceTo(pos) > maxReach -> {
-                //
-            }
-            world.isAirBlock(pos) -> {
-                addTaskToDone(pos, Blocks.AIR)
-            }
-            ignoreBlocks.contains(world.getBlockState(pos).block.registryName.toString()) -> {
-                addTaskToDone(pos, world.getBlockState(pos).block)
-            }
-            else -> {
-                addTaskToPending(pos, TaskState.BREAK, Blocks.AIR)
-            }
-        }
     }
 
     fun SafeClientEvent.runTasks() {

@@ -1,5 +1,6 @@
 package trombone.interaction
 
+import HighwayTools.alwaysBoth
 import HighwayTools.breakDelay
 import HighwayTools.debugMessages
 import HighwayTools.illegalPlacements
@@ -167,8 +168,8 @@ object Break {
 
     private suspend fun sendMiningPackets(pos: BlockPos, side: EnumFacing, start: Boolean = false, stop: Boolean = false) {
         onMainThreadSafe {
-            if (start) connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.START_DESTROY_BLOCK, pos, side))
-            if (stop) connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.STOP_DESTROY_BLOCK, pos, side))
+            if (start || alwaysBoth) connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.START_DESTROY_BLOCK, pos, side))
+            if (stop || alwaysBoth) connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.STOP_DESTROY_BLOCK, pos, side))
             player.swingArm(EnumHand.MAIN_HAND)
         }
     }
