@@ -230,14 +230,14 @@ object Tasks {
             block == fillerMat
     }
 
-    fun safeTask(blockPos: BlockPos, taskState: TaskState, material: Block): BlockTask {
+    fun SafeClientEvent.safeTask(blockPos: BlockPos, taskState: TaskState, material: Block): BlockTask {
         val task = BlockTask(blockPos, taskState, material)
         tasks[blockPos]?.let {
             if (it.stuckTicks > it.taskState.stuckTimeout ||
                 taskState == TaskState.LIQUID ||
                 (it.taskState != taskState &&
                     (it.taskState == TaskState.DONE ||
-                        (it.taskState == TaskState.PLACE && it.stuckTicks > 0)))) {
+                        (it.taskState == TaskState.PLACE && !world.isPlaceable(it.blockPos))))) {
 //                (it.taskState != taskState &&
 //                    it.taskState != TaskState.BREAKING &&
 //                    it.taskState != TaskState.PENDING_BREAK &&
