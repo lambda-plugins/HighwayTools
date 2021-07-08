@@ -605,10 +605,6 @@ object Tasks {
                 if (currentBlock == material) {
                     blockTask.updateState(TaskState.PLACED)
                     return
-                } else if (currentBlock != Blocks.AIR &&
-                    world.getBlockState(blockTask.blockPos).block !is BlockLiquid) {
-                    blockTask.updateState(TaskState.BREAK)
-                    return
                 }
             }
             fillerMat -> {
@@ -623,7 +619,7 @@ object Tasks {
                 }
             }
             Blocks.AIR -> {
-                if (!world.isLiquid(blockTask.blockPos)) {
+                if (world.getBlockState(blockTask.blockPos).block !is BlockLiquid) {
                     if (currentBlock != Blocks.AIR) {
                         blockTask.updateState(TaskState.BREAK)
                     } else {

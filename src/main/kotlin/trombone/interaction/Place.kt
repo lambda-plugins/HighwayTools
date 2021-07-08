@@ -7,6 +7,7 @@ import HighwayTools.placeDelay
 import HighwayTools.taskTimeout
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.items.blockBlacklist
+import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.defaultScope
 import com.lambda.client.util.threads.onMainThreadSafe
@@ -36,19 +37,11 @@ object Place {
         when (blockTask.sequence.size) {
             0 -> {
                 if (blockTask.taskState == TaskState.LIQUID) {
-                    if (debugMessages == DebugMessages.ALL) {
-                        if (!anonymizeStats) {
-                            MessageSendHelper.sendChatMessage("${module.chatName} Can't replace Liquid@(${blockTask.blockPos})")
-                        } else {
-                            MessageSendHelper.sendChatMessage("${module.chatName} Can't replace Liquid")
-                        }
-                    }
                     blockTask.updateState(TaskState.DONE)
-                    return
                 }
                 if (debugMessages == DebugMessages.ALL) {
                     if (!anonymizeStats) {
-                        MessageSendHelper.sendChatMessage("${module.chatName} No neighbours found for ${blockTask.blockPos}")
+                        MessageSendHelper.sendChatMessage("${module.chatName} No neighbours found for ${blockTask.blockPos.asString()}")
                     } else {
                         MessageSendHelper.sendChatMessage("${module.chatName} No neighbours found")
                     }
