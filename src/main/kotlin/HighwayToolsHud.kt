@@ -1,6 +1,7 @@
-import HighwayTools.gatherStatistics
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.plugin.api.PluginLabelHud
+import trombone.Statistics.gatherStatistics
+import trombone.Statistics.resetStats
 
 internal object HighwayToolsHud : PluginLabelHud(
     name = "HighwayToolsHud",
@@ -19,7 +20,7 @@ internal object HighwayToolsHud : PluginLabelHud(
 
     init {
         resetStats.consumers.add { _, it ->
-            if (it) HighwayTools.resetStats()
+            if (it) resetStats()
             false
         }
     }

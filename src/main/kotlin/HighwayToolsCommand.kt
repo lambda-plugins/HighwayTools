@@ -1,5 +1,7 @@
 import com.lambda.client.command.ClientCommand
 import com.lambda.client.util.text.MessageSendHelper.sendChatMessage
+import trombone.IO.printSettings
+import trombone.Pathfinder.distancePending
 
 object HighwayToolsCommand : ClientCommand(
     name = "highwaytools",
@@ -13,7 +15,7 @@ object HighwayToolsCommand : ClientCommand(
                 execute("Add a block to ignore list") {
                     val added = HighwayTools.ignoreBlocks.add(blockArg.value.registryName.toString())
                     if (added) {
-                        HighwayTools.printSettings()
+                        printSettings()
                         sendChatMessage("Added &7${blockArg.value.localizedName}&r to ignore list.")
                     } else {
                         sendChatMessage("&7${blockArg.value.localizedName}&r is already ignored.")
@@ -27,7 +29,7 @@ object HighwayToolsCommand : ClientCommand(
                 execute("Remove a block from ignore list") {
                     val removed = HighwayTools.ignoreBlocks.remove(blockArg.value.registryName.toString())
                     if (removed) {
-                        HighwayTools.printSettings()
+                        printSettings()
                         sendChatMessage("Removed &7${blockArg.value.localizedName}&r from ignore list.")
                     } else {
                         sendChatMessage("&7${blockArg.value.localizedName}&r is not yet ignored.")
@@ -62,7 +64,7 @@ object HighwayToolsCommand : ClientCommand(
         literal("distance") {
             int("distance") { distanceArg ->
                 execute("Set the target distance until the bot stops") {
-                    HighwayTools.distancePending = distanceArg.value
+                    distancePending = distanceArg.value
                     sendChatMessage("HighwayTools will stop after (${distanceArg.value}) blocks distance. To remove the limit use distance 0")
                 }
             }
@@ -87,7 +89,7 @@ object HighwayToolsCommand : ClientCommand(
         }
 
         execute("Print the settings") {
-            HighwayTools.printSettings()
+            printSettings()
         }
     }
 }
