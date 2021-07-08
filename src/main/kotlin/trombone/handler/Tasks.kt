@@ -12,6 +12,8 @@ import HighwayTools.maxReach
 import HighwayTools.mode
 import HighwayTools.multiBuilding
 import HighwayTools.saveTools
+import HighwayTools.saveFood
+import HighwayTools.manageFood
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.module.modules.player.InventoryManager
 import com.lambda.client.util.items.*
@@ -197,6 +199,10 @@ object Tasks {
             }
             else -> {
                 waitTicks--
+
+                if (manageFood && player.inventorySlots.countItem(Items.GOLDEN_APPLE) < saveFood) {
+                    handleRestock(Items.GOLDEN_APPLE)
+                }
 
                 tasks.values.toList().forEach {
                     doTask(it, true)
