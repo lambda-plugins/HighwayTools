@@ -220,7 +220,7 @@ object Statistics {
         displayText.addLine("%.2f SMA(%.2f)".format(totalBlocksBroken / runtimeSec, simpleMovingAverageBreaks.size / HighwayToolsHud.simpleMovingAverageRange.toDouble()), secondaryColor)
 
         displayText.add("    Distance km / h:", primaryColor)
-        displayText.addLine("%.3f SMA(%.3f)".format((distanceDone / runtimeSec * 60.0 * 60.0) / 1000.0, (simpleMovingAverageDistance.size / HighwayToolsHud.simpleMovingAverageRange * 60.0 * 60.0) / 1000.0), secondaryColor)
+        displayText.addLine("%.2f SMA(%.2f)".format((distanceDone / runtimeSec * 60.0 * 60.0) / 1000.0, (simpleMovingAverageDistance.size / HighwayToolsHud.simpleMovingAverageRange * 60.0 * 60.0) / 1000.0), secondaryColor)
 
         displayText.add("    Food level loss / h:", primaryColor)
         displayText.addLine("%.2f".format(totalBlocksBroken / foodLoss.toDouble()), secondaryColor)

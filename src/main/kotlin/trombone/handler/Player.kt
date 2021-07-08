@@ -129,21 +129,21 @@ object Player {
                         if (player.inventorySlots.countBlock(material) > 0) {
                             material
                         } else {
-                            disableError("No ${blockTask.block.localizedName} was found in inventory.")
+                            disableError("No ${blockTask.block.localizedName} was found in inventory. (1)")
                             return false
                         }
                     } else {
                         if (player.inventorySlots.countBlock(fillerMat) > 0) {
                             fillerMat
                         } else {
-                            disableError("No ${blockTask.block.localizedName} was found in inventory.")
+                            disableError("No ${blockTask.block.localizedName} was found in inventory. (2)")
                             return false
                         }
                     }
                 }
                 player.inventorySlots.countBlock(blockTask.block) > 0 -> blockTask.block
                 else -> {
-                    disableError("No ${blockTask.block.localizedName} was found in inventory.")
+                    disableError("No ${blockTask.block.localizedName} was found in inventory. (3)")
                     return false
                 }
             }
@@ -153,7 +153,7 @@ object Player {
             })
 
             return if (!success) {
-                disableError("No ${blockTask.block.localizedName} was found in inventory.")
+                disableError("No ${blockTask.block.localizedName} was found in inventory. (4)")
                 false
             } else {
                 true
@@ -190,7 +190,7 @@ object Player {
     fun SafeClientEvent.moveToInventory(slot: Slot) {
         player.openContainer.getSlots(27..62).firstOrNull {
             (slot.stack.item == it.stack.item && it.stack.count < slot.slotStackLimit - slot.stack.count) ||
-                slot.stack.item == Items.AIR
+                it.stack.item == Items.AIR
         }?.let {
             clickSlot(player.openContainer.windowId, slot, 0, ClickType.QUICK_MOVE)
         } ?: run {
@@ -199,6 +199,7 @@ object Player {
             }?.let {
                 clickSlot(player.openContainer.windowId, slot, it.hotbarSlot, ClickType.SWAP)
             } ?: run {
+                // ToDo: SWAP Item from hotbar to ejectable item in inventory and then swap target slot with hotbar
                 disableError("Inventory full.")
             }
         }

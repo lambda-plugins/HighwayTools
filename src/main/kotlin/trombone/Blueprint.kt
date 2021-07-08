@@ -193,10 +193,6 @@ object Blueprint {
     }
 
     fun isInsideBlueprintBuild(pos: BlockPos): Boolean {
-        val mat = when (mode) {
-            Mode.HIGHWAY, Mode.FLAT -> material
-            Mode.TUNNEL -> fillerMat
-        }
-        return blueprint[pos]?.let { it == mat } ?: false
+        return blueprint[pos]?.let { it == material } ?: false
     }
 }

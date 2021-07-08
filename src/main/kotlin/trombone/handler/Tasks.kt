@@ -170,8 +170,17 @@ object Tasks {
             containerTask.taskState != TaskState.DONE -> {
                 val eyePos = player.getPositionEyes(1.0f)
                 containerTask.updateTask(this, eyePos)
-                if (!checkStuckTimeout(containerTask)) return
-                tasks.values.toList().forEach {
+                if (containerTask.stuckTicks > containerTask.taskState.stuckTimeout) {
+                    if (containerTask.taskState == TaskState.PICKUP) {
+                        MessageSendHelper.sendChatMessage("${module.chatName} Can't pickup ${containerTask.item.registryName}@(${containerTask.blockPos.asString()})")
+                        moveState = MovementState.RUNNING
+                    } else {
+                        MessageSendHelper.sendChatMessage("${module.chatName} Failed container action: ${containerTask.item.registryName}@(${containerTask.blockPos.asString()})")
+                    }
+                    containerTask.updateState(TaskState.DONE)
+                    return
+                }
+                tasks.values.forEach {
                     doTask(it, true)
                 }
                 doTask(containerTask, false)
@@ -226,16 +235,15 @@ object Tasks {
         tasks[blockPos]?.let {
             if (it.stuckTicks > it.taskState.stuckTimeout ||
                 taskState == TaskState.LIQUID ||
-                (it.taskState == TaskState.DONE && it.taskState != taskState)) {
+                (it.taskState != taskState &&
+                    (it.taskState == TaskState.DONE ||
+                        (it.taskState == TaskState.PLACE && it.stuckTicks > 0)))) {
+//                (it.taskState != taskState &&
+//                    it.taskState != TaskState.BREAKING &&
+//                    it.taskState != TaskState.PENDING_BREAK &&
+//                    it.taskState != TaskState.PENDING_PLACE)) {
                 tasks[blockPos] = task
             }
-//            if ((it.taskState != taskState &&
-//                    (it.taskState != TaskState.PENDING_BREAK ||
-//                     it.taskState != TaskState.PENDING_PLACE ||
-//                        it.taskState != TaskState.BREAKING)) ||
-//                it.stuckTicks > it.taskState.stuckTimeout) {
-//                tasks[blockPos] = (BlockTask(blockPos, taskState, material))
-//            }
         } ?: run {
             tasks[blockPos] = task
         }

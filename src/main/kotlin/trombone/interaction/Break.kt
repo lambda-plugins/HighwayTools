@@ -121,9 +121,9 @@ object Break {
                 }
 
                 if (size > limit * limitFactor) {
-                    if (debugMessages == DebugMessages.ALL) {
-                        MessageSendHelper.sendChatMessage("${module.chatName} Dropped possible instant mine action @ TPS($limit) Actions(${size})")
-                    }
+//                    if (debugMessages == DebugMessages.ALL) {
+//                        MessageSendHelper.sendChatMessage("${module.chatName} Dropped possible instant mine action @ TPS($limit) Actions(${size})")
+//                    }
                     break
                 }
 
