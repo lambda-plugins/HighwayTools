@@ -12,6 +12,8 @@ import com.lambda.client.util.threads.safeListener
 import com.lambda.event.listener.listener
 import net.minecraft.block.Block
 import net.minecraft.init.Blocks
+import net.minecraft.init.Items
+import net.minecraft.item.Item
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import trombone.IO.DebugMessages
 import trombone.IO.DisableMode
@@ -69,6 +71,7 @@ object HighwayTools : PluginModule(
     private val materialSaved = setting("Material", "minecraft:obsidian", { false })
     private val fillerMatSaved = setting("FillerMat", "minecraft:netherrack", { false })
     val ignoreBlocks = setting(CollectionSetting("IgnoreList", defaultIgnoreBlocks, { false }))
+    val FoodItem = setting("Food Item", "minecraft:golden_apple", { false })
 
     // behavior settings
     val interacting by setting("Rotation Mode", RotationMode.SPOOF, { page == Page.BEHAVIOR }, description = "Force view client side, only server side or no interaction at all")
@@ -136,6 +139,12 @@ object HighwayTools : PluginModule(
         set(value) {
             fillerMatSaved.value = value.registryName.toString()
         }
+    var food: Item
+        get() = Item.getByNameOrId(FoodItem.value) ?: Items.GOLDEN_APPLE
+        set(value) {
+            FoodItem.value = value.registryName.toString()
+        }
+
 
     override fun isActive(): Boolean {
         return isEnabled && active

@@ -79,11 +79,20 @@ object HighwayToolsCommand : ClientCommand(
             }
         }
 
-        literal("filler", "fil") {
+        literal("material", "mat") {
             block("block") { blockArg ->
+                execute("Set a block as main material") {
+                    HighwayTools.material = blockArg.value
+                    sendChatMessage("Set your building material to &7${blockArg.value.localizedName}&r.")
+                }
+            }
+        }
+
+        literal("food", "fd") {
+            item("item") { itemArg ->
                 execute("Set a block as filler material") {
-                    HighwayTools.fillerMat = blockArg.value
-                    sendChatMessage("Set your filling material to &7${blockArg.value.localizedName}&r.")
+                    HighwayTools.food = itemArg.value
+                    sendChatMessage("Set your food item to &7${itemArg.value.registryName}&r.")
                 }
             }
         }

@@ -6,6 +6,7 @@ import HighwayTools.debugMessages
 import HighwayTools.dynamicDelay
 import HighwayTools.fakeSounds
 import HighwayTools.fillerMat
+import HighwayTools.food
 import HighwayTools.ignoreBlocks
 import HighwayTools.material
 import HighwayTools.maxReach
@@ -201,7 +202,7 @@ object Tasks {
                 waitTicks--
 
                 if (manageFood && player.inventorySlots.countItem(Items.GOLDEN_APPLE) < saveFood) {
-                    handleRestock(Items.GOLDEN_APPLE)
+                    handleRestock(food)
                 }
 
                 tasks.values.toList().forEach {
