@@ -9,6 +9,7 @@ import HighwayTools.material
 import HighwayTools.mode
 import HighwayTools.placeDelay
 import HighwayTools.printDebug
+import HighwayTools.skynet
 import HighwayTools.width
 import HighwayToolsHud
 import HighwayToolsHud.showEnvironment
@@ -16,6 +17,7 @@ import HighwayToolsHud.showEstimations
 import HighwayToolsHud.showLifeTime
 import HighwayToolsHud.showPerformance
 import HighwayToolsHud.showSession
+import HighwayToolsHud.showSkynet
 import HighwayToolsHud.showTask
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.module.modules.client.Hud.primaryColor
@@ -45,6 +47,10 @@ import trombone.handler.Container.containerTask
 import trombone.handler.Container.grindCycles
 import trombone.handler.Player.packetLimiter
 import trombone.handler.Player.packetLimiterMutex
+import trombone.handler.Skynet.botSet
+import trombone.handler.Skynet.job
+import trombone.handler.Skynet.lane
+import trombone.handler.Skynet.rank
 import trombone.handler.Tasks.sortedTasks
 import trombone.interaction.Place.extraPlaceDelay
 import trombone.task.BlockTask
@@ -131,6 +137,8 @@ object Statistics {
         if (showTask) gatherTask(displayText)
 
         if (showEstimations) gatherEstimations(displayText, runtimeSec, distanceDone)
+
+        if (showSkynet && skynet) gatherSkynet(displayText)
 
         if (printDebug) {
             if (containerTask.taskState != TaskState.DONE) {
@@ -339,6 +347,24 @@ object Statistics {
 
                 displayText.add("    ETA:", primaryColor)
                 displayText.addLine("$hoursLeft:$minutesLeft:$secondsLeft", secondaryColor)
+            }
+        }
+    }
+
+    private fun gatherSkynet(displayText: TextComponent) {
+        if (botSet.isEmpty()) {
+            displayText.addLine("Skynet inactive.", primaryColor)
+        } else {
+            displayText.addLine("Skynet", primaryColor)
+            displayText.add("    Rank:", primaryColor)
+            displayText.addLine("$rank", secondaryColor)
+            displayText.add("    Job:", primaryColor)
+            displayText.addLine("$job", secondaryColor)
+            displayText.add("    Lane:", primaryColor)
+            displayText.addLine("$lane", secondaryColor)
+            displayText.addLine("    Bots:", primaryColor)
+            for (bot in botSet) {
+                displayText.addLine("        Name: ${bot.name} Rank: ${bot.rank} Job: ${bot.job} Lane: ${bot.lane}", secondaryColor)
             }
         }
     }

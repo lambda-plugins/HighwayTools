@@ -18,6 +18,7 @@ import net.minecraft.util.math.Vec3d
 import trombone.IO.disableError
 import trombone.Statistics.simpleMovingAverageDistance
 import trombone.Trombone.active
+import trombone.handler.Container.containerTask
 import trombone.handler.Container.getCollectingPosition
 import trombone.handler.Player.lastHitVec
 import trombone.handler.Tasks.isTaskDone
@@ -112,7 +113,8 @@ object Pathfinder {
     }
 
     private fun checkTasks(pos: BlockPos): Boolean {
-        return tasks.values.all {
+        return pos.toVec3dCenter().distanceTo(containerTask.blockPos.toVec3dCenter()) < maxReach - 0.5 &&
+            tasks.values.all {
             it.taskState == TaskState.DONE ||
                 pos.toVec3dCenter().distanceTo(it.blockPos.toVec3dCenter()) < maxReach - 0.5
         }

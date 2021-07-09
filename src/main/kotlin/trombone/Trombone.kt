@@ -1,6 +1,7 @@
 package trombone
 
 import HighwayTools
+import HighwayTools.skynet
 import com.lambda.client.event.SafeClientEvent
 import trombone.BaritoneHelper.resetBaritone
 import trombone.BaritoneHelper.setupBaritone
@@ -14,6 +15,7 @@ import trombone.Renderer.updateRenderer
 import trombone.Statistics.updateStats
 import trombone.Statistics.updateTotalDistance
 import trombone.handler.Player.updateRotation
+import trombone.handler.Skynet.skynetHandler
 import trombone.handler.Tasks.clearTasks
 import trombone.handler.Tasks.runTasks
 import trombone.handler.Tasks.updateTasks
@@ -46,6 +48,7 @@ object Trombone {
         updateRenderer()
         updateTasks()
         updateStats()
+        if (skynet) skynetHandler()
 
         if (pauseCheck()) return
 

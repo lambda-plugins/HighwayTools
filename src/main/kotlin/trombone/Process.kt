@@ -2,12 +2,15 @@ package trombone
 
 import HighwayTools
 import HighwayTools.anonymizeStats
+import HighwayTools.skynet
 import baritone.api.pathing.goals.GoalNear
 import baritone.api.process.IBaritoneProcess
 import baritone.api.process.PathingCommand
 import baritone.api.process.PathingCommandType
 import com.lambda.client.util.math.CoordinateConverter.asString
 import trombone.Pathfinder.goal
+import trombone.handler.Skynet.botSet
+import trombone.handler.Skynet.getLaneOffset
 import trombone.handler.Tasks.lastTask
 
 /**
@@ -44,7 +47,12 @@ object Process : IBaritoneProcess {
 
     override fun onTick(p0: Boolean, p1: Boolean): PathingCommand {
         return goal?.let {
-            PathingCommand(GoalNear(it, 0), PathingCommandType.SET_GOAL_AND_PATH)
+            val goalReal = if (skynet && botSet.isNotEmpty()) {
+                GoalNear(getLaneOffset(it), 0)
+            } else {
+                GoalNear(it, 0)
+            }
+            PathingCommand(goalReal, PathingCommandType.SET_GOAL_AND_PATH)
         } ?: PathingCommand(null, PathingCommandType.REQUEST_PAUSE)
     }
 }

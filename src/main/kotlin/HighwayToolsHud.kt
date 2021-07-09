@@ -16,6 +16,7 @@ internal object HighwayToolsHud : PluginLabelHud(
     val showEnvironment by setting("Show Environment", true, description = "Toggles the Environment section in HUD")
     val showTask by setting("Show Task", true, description = "Toggles the Task section in HUD")
     val showEstimations by setting("Show Estimations", true, description = "Toggles the Estimations section in HUD")
+    val showSkynet by setting("Show Skynet", true, description = "Toggles Skynet section in HUD")
     private val resetStats = setting("Reset Stats", false, description = "Resets the stats")
 
     init {
