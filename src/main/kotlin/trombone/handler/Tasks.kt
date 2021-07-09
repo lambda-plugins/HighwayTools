@@ -655,11 +655,7 @@ object Tasks {
                 }
 
                 if (blockTask == containerTask) {
-                    if (containerTask.block == currentBlock) {
-                        containerTask.updateState(TaskState.BREAK)
-                    } else {
-                        containerTask.updateState(TaskState.DONE)
-                    }
+                    containerTask.updateState(TaskState.BREAK)
                 } else {
                     tasks.remove(blockTask.blockPos)
                 }
