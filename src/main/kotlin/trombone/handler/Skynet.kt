@@ -40,7 +40,7 @@ object Skynet {
         NONE, MASTER, SLAVE
     }
 
-    val botSet = LinkedHashSet<Bot>()
+    val bots = LinkedHashSet<Bot>()
     var rank = Rank.NONE
     var job = Job.NONE
     var lane = 0
@@ -60,26 +60,26 @@ object Skynet {
     fun SafeClientEvent.skynetHandler() {
         if (whisperTimer.tick(whisperDelay * 1L) && pendingWhispers.isNotEmpty()) {
             val pendingCommand = pendingWhispers.poll()
-            botSet.forEach {
+            bots.forEach {
                 if (it.name == pendingCommand.second) sendServerMessage(pendingCommand.first)
             }
         }
 
-        val players = LinkedHashSet(world.playerEntities)
+        val currentPlayers = LinkedHashSet(world.playerEntities)
 
-        players.removeIf {
-            it.isFakeOrSelf || (!friends && FriendManager.isFriend(it.name))
+        currentPlayers.removeIf {
+            it.isFakeOrSelf || (friends && !FriendManager.isFriend(it.name))
         }
 
-        players.forEach { player ->
-            if (botSet.any { it.player == player }) {
-                botSet.add(Bot(player, player.name, Rank.NONE, Job.NONE, 0))
-                if (module.isEnabled) handshake(player.name)
+        currentPlayers.forEach { thatPlayer ->
+            if (bots.none { it.player == thatPlayer }) {
+                bots.add(Bot(thatPlayer, thatPlayer.name, Rank.NONE, Job.NONE, 0))
+                if (module.isEnabled) handshake(thatPlayer.name)
             }
         }
 
-        botSet.removeIf {
-            !players.contains(it.player)
+        bots.removeIf {
+            !currentPlayers.contains(it.player)
         }
     }
 
@@ -96,7 +96,7 @@ object Skynet {
     }
 
     private fun handshake(player: String) {
-        addPendingCommand(Command.HANDSHAKE, player, "$rank $job $lane ${botSet.size}")
+        addPendingCommand(Command.HANDSHAKE, player, "$rank $job $lane ${bots.size}")
     }
 
     private fun assignStatus(player: String, botRank: Rank, botJob: Job, botLane: Int) {
@@ -115,12 +115,12 @@ object Skynet {
             Command.HANDSHAKE -> {
                 if (player != "Avanatiker" || Rank.valueOf(decoded[1]) != Rank.MASTER) {
                     var index = 0
-                    botSet.forEach {
+                    bots.forEach {
                         if (it.name == player) {
                             it.rank = Rank.SLAVE
                             it.job = Job.PAVER
                             it.lane = index.rem(width - 2)
-                            index = botSet.indexOf(it)
+                            index = bots.indexOf(it)
                         }
                     }
                     assignStatus(player, Rank.SLAVE, Job.PAVER, index.rem(width - 2))
@@ -143,10 +143,6 @@ object Skynet {
     }
 
     fun getLaneOffset(pos: BlockPos): BlockPos {
-        return if (skynet) {
-            pos.add(startingDirection.clockwise(7).directionVec.multiply(testLane))
-        } else {
-            pos
-        }
+        return pos.add(startingDirection.clockwise(1).directionVec.multiply(testLane))
     }
 }

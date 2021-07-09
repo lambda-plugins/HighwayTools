@@ -9,7 +9,7 @@ import baritone.api.process.PathingCommand
 import baritone.api.process.PathingCommandType
 import com.lambda.client.util.math.CoordinateConverter.asString
 import trombone.Pathfinder.goal
-import trombone.handler.Skynet.botSet
+import trombone.handler.Skynet.bots
 import trombone.handler.Skynet.getLaneOffset
 import trombone.handler.Tasks.lastTask
 
@@ -47,7 +47,7 @@ object Process : IBaritoneProcess {
 
     override fun onTick(p0: Boolean, p1: Boolean): PathingCommand {
         return goal?.let {
-            val goalReal = if (skynet && botSet.isNotEmpty()) {
+            val goalReal = if (skynet && bots.isNotEmpty()) {
                 GoalNear(getLaneOffset(it), 0)
             } else {
                 GoalNear(it, 0)

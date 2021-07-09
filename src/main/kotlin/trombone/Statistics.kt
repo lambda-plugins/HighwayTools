@@ -47,7 +47,7 @@ import trombone.handler.Container.containerTask
 import trombone.handler.Container.grindCycles
 import trombone.handler.Player.packetLimiter
 import trombone.handler.Player.packetLimiterMutex
-import trombone.handler.Skynet.botSet
+import trombone.handler.Skynet.bots
 import trombone.handler.Skynet.job
 import trombone.handler.Skynet.lane
 import trombone.handler.Skynet.rank
@@ -352,7 +352,7 @@ object Statistics {
     }
 
     private fun gatherSkynet(displayText: TextComponent) {
-        if (botSet.isEmpty()) {
+        if (bots.isEmpty()) {
             displayText.addLine("Skynet inactive.", primaryColor)
         } else {
             displayText.addLine("Skynet", primaryColor)
@@ -363,7 +363,7 @@ object Statistics {
             displayText.add("    Lane:", primaryColor)
             displayText.addLine("$lane", secondaryColor)
             displayText.addLine("    Bots:", primaryColor)
-            for (bot in botSet) {
+            for (bot in bots) {
                 displayText.addLine("        Name: ${bot.name} Rank: ${bot.rank} Job: ${bot.job} Lane: ${bot.lane}", secondaryColor)
             }
         }
