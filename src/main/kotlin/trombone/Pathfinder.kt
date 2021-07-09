@@ -113,7 +113,9 @@ object Pathfinder {
     }
 
     private fun checkTasks(pos: BlockPos): Boolean {
-        return pos.toVec3dCenter().distanceTo(containerTask.blockPos.toVec3dCenter()) < maxReach - 0.5 &&
+        return ((containerTask.taskState != TaskState.DONE &&
+            pos.toVec3dCenter().distanceTo(containerTask.blockPos.toVec3dCenter()) < maxReach - 0.5) ||
+            containerTask.taskState == TaskState.DONE) &&
             tasks.values.all {
             it.taskState == TaskState.DONE ||
                 pos.toVec3dCenter().distanceTo(it.blockPos.toVec3dCenter()) < maxReach - 0.5
