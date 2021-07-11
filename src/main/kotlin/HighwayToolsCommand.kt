@@ -88,6 +88,15 @@ object HighwayToolsCommand : ClientCommand(
             }
         }
 
+        literal("food", "fd") {
+            item("item") { itemArg ->
+                execute("Set a block as filler material") {
+                    HighwayTools.food = itemArg.value
+                    sendChatMessage("Set your food item to &7${itemArg.value.registryName}&r.")
+                }
+            }
+        }
+
         execute("Print the settings") {
             printSettings()
         }
