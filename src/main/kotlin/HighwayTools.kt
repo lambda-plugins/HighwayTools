@@ -70,8 +70,8 @@ object HighwayTools : PluginModule(
     val railingHeight by setting("Railing Height", 1, 1..4, 1, { railing && page == Page.BUILD && mode == Mode.HIGHWAY }, description = "Sets height of railing")
     private val materialSaved = setting("Material", "minecraft:obsidian", { false })
     private val fillerMatSaved = setting("FillerMat", "minecraft:netherrack", { false })
+    private val foodItem = setting("Food Item", "minecraft:golden_apple", { false })
     val ignoreBlocks = setting(CollectionSetting("IgnoreList", defaultIgnoreBlocks, { false }))
-    val foodItem = setting("Food Item", "minecraft:golden_apple", { false })
 
     // behavior settings
     val interacting by setting("Rotation Mode", RotationMode.SPOOF, { page == Page.BEHAVIOR }, description = "Force view client side, only server side or no interaction at all")
