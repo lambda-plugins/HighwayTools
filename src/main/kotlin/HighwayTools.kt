@@ -71,7 +71,7 @@ object HighwayTools : PluginModule(
     private val materialSaved = setting("Material", "minecraft:obsidian", { false })
     private val fillerMatSaved = setting("FillerMat", "minecraft:netherrack", { false })
     val ignoreBlocks = setting(CollectionSetting("IgnoreList", defaultIgnoreBlocks, { false }))
-    val FoodItem = setting("Food Item", "minecraft:golden_apple", { false })
+    val foodItem = setting("Food Item", "minecraft:golden_apple", { false })
 
     // behavior settings
     val interacting by setting("Rotation Mode", RotationMode.SPOOF, { page == Page.BEHAVIOR }, description = "Force view client side, only server side or no interaction at all")
@@ -140,9 +140,9 @@ object HighwayTools : PluginModule(
             fillerMatSaved.value = value.registryName.toString()
         }
     var food: Item
-        get() = Item.getByNameOrId(FoodItem.value) ?: Items.GOLDEN_APPLE
+        get() = Item.getByNameOrId(foodItem.value) ?: Items.GOLDEN_APPLE
         set(value) {
-            FoodItem.value = value.registryName.toString()
+            foodItem.value = value.registryName.toString()
         }
 
 

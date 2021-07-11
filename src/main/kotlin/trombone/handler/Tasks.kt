@@ -196,12 +196,16 @@ object Tasks {
                 }
             }
             tasks.values.all { it.taskState == TaskState.DONE } -> {
+                if (manageFood && player.inventorySlots.countItem(food) < saveFood) {
+                    handleRestock(food)
+                }
+
                 updateTasks()
             }
             else -> {
                 waitTicks--
 
-                if (manageFood && player.inventorySlots.countItem(Items.GOLDEN_APPLE) < saveFood) {
+                if (manageFood && player.inventorySlots.countItem(food) < saveFood) {
                     handleRestock(food)
                 }
 
