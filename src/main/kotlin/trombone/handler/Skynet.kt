@@ -133,7 +133,7 @@ object Skynet {
                         /* Update remote */
                         handshake(player)
                     } ?: run {
-                        sendServerMessage("$chatName Bot $player not indexed (1)")
+                        sendChatMessage("$chatName Bot $player not indexed (1)")
                     }
                 } else {
                     bots.firstOrNull { it.name == player }?.let {
@@ -141,7 +141,7 @@ object Skynet {
                         it.job = Job.valueOf(decoded[2])
                         it.lane = decoded[3].toInt()
                     } ?: run {
-                        sendServerMessage("$chatName Bot $player not indexed (2)")
+                        sendChatMessage("$chatName Bot $player not indexed (2)")
                     }
                 }
             }
