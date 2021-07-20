@@ -12,6 +12,8 @@ import com.lambda.client.util.threads.safeListener
 import com.lambda.event.listener.listener
 import net.minecraft.block.Block
 import net.minecraft.init.Blocks
+import net.minecraft.init.Items
+import net.minecraft.item.Item
 import net.minecraftforge.client.event.ClientChatReceivedEvent
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import trombone.IO.DebugMessages
@@ -71,6 +73,7 @@ object HighwayTools : PluginModule(
     val railingHeight by setting("Railing Height", 1, 1..4, 1, { railing && page == Page.BUILD && mode == Mode.HIGHWAY }, description = "Sets height of railing")
     private val materialSaved = setting("Material", "minecraft:obsidian", { false })
     private val fillerMatSaved = setting("FillerMat", "minecraft:netherrack", { false })
+    private val foodItem = setting("Food Item", "minecraft:golden_apple", { false })
     val ignoreBlocks = setting(CollectionSetting("IgnoreList", defaultIgnoreBlocks, { false }))
 
     // behavior settings
@@ -96,9 +99,12 @@ object HighwayTools : PluginModule(
     val storageManagement by setting("Manage Storage", true, { page == Page.STORAGE_MANAGEMENT }, description = "Choose to interact with container using only packets.")
     val leaveEmptyShulkers by setting("Leave Empty Shulkers", true, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Does not break empty shulkers.")
     val grindObsidian by setting("Grind Obsidian", true, { page == Page.STORAGE_MANAGEMENT }, description = "Destroy Ender Chests to obtain Obsidian.")
+    val manageFood by setting("Manage Food", true, { page == Page.STORAGE_MANAGEMENT }, description = "Choose to manage food.")
     val saveMaterial by setting("Save Material", 12, 0..64, 1, { page == Page.STORAGE_MANAGEMENT }, description = "How many material blocks are saved")
     val saveTools by setting("Save Tools", 1, 0..36, 1, { page == Page.STORAGE_MANAGEMENT }, description = "How many tools are saved")
     val saveEnder by setting("Save Ender Chests", 1, 0..64, 1, { page == Page.STORAGE_MANAGEMENT }, description = "How many ender chests are saved")
+    val saveFood by setting("Save Food", 1, 0..64, 1, { page == Page.STORAGE_MANAGEMENT && manageFood}, description = "How many food items are saved")
+
     val disableMode by setting("Disable Mode", DisableMode.NONE, { page == Page.STORAGE_MANAGEMENT }, description = "Choose action when bot is out of materials or tools")
     val usingProxy by setting("Proxy", false, { disableMode == DisableMode.LOGOUT && page == Page.STORAGE_MANAGEMENT }, description = "Enable this if you are using a proxy to call the given command")
     val proxyCommand by setting("Proxy Command", "/dc", { usingProxy && disableMode == DisableMode.LOGOUT && page == Page.STORAGE_MANAGEMENT }, description = "Command to be sent to log out")
@@ -145,6 +151,12 @@ object HighwayTools : PluginModule(
         set(value) {
             fillerMatSaved.value = value.registryName.toString()
         }
+    var food: Item
+        get() = Item.getByNameOrId(foodItem.value) ?: Items.GOLDEN_APPLE
+        set(value) {
+            foodItem.value = value.registryName.toString()
+        }
+
 
     override fun isActive(): Boolean {
         return isEnabled && active

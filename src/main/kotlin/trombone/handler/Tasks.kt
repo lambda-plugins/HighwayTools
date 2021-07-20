@@ -6,12 +6,15 @@ import HighwayTools.debugMessages
 import HighwayTools.dynamicDelay
 import HighwayTools.fakeSounds
 import HighwayTools.fillerMat
+import HighwayTools.food
 import HighwayTools.ignoreBlocks
 import HighwayTools.material
 import HighwayTools.maxReach
 import HighwayTools.mode
 import HighwayTools.multiBuilding
 import HighwayTools.saveTools
+import HighwayTools.saveFood
+import HighwayTools.manageFood
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.module.modules.player.InventoryManager
 import com.lambda.client.util.items.*
@@ -193,10 +196,18 @@ object Tasks {
                 }
             }
             tasks.values.all { it.taskState == TaskState.DONE } -> {
+                if (manageFood && player.inventorySlots.countItem(food) < saveFood) {
+                    handleRestock(food)
+                }
+
                 updateTasks()
             }
             else -> {
                 waitTicks--
+
+                if (manageFood && player.inventorySlots.countItem(food) < saveFood) {
+                    handleRestock(food)
+                }
 
                 tasks.values.toList().forEach {
                     doTask(it, true)
