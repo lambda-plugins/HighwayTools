@@ -1,5 +1,6 @@
 package trombone.handler
 
+import HighwayTools.chatName
 import HighwayTools.debugLog
 import HighwayTools.friends
 import HighwayTools.noWhispersShown
@@ -15,6 +16,7 @@ import com.lambda.client.util.TickTimer
 import com.lambda.client.util.TimeUnit
 import com.lambda.client.util.math.VectorUtils.multiply
 import com.lambda.client.util.text.MessageSendHelper
+import com.lambda.client.util.text.MessageSendHelper.sendChatMessage
 import com.lambda.client.util.text.MessageSendHelper.sendServerMessage
 import com.sun.jna.Native.toByteArray
 import net.minecraft.util.math.BlockPos
@@ -58,7 +60,8 @@ object Skynet {
     }
 
     fun SafeClientEvent.skynetHandler() {
-        if (whisperTimer.tick(whisperDelay * 1L) && pendingWhispers.isNotEmpty()) {
+        if (pendingWhispers.isNotEmpty()
+            && whisperTimer.tick(whisperDelay * 1L)) {
             val pendingCommand = pendingWhispers.poll()
             bots.forEach {
                 if (it.name == pendingCommand.second) sendServerMessage(pendingCommand.first)
@@ -87,11 +90,11 @@ object Skynet {
         val commandInfo = if (data.isBlank()) {
             "$command"
         } else {
-            "$command > $data"
+            "$command $data"
         }
 
         val commandMessage = "$protocolPrefix ${toBase64(commandInfo)}"
-        if (debugLog) MessageSendHelper.sendChatMessage("$protocolPrefix $player > $commandInfo")
+        if (debugLog) sendChatMessage("$protocolPrefix To $player > $commandInfo")
         if (!suppressWhisper) pendingWhispers.add(Pair("/w $player $commandMessage", player))
     }
 
@@ -109,21 +112,37 @@ object Skynet {
 
     private fun handleCommand(player: String, command: String) {
         val decoded = fromBase64(command).split(" ")
-        if (debugLog) MessageSendHelper.sendChatMessage("$protocolPrefix $player > ${fromBase64(command)}")
+        if (debugLog) sendChatMessage("$protocolPrefix From $player > ${fromBase64(command)}")
 
         when (Command.valueOf(decoded[0])) {
             Command.HANDSHAKE -> {
-                if (player != "Avanatiker" || Rank.valueOf(decoded[1]) != Rank.MASTER) {
-                    var index = 0
-                    bots.forEach {
-                        if (it.name == player) {
-                            it.rank = Rank.SLAVE
-                            it.job = Job.PAVER
-                            it.lane = index.rem(width - 2)
-                            index = bots.indexOf(it)
-                        }
+                if (player != "Avanatiker" && Rank.valueOf(decoded[1]) != Rank.MASTER) {
+                    bots.firstOrNull { it.name == player }?.let {
+                        /* Remote */
+                        it.rank = Rank.SLAVE
+                        it.job = Job.PAVER
+                        it.lane = bots.indexOf(it).rem(width - 2)
+
+                        assignStatus(player, it.rank, it.job, it.lane)
+
+                        /* Self */
+                        rank = Rank.MASTER
+                        job = Job.PAVER
+                        lane = 0
+
+                        /* Update remote */
+                        handshake(player)
+                    } ?: run {
+                        sendServerMessage("$chatName Bot $player not indexed (1)")
                     }
-                    assignStatus(player, Rank.SLAVE, Job.PAVER, index.rem(width - 2))
+                } else {
+                    bots.firstOrNull { it.name == player }?.let {
+                        it.rank = Rank.valueOf(decoded[1])
+                        it.job = Job.valueOf(decoded[2])
+                        it.lane = decoded[3].toInt()
+                    } ?: run {
+                        sendServerMessage("$chatName Bot $player not indexed (2)")
+                    }
                 }
             }
             Command.ASSIGN_STATUS -> {
