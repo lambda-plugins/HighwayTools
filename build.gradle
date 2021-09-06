@@ -36,6 +36,7 @@ repositories {
     maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
     maven { url = 'https://impactdevelopment.github.io/maven/' }
     maven { url = "https://jitpack.io" }
+    mavenCentral()
 }
 
 
@@ -76,7 +77,7 @@ dependencies {
 
     // API coming soon
 //    implementation 'com.github.lambda-client:lambda:2.06'
-    implementation(files("lib/lambda-2.07.xx-dev-api.jar"))
+    implementation(files("lib/lambda-2.09.xx-dev-api.jar"))
 
     implementation('org.spongepowered:mixin:0.7.11-SNAPSHOT') {
         exclude module: 'commons-io'
@@ -120,7 +121,7 @@ dependencies {
 
     // Add them back to compileOnly (provided)
     compileOnly "org.jetbrains.kotlin:kotlin-stdlib-common:$kotlin_version"
-    compileOnly 'org.jetbrains:annotations:20.1.0'
+    compileOnly 'org.jetbrains:annotations:22.0.0'
 
     // This Baritone will NOT be included in the jar
     implementation 'com.github.cabaletta:baritone:1.2.14'
