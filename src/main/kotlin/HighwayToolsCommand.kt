@@ -12,7 +12,7 @@ object HighwayToolsCommand : ClientCommand(
     init {
         literal("add", "new", "+") {
             block("block") { blockArg ->
-                execute("Add a block to ignore list") {
+                execute("Adds a block to ignore list") {
                     val added = HighwayTools.ignoreBlocks.add(blockArg.value.registryName.toString())
                     if (added) {
                         printSettings()
@@ -26,7 +26,7 @@ object HighwayToolsCommand : ClientCommand(
 
         literal("remove", "rem", "-", "del") {
             block("block") { blockArg ->
-                execute("Remove a block from ignore list") {
+                execute("Removes a block from ignore list") {
                     val removed = HighwayTools.ignoreBlocks.remove(blockArg.value.registryName.toString())
                     if (removed) {
                         printSettings()
@@ -63,7 +63,7 @@ object HighwayToolsCommand : ClientCommand(
 
         literal("distance") {
             int("distance") { distanceArg ->
-                execute("Set the target distance until the bot stops") {
+                execute("Sets the target distance until the bot stops") {
                     distancePending = distanceArg.value
                     sendChatMessage("HighwayTools will stop after (${distanceArg.value}) blocks distance. To remove the limit use distance 0")
                 }
@@ -72,7 +72,7 @@ object HighwayToolsCommand : ClientCommand(
 
         literal("material", "mat") {
             block("block") { blockArg ->
-                execute("Set a block as main material") {
+                execute("Sets a block as main material") {
                     HighwayTools.material = blockArg.value
                     sendChatMessage("Set your building material to &7${blockArg.value.localizedName}&r.")
                 }
@@ -81,7 +81,7 @@ object HighwayToolsCommand : ClientCommand(
 
         literal("filler", "fil") {
             block("block") { blockArg ->
-                execute("Set a block as filler material") {
+                execute("Sets a block as filler material") {
                     HighwayTools.fillerMat = blockArg.value
                     sendChatMessage("Set your filling material to &7${blockArg.value.localizedName}&r.")
                 }
@@ -90,14 +90,14 @@ object HighwayToolsCommand : ClientCommand(
 
         literal("food", "fd") {
             item("item") { itemArg ->
-                execute("Set a block as filler material") {
+                execute("Sets a type of food") {
                     HighwayTools.food = itemArg.value
                     sendChatMessage("Set your food item to &7${itemArg.value.registryName}&r.")
                 }
             }
         }
 
-        execute("Print the settings") {
+        execute("Print settings") {
             printSettings()
         }
     }
