@@ -24,7 +24,7 @@ object HighwayToolsCommand : ClientCommand(
             }
         }
 
-        literal("del", "rem", "-") {
+        literal("remove", "rem", "-", "del") {
             block("block") { blockArg ->
                 execute("Remove a block from ignore list") {
                     val removed = HighwayTools.ignoreBlocks.remove(blockArg.value.registryName.toString())
