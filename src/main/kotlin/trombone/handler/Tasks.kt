@@ -15,6 +15,7 @@ import HighwayTools.multiBuilding
 import HighwayTools.saveTools
 import HighwayTools.saveFood
 import HighwayTools.manageFood
+import HighwayTools.storageManagement
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.module.modules.player.InventoryManager
 import com.lambda.client.util.items.*
@@ -189,14 +190,16 @@ object Tasks {
                 doTask(containerTask, false)
             }
             grindCycles > 0 -> {
-                if (player.inventorySlots.countItem(Items.DIAMOND_PICKAXE) > saveTools) {
-                    handleRestock(material.item)
-                } else {
-                    handleRestock(Items.DIAMOND_PICKAXE)
+                if (storageManagement) {
+                    if (player.inventorySlots.countItem(Items.DIAMOND_PICKAXE) > saveTools) {
+                        handleRestock(material.item)
+                    } else {
+                        handleRestock(Items.DIAMOND_PICKAXE)
+                    }
                 }
             }
             tasks.values.all { it.taskState == TaskState.DONE } -> {
-                if (manageFood && player.inventorySlots.countItem(food) < saveFood) {
+                if (storageManagement && manageFood && player.inventorySlots.countItem(food) < saveFood) {
                     handleRestock(food)
                 }
 
@@ -205,7 +208,7 @@ object Tasks {
             else -> {
                 waitTicks--
 
-                if (manageFood && player.inventorySlots.countItem(food) < saveFood) {
+                if (storageManagement && manageFood && player.inventorySlots.countItem(food) < saveFood) {
                     handleRestock(food)
                 }
 

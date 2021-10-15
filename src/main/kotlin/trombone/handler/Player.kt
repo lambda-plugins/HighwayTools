@@ -143,7 +143,7 @@ object Player {
                 }
                 player.inventorySlots.countBlock(blockTask.block) > 0 -> blockTask.block
                 else -> {
-                    if (blockTask.block == material) {
+                    if (blockTask.block == material && storageManagement) {
                         handleRestock(Blocks.OBSIDIAN.item)
                     } else {
                         disableError("No ${blockTask.block.localizedName} was found in inventory. (3)")
