@@ -1,6 +1,6 @@
 {
   "name": "HighwayTools",
-  "version": "10.1",
+  "version": "${version}",
   "authors": [
     "Constructor"
   ],

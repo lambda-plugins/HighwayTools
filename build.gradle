@@ -10,7 +10,7 @@ buildscript {
     dependencies {
         classpath 'net.minecraftforge.gradle:ForgeGradle:4.+'
         classpath 'org.spongepowered:mixingradle:0.7-SNAPSHOT'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
     }
 }
 
@@ -19,28 +19,27 @@ apply plugin: 'kotlin'
 apply plugin: 'net.minecraftforge.gradle'
 apply plugin: 'org.spongepowered.mixin'
 
-compileKotlin {
-    kotlinOptions {
-        jvmTarget = "1.8"
-        useIR = true
-        freeCompilerArgs += '-Xlambdas=indy'
-    }
-}
-
 compileJava {
     sourceCompatibility = targetCompatibility = '1.8'
     options.encoding = 'UTF-8'
+}
+
+compileKotlin.kotlinOptions {
+    freeCompilerArgs += '-Xlambdas=indy'
+    freeCompilerArgs += '-Xopt-in=kotlin.RequiresOptIn'
+    freeCompilerArgs += '-Xopt-in=kotlin.contracts.ExperimentalContracts'
 }
 
 repositories {
     maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
     maven { url = 'https://impactdevelopment.github.io/maven/' }
     maven { url = "https://jitpack.io" }
+    mavenCentral()
 }
 
 
 minecraft {
-    mappings channel: 'stable', version: '39-1.12'
+    mappings channel: "$mappingsChannel", version: "$mappingsVersion"
 
     runs {
         client {
@@ -51,12 +50,6 @@ minecraft {
 
             property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
             property 'forge.logging.console.level', 'debug'
-
-            mods {
-                highwaytools {
-                    source sourceSets.main
-                }
-            }
         }
     }
 }
@@ -72,11 +65,11 @@ configurations {
 }
 
 dependencies {
-    minecraft 'net.minecraftforge:forge:1.12.2-14.23.5.2855'
+    minecraft "net.minecraftforge:forge:$minecraftVersion-$forgeVersion"
 
     // API coming soon
 //    implementation 'com.github.lambda-client:lambda:2.06'
-    implementation(files("lib/lambda-2.07.xx-dev-api.jar"))
+    implementation(files("lib/lambda-2.10-dev-api.jar"))
 
     implementation('org.spongepowered:mixin:0.7.11-SNAPSHOT') {
         exclude module: 'commons-io'
@@ -93,34 +86,34 @@ dependencies {
 
     // Kotlin libs
     // kotlin-stdlib-common and annotations aren't required at runtime
-    implementation("org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version") {
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion") {
         exclude module: 'kotlin-stdlib-common'
         exclude module: 'annotations'
     }
 
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version") {
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion") {
         exclude module: 'kotlin-stdlib-common'
         exclude module: 'annotations'
     }
 
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version") {
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion") {
         exclude module: 'kotlin-stdlib-common'
         exclude module: 'annotations'
     }
 
-    implementation("org.jetbrains.kotlin:kotlin-reflect:$kotlin_version") {
+    implementation("org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion") {
         exclude module: 'kotlin-stdlib-common'
         exclude module: 'annotations'
     }
 
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinx_coroutines_version") {
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinxCoroutinesVersion") {
         exclude module: 'kotlin-stdlib-common'
         exclude module: 'annotations'
     }
 
     // Add them back to compileOnly (provided)
-    compileOnly "org.jetbrains.kotlin:kotlin-stdlib-common:$kotlin_version"
-    compileOnly 'org.jetbrains:annotations:20.1.0'
+    compileOnly "org.jetbrains.kotlin:kotlin-stdlib-common:$kotlinVersion"
+    compileOnly 'org.jetbrains:annotations:22.0.0'
 
     // This Baritone will NOT be included in the jar
     implementation 'com.github.cabaletta:baritone:1.2.14'
@@ -132,6 +125,17 @@ dependencies {
 mixin {
     defaultObfuscationEnv 'searge'
     add sourceSets.main, 'mixins.lambda.refmap.json'
+}
+
+processResources {
+    inputs.property 'version', project.version
+
+    exclude '**/rawimagefiles'
+
+    from(sourceSets.main.resources.srcDirs) {
+        include 'plugin_info.json'
+        expand 'version': project.version
+    }
 }
 
 jar.finalizedBy('reobfJar')

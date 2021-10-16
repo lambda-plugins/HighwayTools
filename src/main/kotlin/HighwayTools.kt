@@ -62,7 +62,8 @@ object HighwayTools : PluginModule(
     val backfill by setting("Backfill", false, { page == Page.BUILD && mode == Mode.TUNNEL }, description = "Fills the tunnel behind you")
     val clearSpace by setting("Clear Space", true, { page == Page.BUILD && mode == Mode.HIGHWAY }, description = "Clears out the tunnel if necessary")
     val cleanFloor by setting("Clean Floor", false, { page == Page.BUILD && mode == Mode.TUNNEL && !backfill }, description = "Cleans up the tunnels floor")
-    val cleanWalls by setting("Clean Walls", false, { page == Page.BUILD && mode == Mode.TUNNEL && !backfill }, description = "Cleans up the tunnels walls")
+    val cleanRightWall by setting("Clean Right Wall", false, { page == Page.BUILD && mode == Mode.TUNNEL && !backfill }, description = "Cleans up the right wall")
+    val cleanLeftWall by setting("Clean Left Wall", false, { page == Page.BUILD && mode == Mode.TUNNEL && !backfill }, description = "Cleans up the left wall")
     val cleanRoof by setting("Clean Roof", false, { page == Page.BUILD && mode == Mode.TUNNEL && !backfill }, description = "Cleans up the tunnels roof")
     val cleanCorner by setting("Clean Corner", false, { page == Page.BUILD && mode == Mode.TUNNEL && !cornerBlock && !backfill && width > 2 }, description = "Cleans up the tunnels corner")
     val cornerBlock by setting("Corner Block", false, { page == Page.BUILD && (mode == Mode.HIGHWAY || (mode == Mode.TUNNEL && !backfill && width > 2)) }, description = "If activated will break the corner in tunnel or place a corner while paving")
@@ -70,7 +71,7 @@ object HighwayTools : PluginModule(
     val railingHeight by setting("Railing Height", 1, 1..4, 1, { railing && page == Page.BUILD && mode == Mode.HIGHWAY }, description = "Sets height of railing")
     private val materialSaved = setting("Material", "minecraft:obsidian", { false })
     private val fillerMatSaved = setting("FillerMat", "minecraft:netherrack", { false })
-    private val foodItem = setting("Food Item", "minecraft:golden_apple", { false })
+    private val foodItem = setting("FoodItem", "minecraft:golden_apple", { false })
     val ignoreBlocks = setting(CollectionSetting("IgnoreList", defaultIgnoreBlocks, { false }))
 
     // behavior settings
