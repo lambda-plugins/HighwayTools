@@ -2,6 +2,7 @@ package trombone
 
 import HighwayTools.anonymizeStats
 import HighwayTools.disableMode
+import HighwayTools.disableWarnings
 import HighwayTools.fillerMat
 import HighwayTools.height
 import HighwayTools.ignoreBlocks
@@ -81,38 +82,39 @@ object IO {
                 }
             }
 
-            if (startingBlockPos.y != 120 && mode != Mode.TUNNEL) {
-                MessageSendHelper.sendRawChatMessage("    §9> §cCheck altitude and make sure to build at Y: 120 for the correct height")
-            }
+            if (!disableWarnings) {
+                if (startingBlockPos.y != 120 && mode != Mode.TUNNEL) {
+                    MessageSendHelper.sendRawChatMessage("    §9> §cCheck altitude and make sure to build at Y: 120 for the correct height")
+                }
 
-            if (AntiHunger.isEnabled) {
-                MessageSendHelper.sendRawChatMessage("    §9> §cAntiHunger does slow down block interactions.")
-            }
+                if (AntiHunger.isEnabled) {
+                    MessageSendHelper.sendRawChatMessage("    §9> §cAntiHunger does slow down block interactions.")
+                }
 
-            if (LagNotifier.isDisabled) {
-                MessageSendHelper.sendRawChatMessage("    §9> §cYou should activate LagNotifier to make the bot stop on server lag.")
-            }
+                if (LagNotifier.isDisabled) {
+                    MessageSendHelper.sendRawChatMessage("    §9> §cYou should activate LagNotifier to make the bot stop on server lag.")
+                }
 
-            if (AutoEat.isDisabled) {
-                MessageSendHelper.sendRawChatMessage("    §9> §cYou should activate AutoEat to not die on starvation.")
-            }
+                if (AutoEat.isDisabled) {
+                    MessageSendHelper.sendRawChatMessage("    §9> §cYou should activate AutoEat to not die on starvation.")
+                }
 
-            if (AutoLog.isDisabled) {
-                MessageSendHelper.sendRawChatMessage("    §9> §cYou should activate AutoLog to prevent most deaths when afk.")
-            }
+                if (AutoLog.isDisabled) {
+                    MessageSendHelper.sendRawChatMessage("    §9> §cYou should activate AutoLog to prevent most deaths when afk.")
+                }
 
-            if (multiBuilding && Velocity.isDisabled) {
-                MessageSendHelper.sendRawChatMessage("    §9> §cMake sure to enable Velocity to not get pushed from your mates.")
-            }
+                if (multiBuilding && Velocity.isDisabled) {
+                    MessageSendHelper.sendRawChatMessage("    §9> §cMake sure to enable Velocity to not get pushed from your mates.")
+                }
 
-            if (material == fillerMat) {
-                MessageSendHelper.sendRawChatMessage("    §9> §cMake sure to use §aTunnel Mode§c instead of having same material for both main and filler!")
-            }
+                if (material == fillerMat) {
+                    MessageSendHelper.sendRawChatMessage("    §9> §cMake sure to use §aTunnel Mode§c instead of having same material for both main and filler!")
+                }
 
-            if (mode == Mode.HIGHWAY && height < 3) {
-                MessageSendHelper.sendRawChatMessage("    §9> §cYou may increase the height to at least 3")
+                if (mode == Mode.HIGHWAY && height < 3) {
+                    MessageSendHelper.sendRawChatMessage("    §9> §cYou may increase the height to at least 3")
+                }
             }
-
         }
     }
 

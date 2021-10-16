@@ -121,6 +121,7 @@ object HighwayTools : PluginModule(
     val popUp by setting("Pop up", true, { page == Page.CONFIG }, description = "Funny render effect")
     val popUpSpeed by setting("Pop up speed", 150, 0..500, 1, { popUp && page == Page.CONFIG }, description = "Sets speed of the pop up effect")
     val showDebugRender by setting("Debug Render", false, { page == Page.CONFIG }, description = "Render debug info on tasks")
+    val disableWarnings by setting("Disable Warnings", false, { page == Page.CONFIG }, description = "DANGEROUS: Disable warnings on enable")
     val textScale by setting("Text Scale", 1.0f, 0.0f..4.0f, 0.25f, { showDebugRender && page == Page.CONFIG }, description = "Scale of debug text")
     val aFilled by setting("Filled Alpha", 26, 0..255, 1, { filled && page == Page.CONFIG }, description = "Sets the opacity")
     val aOutline by setting("Outline Alpha", 91, 0..255, 1, { outline && page == Page.CONFIG }, description = "Sets the opacity")
