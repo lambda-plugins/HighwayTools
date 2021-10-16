@@ -485,10 +485,18 @@ object Tasks {
         when (world.getBlockState(blockTask.blockPos).block) {
             Blocks.AIR -> {
                 totalBlocksBroken++
+
+                tasks.forEach { (_, task) ->
+                    if (task.taskState == TaskState.BREAK) task.resetStuck()
+                }
+
+                // Instant break exploit
                 if (blockTask.blockPos == prePrimedPos) {
                     primedPos = prePrimedPos
                     prePrimedPos = BlockPos.NULL_VECTOR
                 }
+
+                // Statistics
                 simpleMovingAverageBreaks.add(System.currentTimeMillis())
 
                 when {

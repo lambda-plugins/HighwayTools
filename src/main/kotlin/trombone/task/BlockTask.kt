@@ -68,6 +68,10 @@ class BlockTask(
         stuckTicks += weight
     }
 
+    fun resetStuck() {
+        stuckTicks = 0
+    }
+
     fun updateTask(event: SafeClientEvent, eyePos: Vec3d) {
         when (taskState) {
             TaskState.PLACE, TaskState.LIQUID -> {
