@@ -2,7 +2,6 @@ package trombone.interaction
 
 import HighwayTools.alwaysBoth
 import HighwayTools.breakDelay
-import HighwayTools.debugMessages
 import HighwayTools.illegalPlacements
 import HighwayTools.instantMine
 import HighwayTools.limitFactor
@@ -13,7 +12,6 @@ import HighwayTools.taskTimeout
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.TpsCalculator
 import com.lambda.client.util.math.isInSight
-import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.defaultScope
 import com.lambda.client.util.threads.onMainThreadSafe
 import com.lambda.client.util.threads.runSafeSuspend
@@ -29,8 +27,6 @@ import net.minecraft.util.EnumFacing
 import net.minecraft.util.EnumHand
 import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
-import trombone.IO.DebugMessages
-import trombone.Trombone.module
 import trombone.handler.Liquid.handleLiquid
 import trombone.handler.Player.LimitMode
 import trombone.handler.Player.lastHitVec
@@ -120,12 +116,7 @@ object Break {
                     LimitMode.SERVER -> TpsCalculator.tickRate
                 }
 
-                if (size > limit * limitFactor) {
-//                    if (debugMessages == DebugMessages.ALL) {
-//                        MessageSendHelper.sendChatMessage("${module.chatName} Dropped possible instant mine action @ TPS($limit) Actions(${size})")
-//                    }
-                    break
-                }
+                if (size > limit * limitFactor) break // Drop instant mine action when exceeded limit
 
                 if (task == blockTask) continue
                 if (task.taskState != TaskState.BREAK) continue

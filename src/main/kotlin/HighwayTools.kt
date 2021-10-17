@@ -23,9 +23,9 @@ import trombone.Renderer.renderOverlay
 import trombone.Renderer.renderWorld
 import trombone.Trombone.Mode
 import trombone.Trombone.active
+import trombone.Trombone.tick
 import trombone.Trombone.onDisable
 import trombone.Trombone.onEnable
-import trombone.Trombone.tick
 import trombone.handler.Packet.handlePacket
 import trombone.handler.Player.LimitMode
 import trombone.handler.Player.RotationMode
@@ -172,8 +172,8 @@ object HighwayTools : PluginModule(
     }
 
     init {
-        safeListener<PacketEvent.Receive> { event ->
-            handlePacket(event.packet)
+        safeListener<PacketEvent.Receive> {
+            handlePacket(it.packet)
         }
 
         listener<RenderWorldEvent> {
@@ -184,8 +184,8 @@ object HighwayTools : PluginModule(
             renderOverlay()
         }
 
-        safeListener<TickEvent.ClientTickEvent> { event ->
-            if (event.phase == TickEvent.Phase.START) tick()
+        safeListener<TickEvent.ClientTickEvent> {
+            if (it.phase == TickEvent.Phase.START) tick()
         }
 
         safeListener<PlayerTravelEvent> {
