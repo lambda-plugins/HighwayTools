@@ -11,6 +11,8 @@ import HighwayTools.saveMaterial
 import HighwayTools.saveTools
 import HighwayTools.storageManagement
 import com.lambda.client.event.SafeClientEvent
+import com.lambda.client.manager.managers.PlayerInventoryManager
+import com.lambda.client.manager.managers.PlayerInventoryManager.addInventoryTask
 import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
 import com.lambda.client.module.modules.player.InventoryManager
 import com.lambda.client.util.items.*
@@ -196,12 +198,16 @@ object Player {
             (slot.stack.item == it.stack.item && it.stack.count < slot.slotStackLimit - slot.stack.count) ||
                 it.stack.item == Items.AIR
         }?.let {
-            clickSlot(player.openContainer.windowId, slot, 0, ClickType.QUICK_MOVE)
+            module.addInventoryTask(
+                PlayerInventoryManager.ClickInfo(player.openContainer.windowId, slot.slotNumber, 0, ClickType.QUICK_MOVE)
+            )
         } ?: run {
             player.hotbarSlots.firstOrNull {
                 InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
             }?.let {
-                clickSlot(player.openContainer.windowId, slot, it.hotbarSlot, ClickType.SWAP)
+                module.addInventoryTask(
+                    PlayerInventoryManager.ClickInfo(player.openContainer.windowId, slot.slotNumber, it.hotbarSlot, ClickType.SWAP)
+                )
             } ?: run {
                 // ToDo: SWAP Item from hotbar to ejectable item in inventory and then swap target slot with hotbar
                 disableError("Inventory full.")
