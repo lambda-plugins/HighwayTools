@@ -69,7 +69,7 @@ dependencies {
 
     // API coming soon
 //    implementation 'com.github.lambda-client:lambda:2.06'
-    implementation(files("lib/lambda-2.10-dev-api.jar"))
+    implementation(files("lib/lambda-2.11-dev-api.jar"))
 
     implementation('org.spongepowered:mixin:0.7.11-SNAPSHOT') {
         exclude module: 'commons-io'
