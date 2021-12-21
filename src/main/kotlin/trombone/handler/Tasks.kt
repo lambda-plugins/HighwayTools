@@ -8,6 +8,7 @@ import HighwayTools.fakeSounds
 import HighwayTools.fillerMat
 import HighwayTools.food
 import HighwayTools.ignoreBlocks
+import HighwayTools.leaveEmptyShulkers
 import HighwayTools.material
 import HighwayTools.maxReach
 import HighwayTools.mode
@@ -17,6 +18,7 @@ import HighwayTools.saveFood
 import HighwayTools.manageFood
 import HighwayTools.storageManagement
 import com.lambda.client.event.SafeClientEvent
+import com.lambda.client.manager.managers.PlayerInventoryManager
 import com.lambda.client.module.modules.player.InventoryManager
 import com.lambda.client.util.items.*
 import com.lambda.client.util.math.CoordinateConverter.asString
@@ -84,6 +86,7 @@ object Tasks {
     val tasks = LinkedHashMap<BlockPos, BlockTask>()
     var sortedTasks: List<BlockTask> = emptyList()
     var lastTask: BlockTask? = null
+    var isInventoryManaging = false
 
     val stateUpdateMutex = Mutex()
 
@@ -408,13 +411,61 @@ object Tasks {
         if (mc.currentScreen is GuiContainer && containerTask.isLoaded) {
             val container = player.openContainer
 
-            container.getSlots(0..26).firstItem(containerTask.item)?.let {
-                moveToInventory(it)
-            } ?: run {
-                getShulkerWith(container.getSlots(0..26), containerTask.item)?.let {
-                    moveToInventory(it)
-                } ?: run {
-                    disableError("No ${containerTask.item.registryName} left in any container.")
+            if (!isInventoryManaging) {
+                if (leaveEmptyShulkers &&
+                    container.getSlots(0..26)
+                        .all { it.stack.isEmpty
+                            || InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
+                        }) {
+                    if (debugMessages != DebugMessages.OFF) {
+                        if (!anonymizeStats) {
+                            MessageSendHelper.sendChatMessage("${module.chatName} Left empty ${containerTask.block.localizedName}@(${containerTask.blockPos.asString()})")
+                        } else {
+                            MessageSendHelper.sendChatMessage("${module.chatName} Left empty ${containerTask.block.localizedName}")
+                        }
+                    }
+                    containerTask.updateState(TaskState.DONE)
+                }
+
+                var found = 0
+
+                if (containerTask.item == material.item) {
+                    val itemsFree = player.inventorySlots.sumOf {
+                        val stack = it.stack
+                        when {
+                            stack.isEmpty -> 64
+                            stack.item == material.item -> 64 - stack.count
+                            else -> 0
+                        }
+                    }
+
+                    container.getSlots(0..26)
+                        .filterByItem(containerTask.item)
+                        .forEach {
+                            found += it.stack.count
+                            if (found < itemsFree) moveToInventory(it)
+                    }
+                } else {
+                    container.getSlots(0..26)
+                        .firstItem(containerTask.item)?.let {
+                            moveToInventory(it)
+                            found += 1
+                    }
+                }
+
+                if (found == 0) {
+                    getShulkerWith(container.getSlots(0..26), containerTask.item)?.let {
+                        moveToInventory(it)
+                    } ?: run {
+                        disableError("No ${containerTask.item.registryName} left in any container.")
+                    }
+                }
+            } else {
+                if (PlayerInventoryManager.isDone()) {
+                    containerTask.updateState(TaskState.BREAK)
+                    isInventoryManaging = false
+                    containerTask.isOpen = false
+                    player.closeScreen()
                 }
             }
         } else {
@@ -447,16 +498,16 @@ object Tasks {
         if (containerTask.isOpen) {
             containerTask.updateState(TaskState.RESTOCK)
         } else {
-            val center = containerTask.blockPos.toVec3dCenter()
-            val diff = player.getPositionEyes(1f).subtract(center)
-            val normalizedVec = diff.normalize()
-
-            val side = EnumFacing.getFacingFromVector(normalizedVec.x.toFloat(), normalizedVec.y.toFloat(), normalizedVec.z.toFloat())
-            val hitVecOffset = getHitVecOffset(side)
-
-            lastHitVec = getHitVec(containerTask.blockPos, side)
-
             if (shulkerOpenTimer.tick(20)) {
+                val center = containerTask.blockPos.toVec3dCenter()
+                val diff = player.getPositionEyes(1f).subtract(center)
+                val normalizedVec = diff.normalize()
+
+                val side = EnumFacing.getFacingFromVector(normalizedVec.x.toFloat(), normalizedVec.y.toFloat(), normalizedVec.z.toFloat())
+                val hitVecOffset = getHitVecOffset(side)
+
+                lastHitVec = getHitVec(containerTask.blockPos, side)
+
                 connection.sendPacket(CPacketPlayerTryUseItemOnBlock(containerTask.blockPos, side, EnumHand.MAIN_HAND, hitVecOffset.x.toFloat(), hitVecOffset.y.toFloat(), hitVecOffset.z.toFloat()))
                 player.swingArm(EnumHand.MAIN_HAND)
             }

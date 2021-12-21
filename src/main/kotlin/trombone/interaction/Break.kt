@@ -8,6 +8,7 @@ import HighwayTools.limitFactor
 import HighwayTools.limitOrigin
 import HighwayTools.maxBreaks
 import HighwayTools.maxReach
+import HighwayTools.miningSpeedFactor
 import HighwayTools.taskTimeout
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.TpsCalculator
@@ -37,6 +38,7 @@ import trombone.handler.Tasks.sortedTasks
 import trombone.handler.Tasks.stateUpdateMutex
 import trombone.task.BlockTask
 import trombone.task.TaskState
+import kotlin.math.ceil
 
 object Break {
     var prePrimedPos = BlockPos.NULL_VECTOR!!
@@ -44,6 +46,7 @@ object Break {
 
     fun SafeClientEvent.mineBlock(blockTask: BlockTask) {
         val blockState = world.getBlockState(blockTask.blockPos)
+        val ticksNeeded = ceil((1 / blockState.getPlayerRelativeBlockHardness(player, world, blockTask.blockPos)) * miningSpeedFactor).toInt()
 
         if (blockState.block == Blocks.FIRE) {
             val sides = getNeighbourSequence(blockTask.blockPos, 1, maxReach, !illegalPlacements)
@@ -54,7 +57,7 @@ object Break {
 
             lastHitVec = getHitVec(sides.last().pos, sides.last().side)
 
-            mineBlockNormal(blockTask, sides.last().side)
+            mineBlockNormal(blockTask, sides.last().side, 1)
         } else {
             var side = getMiningSide(blockTask.blockPos) ?: run {
                 blockTask.onStuck()
@@ -64,14 +67,25 @@ object Break {
             if (blockTask.blockPos == primedPos && instantMine) {
                 side = side.opposite
             }
+
             lastHitVec = getHitVec(blockTask.blockPos, side)
 
-            if (blockState.getPlayerRelativeBlockHardness(player, world, blockTask.blockPos) > 2.8) {
+            if (blockTask.ticksMined > ticksNeeded * 1.1 &&
+                blockTask.taskState == TaskState.BREAKING) {
+                blockTask.updateState(TaskState.BREAK)
+                blockTask.ticksMined = 0
+            }
+
+//            MessageSendHelper.sendChatMessage("${blockTask.ticksMined}/$ticksNeeded - ${blockState.block.localizedName} at (${blockTask.blockPos.asString()}) with ${blockTask.toolToUse.displayName}")
+
+            if (ticksNeeded == 1) {
                 mineBlockInstant(blockTask, side)
             } else {
-                mineBlockNormal(blockTask, side)
+                mineBlockNormal(blockTask, side, ticksNeeded)
             }
         }
+
+        blockTask.ticksMined += 1
     }
 
     private fun mineBlockInstant(blockTask: BlockTask, side: EnumFacing) {
@@ -146,13 +160,19 @@ object Break {
         }
     }
 
-    private fun mineBlockNormal(blockTask: BlockTask, side: EnumFacing) {
+    private fun mineBlockNormal(blockTask: BlockTask, side: EnumFacing, ticks: Int) {
         defaultScope.launch {
             if (blockTask.taskState == TaskState.BREAK) {
                 sendMiningPackets(blockTask.blockPos, side, start = true)
-                blockTask.updateState(TaskState.BREAKING)
+                stateUpdateMutex.withLock {
+                    blockTask.updateState(TaskState.BREAKING)
+                }
             } else {
-                sendMiningPackets(blockTask.blockPos, side, stop = true)
+                if (blockTask.ticksMined >= ticks) {
+                    sendMiningPackets(blockTask.blockPos, side, stop = true)
+                } else {
+                    sendMiningPackets(blockTask.blockPos, side)
+                }
             }
         }
     }

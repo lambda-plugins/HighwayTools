@@ -68,8 +68,8 @@ dependencies {
     minecraft "net.minecraftforge:forge:$minecraftVersion-$forgeVersion"
 
     // API coming soon
-//    implementation 'com.github.lambda-client:lambda:2.06'
-    implementation(files("lib/lambda-2.11-dev-api.jar"))
+//    implementation 'com.github.lambda-client:lambda:2.12'
+    implementation(files("lib/lambda-2.12-dev-api.jar"))
 
     implementation('org.spongepowered:mixin:0.7.11-SNAPSHOT') {
         exclude module: 'commons-io'

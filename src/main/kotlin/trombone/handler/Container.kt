@@ -10,6 +10,7 @@ import com.lambda.client.util.TimeUnit
 import com.lambda.client.util.items.*
 import com.lambda.client.util.math.VectorUtils
 import com.lambda.client.util.math.VectorUtils.toVec3dCenter
+import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.world.getVisibleSides
 import com.lambda.client.util.world.isPlaceable
 import com.lambda.client.util.world.isReplaceable
@@ -103,12 +104,13 @@ object Container {
 
         return VectorUtils.getBlockPosInSphere(origin, maxReach).asSequence()
             .filter { pos ->
-                !isInsideBlueprintBuild(pos) &&
-                    pos != currentBlockPos &&
-                    world.isPlaceable(pos) &&
-                    !world.getBlockState(pos.down()).isReplaceable &&
-                    world.isAirBlock(pos.up()) &&
-                    getVisibleSides(pos.down()).contains(EnumFacing.UP)
+                !isInsideBlueprintBuild(pos)
+                    && pos != currentBlockPos
+                    && world.isPlaceable(pos)
+                    && !world.getBlockState(pos.down()).isReplaceable
+                    && world.isAirBlock(pos.up())
+                    && getVisibleSides(pos.down()).contains(EnumFacing.UP)
+                    && player.positionVector.distanceTo(pos.toVec3dCenter()) > 1.1
             }.sortedWith(
                 compareByDescending<BlockPos> {
                     safeValue(it)

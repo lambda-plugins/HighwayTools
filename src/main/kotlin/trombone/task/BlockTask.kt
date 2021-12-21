@@ -12,6 +12,7 @@ import net.minecraft.block.Block
 import net.minecraft.block.BlockLiquid
 import net.minecraft.init.Items
 import net.minecraft.item.Item
+import net.minecraft.item.ItemStack
 import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
@@ -46,6 +47,8 @@ class BlockTask(
     var aabb = AxisAlignedBB(1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
 
     var toRemove = false
+    var ticksMined = 1
+    var toolToUse = ItemStack(Items.AIR)
 
     fun updateState(state: TaskState) {
         if (state == taskState) return

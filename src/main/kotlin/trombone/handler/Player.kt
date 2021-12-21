@@ -1,11 +1,8 @@
 package trombone.handler
 
-import HighwayTools.anonymizeStats
-import HighwayTools.debugMessages
 import HighwayTools.fillerMat
 import HighwayTools.grindObsidian
 import HighwayTools.interacting
-import HighwayTools.leaveEmptyShulkers
 import HighwayTools.material
 import HighwayTools.saveMaterial
 import HighwayTools.saveTools
@@ -16,9 +13,7 @@ import com.lambda.client.manager.managers.PlayerInventoryManager.addInventoryTas
 import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
 import com.lambda.client.module.modules.player.InventoryManager
 import com.lambda.client.util.items.*
-import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.math.RotationUtils.getRotationTo
-import com.lambda.client.util.text.MessageSendHelper
 import kotlinx.coroutines.sync.Mutex
 import net.minecraft.enchantment.EnchantmentHelper
 import net.minecraft.init.Blocks
@@ -29,7 +24,6 @@ import net.minecraft.inventory.Slot
 import net.minecraft.item.ItemBlock
 import net.minecraft.util.math.Vec3d
 import trombone.Blueprint.isInsideBlueprintBuild
-import trombone.IO.DebugMessages
 import trombone.IO.disableError
 import trombone.Pathfinder.MovementState
 import trombone.Pathfinder.moveState
@@ -71,9 +65,7 @@ object Player {
                 player.rotationYaw = rotation.x
                 player.rotationPitch = rotation.y
             }
-            else -> {
-                // RotationMode.OFF
-            }
+            RotationMode.OFF -> {}
         }
     }
 
@@ -182,6 +174,7 @@ object Player {
 
     private fun SafeClientEvent.swapOrMoveTool(blockTask: BlockTask) =
         getBestTool(blockTask)?.let { slotFrom ->
+            blockTask.toolToUse = slotFrom.stack
             slotFrom.toHotbarSlotOrNull()?.let {
                 swapToSlot(it)
             } ?: run {
@@ -199,37 +192,32 @@ object Player {
                 it.stack.item == Items.AIR
         }?.let {
             module.addInventoryTask(
-                PlayerInventoryManager.ClickInfo(player.openContainer.windowId, slot.slotNumber, 0, ClickType.QUICK_MOVE)
+                PlayerInventoryManager.ClickInfo(
+                    player.openContainer.windowId,
+                    slot.slotIndex,
+                    0,
+                    ClickType.QUICK_MOVE
+                )
             )
+            Tasks.isInventoryManaging = true
         } ?: run {
             player.hotbarSlots.firstOrNull {
                 InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
             }?.let {
                 module.addInventoryTask(
-                    PlayerInventoryManager.ClickInfo(player.openContainer.windowId, slot.slotNumber, it.hotbarSlot, ClickType.SWAP)
+                    PlayerInventoryManager.ClickInfo(
+                        player.openContainer.windowId,
+                        slot.slotIndex,
+                        it.hotbarSlot,
+                        ClickType.SWAP
+                    )
                 )
+                Tasks.isInventoryManaging = true
             } ?: run {
                 // ToDo: SWAP Item from hotbar to ejectable item in inventory and then swap target slot with hotbar
                 disableError("Inventory full.")
             }
         }
-
-        if (leaveEmptyShulkers &&
-            player.openContainer.getSlots(0..26).all { it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) }) {
-            if (debugMessages != DebugMessages.OFF) {
-                if (!anonymizeStats) {
-                    MessageSendHelper.sendChatMessage("${module.chatName} Left empty ${containerTask.block.localizedName}@(${containerTask.blockPos.asString()})")
-                } else {
-                    MessageSendHelper.sendChatMessage("${module.chatName} Left empty ${containerTask.block.localizedName}")
-                }
-            }
-            containerTask.updateState(TaskState.DONE)
-        } else {
-            containerTask.updateState(TaskState.BREAK)
-        }
-
-        containerTask.isOpen = false
-        player.closeScreen()
     }
 
     fun SafeClientEvent.getEjectSlot(): Slot? {

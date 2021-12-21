@@ -52,7 +52,8 @@ object HighwayTools : PluginModule(
         "minecraft:bedrock",
         "minecraft:end_portal",
         "minecraft:end_portal_frame",
-        "minecraft:portal"
+        "minecraft:portal",
+        "minecraft:piston_extension"
     )
 
     // build settings
@@ -79,6 +80,7 @@ object HighwayTools : PluginModule(
     val dynamicDelay by setting("Dynamic Place Delay", true, { page == Page.BEHAVIOR }, description = "Slows down on failed placement attempts")
     val placeDelay by setting("Place Delay", 3, 1..20, 1, { page == Page.BEHAVIOR }, description = "Sets the delay ticks between placement tasks")
     val breakDelay by setting("Break Delay", 1, 1..20, 1, { page == Page.BEHAVIOR }, description = "Sets the delay ticks between break tasks")
+    val miningSpeedFactor by setting("Mining Speed Factor", 1.0f, 0.0f..2.0f, 0.01f, { page == Page.BEHAVIOR }, description = "Mining speed factor")
     val illegalPlacements by setting("Illegal Placements", false, { page == Page.BEHAVIOR }, description = "Do not use on 2b2t. Tries to interact with invisible surfaces")
     val bridging by setting("Bridging", true, { page == Page.BEHAVIOR }, description = "Tries to bridge / scaffold when stuck placing")
     val instantMine by setting("Instant Mine", true, { page == Page.BEHAVIOR }, description = "Instant mine NCP exploit.")
