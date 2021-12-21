@@ -2,7 +2,6 @@ package trombone.handler
 
 import HighwayTools.fillerMat
 import HighwayTools.grindObsidian
-import HighwayTools.interacting
 import HighwayTools.material
 import HighwayTools.saveMaterial
 import HighwayTools.saveTools
@@ -55,17 +54,8 @@ object Player {
         if (lastHitVec == Vec3d.ZERO) return
         val rotation = getRotationTo(lastHitVec)
 
-        when (interacting) {
-            RotationMode.SPOOF -> {
-                module.sendPlayerPacket {
-                    rotate(rotation)
-                }
-            }
-            RotationMode.VIEW_LOCK -> {
-                player.rotationYaw = rotation.x
-                player.rotationPitch = rotation.y
-            }
-            RotationMode.OFF -> {}
+        module.sendPlayerPacket {
+            rotate(rotation)
         }
     }
 

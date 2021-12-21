@@ -28,7 +28,6 @@ import trombone.Trombone.onDisable
 import trombone.Trombone.onEnable
 import trombone.handler.Packet.handlePacket
 import trombone.handler.Player.LimitMode
-import trombone.handler.Player.RotationMode
 
 /**
  * @author Avanatiker
@@ -59,7 +58,7 @@ object HighwayTools : PluginModule(
     // build settings
     val mode by setting("Mode", Mode.HIGHWAY, { page == Page.BUILD }, description = "Choose the structure")
     val width by setting("Width", 6, 1..11, 1, { page == Page.BUILD }, description = "Sets the width of blueprint")
-    val height by setting("Height", 4, 1..6, 1, { page == Page.BUILD && clearSpace }, description = "Sets height of blueprint")
+    val height by setting("Height", 4, 2..6, 1, { page == Page.BUILD && clearSpace }, description = "Sets height of blueprint")
     val backfill by setting("Backfill", false, { page == Page.BUILD && mode == Mode.TUNNEL }, description = "Fills the tunnel behind you")
     val clearSpace by setting("Clear Space", true, { page == Page.BUILD && mode == Mode.HIGHWAY }, description = "Clears out the tunnel if necessary")
     val cleanFloor by setting("Clean Floor", false, { page == Page.BUILD && mode == Mode.TUNNEL && !backfill }, description = "Cleans up the tunnels floor")
@@ -76,7 +75,6 @@ object HighwayTools : PluginModule(
     val ignoreBlocks = setting(CollectionSetting("IgnoreList", defaultIgnoreBlocks, { false }))
 
     // behavior settings
-    val interacting by setting("Rotation Mode", RotationMode.SPOOF, { page == Page.BEHAVIOR }, description = "Force view client side, only server side or no interaction at all")
     val dynamicDelay by setting("Dynamic Place Delay", true, { page == Page.BEHAVIOR }, description = "Slows down on failed placement attempts")
     val placeDelay by setting("Place Delay", 3, 1..20, 1, { page == Page.BEHAVIOR }, description = "Sets the delay ticks between placement tasks")
     val breakDelay by setting("Break Delay", 1, 1..20, 1, { page == Page.BEHAVIOR }, description = "Sets the delay ticks between break tasks")
