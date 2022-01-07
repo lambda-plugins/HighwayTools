@@ -56,7 +56,7 @@ Adding fully automated highway building as plugin to Lambda. The tool places bui
 1. Get the latest Lambda release here https://github.com/lambda-client/lambda/releases
 2. Open Lambda menu in main menu to open plugin settings
 3. Press `Open Plugin Folder`
-4. Move plugin `HighwayTools-v9.9.1.jar` into the folder `.minecraft/lambda/plugins`
+4. Move plugin `HighwayTools-v10.1.jar` into the folder `.minecraft/lambda/plugins`
 
 ### Known issues
 - [x] `AutoLog` is not compatible with `AutoReconnect` > Should
@@ -71,6 +71,6 @@ Adding fully automated highway building as plugin to Lambda. The tool places bui
 This is a pre-release. Use with care. Any suggestions and questions: Constructor#9948 on Discord Made by @Avanatiker
 Report bugs on <a href="https://github.com/Avanatiker/client/issues">Issues</a> and if not possible message EnigmA_008#1505 on Discord.
 
-`Copyright ©2021` Constructor#9948 alias Avanatiker. All Rights Reserved. Permission to use, copy, modify, and distribute this software and its documentation for educational, research, and not-for-profit purposes, without fee and without a signed licensing agreement, is hereby granted, provided that the above copyright notice, this paragraph appears in all copies, modifications, and distributions.
+`Copyright ©2022` Constructor#9948 alias Avanatiker. All Rights Reserved. Permission to use, copy, modify, and distribute this software and its documentation for educational, research, and not-for-profit purposes, without fee and without a signed licensing agreement, is hereby granted, provided that the above copyright notice, this paragraph appears in all copies, modifications, and distributions.
 
 By downloading this software you agree to be bound by the terms of service.
