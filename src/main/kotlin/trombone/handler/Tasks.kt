@@ -437,7 +437,7 @@ object Tasks {
                             stack.item == material.item -> 64 - stack.count
                             else -> 0
                         }
-                    }
+                    } - 64 // To keep one slot free to collect the shulker
 
                     container.getSlots(0..26)
                         .filterByItem(containerTask.item)

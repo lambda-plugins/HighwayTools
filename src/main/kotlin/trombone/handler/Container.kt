@@ -1,6 +1,7 @@
 package trombone.handler
 
 import HighwayTools.maxReach
+import HighwayTools.preferEnderchests
 import HighwayTools.saveEnder
 import HighwayTools.searchEChest
 import com.lambda.client.event.SafeClientEvent
@@ -38,6 +39,10 @@ object Container {
     var grindCycles = 0
 
     fun SafeClientEvent.handleRestock(item: Item) {
+        if (preferEnderchests && item.block == Blocks.OBSIDIAN) {
+            handleEnderChest(item)
+            return
+        }
         getShulkerWith(player.inventorySlots, item)?.let { slot ->
             getRemotePos()?.let { pos ->
                 containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, item)
@@ -46,33 +51,37 @@ object Container {
                 disableError("Can't find possible container position (Case: 1)")
             }
         } ?: run {
-            if (searchEChest) {
-                if (item.block == Blocks.OBSIDIAN) {
-                    if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) <= saveEnder) {
-                        getShulkerWith(player.inventorySlots, Blocks.ENDER_CHEST.item)?.let { slot ->
-                            getRemotePos()?.let { pos ->
-                                containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, Blocks.ENDER_CHEST.item)
-                                containerTask.isShulker = true
-                            } ?: run {
-                                disableError("Can't find possible container position (Case: 2)")
-                            }
-                        } ?: run {
-                            dispatchEnderChest(Blocks.ENDER_CHEST.item)
-                        }
-                    } else {
+            handleEnderChest(item)
+        }
+    }
+
+    private fun SafeClientEvent.handleEnderChest(item: Item) {
+        if (searchEChest) {
+            if (item.block == Blocks.OBSIDIAN) {
+                if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) <= saveEnder) {
+                    getShulkerWith(player.inventorySlots, Blocks.ENDER_CHEST.item)?.let { slot ->
                         getRemotePos()?.let { pos ->
-                            containerTask = BlockTask(pos, TaskState.PLACE, Blocks.ENDER_CHEST, Blocks.OBSIDIAN.item)
-                            containerTask.destroy = true
-                            if (grindCycles > 1) containerTask.collect = false
-                            containerTask.itemID = Blocks.OBSIDIAN.id
-                            grindCycles--
+                            containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, Blocks.ENDER_CHEST.item)
+                            containerTask.isShulker = true
                         } ?: run {
-                            disableError("Can't find possible container position (Case: 3)")
+                            disableError("Can't find possible container position (Case: 2)")
                         }
+                    } ?: run {
+                        dispatchEnderChest(Blocks.ENDER_CHEST.item)
                     }
                 } else {
-                    dispatchEnderChest(item)
+                    getRemotePos()?.let { pos ->
+                        containerTask = BlockTask(pos, TaskState.PLACE, Blocks.ENDER_CHEST, Blocks.OBSIDIAN.item)
+                        containerTask.destroy = true
+                        if (grindCycles > 1) containerTask.collect = false
+                        containerTask.itemID = Blocks.OBSIDIAN.id
+                        grindCycles--
+                    } ?: run {
+                        disableError("Can't find possible container position (Case: 3)")
+                    }
                 }
+            } else {
+                dispatchEnderChest(item)
             }
         }
     }
