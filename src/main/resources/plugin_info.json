@@ -5,6 +5,8 @@
     "Constructor"
   ],
   "description": "Build highways with ease",
-  "main_class": "HighwayToolsPlugin",
-  "min_api_version": "2.07.01"
+  "url": "https://github.com/lambda-plugins/HighwayTools",
+  "min_api_version": "3.0",
+  "hot_reload": true,
+  "main_class": "HighwayToolsPlugin"
 }
