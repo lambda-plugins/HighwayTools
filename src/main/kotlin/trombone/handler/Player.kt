@@ -14,6 +14,7 @@ import com.lambda.client.module.modules.player.InventoryManager
 import com.lambda.client.util.items.*
 import com.lambda.client.util.math.RotationUtils.getRotationTo
 import kotlinx.coroutines.sync.Mutex
+import net.minecraft.block.Block.getBlockFromName
 import net.minecraft.enchantment.EnchantmentHelper
 import net.minecraft.init.Blocks
 import net.minecraft.init.Enchantments
@@ -107,49 +108,72 @@ object Player {
                 return false
             }
 
-            val useBlock = when {
-                blockTask.isFiller -> {
-                    if (isInsideBlueprintBuild(blockTask.blockPos)) {
-                        if (player.inventorySlots.countBlock(material) > 0) {
-                            material
-                        } else {
-                            disableError("No ${material.localizedName} was found in inventory. (1)")
-                            return false
-                        }
-                    } else {
-                        if (player.inventorySlots.countBlock(fillerMat) > 0) {
-                            fillerMat
-                        } else {
-                            if (player.inventorySlots.countBlock(material) > 0) {
-                                material
-                            } else {
-                                disableError("No ${fillerMat.localizedName} was found in inventory. (2)")
-                                return false
-                            }
-                        }
-                    }
-                }
-                player.inventorySlots.countBlock(blockTask.block) > 0 -> blockTask.block
-                else -> {
-                    if (blockTask.block == material && storageManagement) {
-                        handleRestock(Blocks.OBSIDIAN.item)
-                    } else {
-                        disableError("No ${blockTask.block.localizedName} was found in inventory. (3)")
-                    }
-                    return false
-                }
-            }
+            val useMat = findMaterial(blockTask)
+            if (useMat == Blocks.AIR) return false
 
-            val success = swapToBlockOrMove(useBlock, predicateSlot = {
+            val success = swapToBlockOrMove(useMat, predicateSlot = {
                 it.item is ItemBlock
             })
 
             return if (!success) {
-                disableError("No ${blockTask.block.localizedName} was found in inventory. (4)")
+                disableError("Inventory transaction of $useMat failed.")
                 false
             } else {
                 true
             }
+        }
+    }
+
+    private fun SafeClientEvent.findMaterial(blockTask: BlockTask) = when {
+        blockTask.isFiller -> {
+            if (isInsideBlueprintBuild(blockTask.blockPos)) {
+                if (player.inventorySlots.countBlock(material) > 0) {
+                    material
+                } else {
+                    restockFallback(blockTask)
+                    Blocks.AIR
+                }
+            } else {
+                if (player.inventorySlots.countBlock(fillerMat) > 0) {
+                    fillerMat
+                } else {
+                    val possibleMaterials = InventoryManager.ejectList.filter { stringName ->
+                        getBlockFromName(stringName)?.let {
+                            player.inventorySlots.countBlock(it) > 0
+                        } ?: run {
+                            false
+                        }
+                    }
+                    possibleMaterials.firstOrNull()?.let { stringMaterial ->
+                        getBlockFromName(stringMaterial) ?: run {
+                            disableError("Invalid eject material: $stringMaterial")
+                            Blocks.AIR
+                        }
+                    } ?: run {
+                        if (player.inventorySlots.countBlock(material) > 0) {
+                            material
+                        } else {
+                            restockFallback(blockTask)
+                            Blocks.AIR
+                        }
+                    }
+                }
+            }
+        }
+        player.inventorySlots.countBlock(blockTask.block) > 0 -> {
+            blockTask.block
+        }
+        else -> {
+            restockFallback(blockTask)
+            Blocks.AIR
+        }
+    }
+
+    private fun SafeClientEvent.restockFallback(blockTask: BlockTask) {
+        if (blockTask.block == material && storageManagement) {
+            handleRestock(material.item)
+        } else {
+            disableError("No usable filler material was found in inventory.")
         }
     }
 

@@ -103,7 +103,7 @@ object Container {
                     disableError("Can't find possible container position (Case: 5)")
                 }
             } ?: run {
-                disableError("No ${Blocks.ENDER_CHEST.item.registryName} was found in inventory.")
+                disableError("No ${Blocks.ENDER_CHEST.localizedName} was found in inventory.")
             }
         }
     }

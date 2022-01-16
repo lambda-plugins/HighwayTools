@@ -76,9 +76,7 @@ object Break {
                 blockTask.ticksMined = 0
             }
 
-//            MessageSendHelper.sendChatMessage("${blockTask.ticksMined}/$ticksNeeded - ${blockState.block.localizedName} at (${blockTask.blockPos.asString()}) with ${blockTask.toolToUse.displayName}")
-
-            if (ticksNeeded == 1) {
+            if (ticksNeeded == 1 || player.isCreative) {
                 mineBlockInstant(blockTask, side)
             } else {
                 mineBlockNormal(blockTask, side, ticksNeeded)
