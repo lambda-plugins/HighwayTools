@@ -113,15 +113,19 @@ object Player {
                         if (player.inventorySlots.countBlock(material) > 0) {
                             material
                         } else {
-                            disableError("No ${blockTask.block.localizedName} was found in inventory. (1)")
+                            disableError("No ${material.localizedName} was found in inventory. (1)")
                             return false
                         }
                     } else {
                         if (player.inventorySlots.countBlock(fillerMat) > 0) {
                             fillerMat
                         } else {
-                            disableError("No ${blockTask.block.localizedName} was found in inventory. (2)")
-                            return false
+                            if (player.inventorySlots.countBlock(material) > 0) {
+                                material
+                            } else {
+                                disableError("No ${fillerMat.localizedName} was found in inventory. (2)")
+                                return false
+                            }
                         }
                     }
                 }
