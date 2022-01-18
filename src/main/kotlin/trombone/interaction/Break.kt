@@ -1,17 +1,15 @@
 package trombone.interaction
 
-import HighwayTools.alwaysBoth
+import HighwayTools.packetFlood
 import HighwayTools.breakDelay
 import HighwayTools.illegalPlacements
 import HighwayTools.instantMine
-import HighwayTools.limitFactor
-import HighwayTools.limitOrigin
-import HighwayTools.maxBreaks
+import HighwayTools.interactionLimit
+import HighwayTools.multiBreak
 import HighwayTools.maxReach
 import HighwayTools.miningSpeedFactor
 import HighwayTools.taskTimeout
 import com.lambda.client.event.SafeClientEvent
-import com.lambda.client.util.TpsCalculator
 import com.lambda.client.util.math.isInSight
 import com.lambda.client.util.threads.defaultScope
 import com.lambda.client.util.threads.onMainThreadSafe
@@ -29,7 +27,6 @@ import net.minecraft.util.EnumHand
 import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
 import trombone.handler.Liquid.handleLiquid
-import trombone.handler.Player.LimitMode
 import trombone.handler.Player.lastHitVec
 import trombone.handler.Player.packetLimiter
 import trombone.handler.Player.packetLimiterMutex
@@ -97,9 +94,7 @@ object Break {
 
             sendMiningPackets(blockTask.blockPos, side, start = true)
 
-            if (maxBreaks > 1) {
-                tryMultiBreak(blockTask)
-            }
+            if (multiBreak) tryMultiBreak(blockTask)
 
             delay(50L * taskTimeout)
             if (blockTask.taskState == TaskState.PENDING_BREAK) {
@@ -114,32 +109,20 @@ object Break {
         runSafeSuspend {
             val eyePos = player.getPositionEyes(1.0f)
             val viewVec = lastHitVec.subtract(eyePos).normalize()
-            var breakCount = 1
 
             for (task in sortedTasks) {
-                if (breakCount >= maxBreaks) break
-
-                val size = packetLimiterMutex.withLock {
-                    packetLimiter.size
-                }
-
-                val limit = when (limitOrigin) {
-                    LimitMode.FIXED -> 20.0f
-                    LimitMode.SERVER -> TpsCalculator.tickRate
-                }
-
-                if (size > limit * limitFactor) break // Drop instant mine action when exceeded limit
-
-                if (task == blockTask) continue
                 if (task.taskState != TaskState.BREAK) continue
-                if (world.getBlockState(task.blockPos).block != Blocks.NETHERRACK) continue
-
-                val box = AxisAlignedBB(task.blockPos)
-                val rayTraceResult = box.isInSight(eyePos, viewVec) ?: continue
-
+                if (task == blockTask) continue
+                if (ceil((1 / world.getBlockState(task.blockPos).getPlayerRelativeBlockHardness(player, world, blockTask.blockPos)) * miningSpeedFactor).toInt() > 1) continue
                 if (handleLiquid(task)) break
 
-                breakCount++
+                val limiterUsage = packetLimiterMutex.withLock { packetLimiter.size }
+
+                if (limiterUsage > interactionLimit) break // Drop instant mine action when exceeded limit
+
+                val box = AxisAlignedBB(task.blockPos)
+                val rayTraceResult = box.isInSight(eyePos, viewVec, range = maxReach.toDouble(), tolerance = 0.0) ?: continue
+
                 packetLimiterMutex.withLock {
                     packetLimiter.add(System.currentTimeMillis())
                 }
@@ -177,8 +160,8 @@ object Break {
 
     private suspend fun sendMiningPackets(pos: BlockPos, side: EnumFacing, start: Boolean = false, stop: Boolean = false) {
         onMainThreadSafe {
-            if (start || alwaysBoth) connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.START_DESTROY_BLOCK, pos, side))
-            if (stop || alwaysBoth) connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.STOP_DESTROY_BLOCK, pos, side))
+            if (start || packetFlood) connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.START_DESTROY_BLOCK, pos, side))
+            if (stop || packetFlood) connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.STOP_DESTROY_BLOCK, pos, side))
             player.swingArm(EnumHand.MAIN_HAND)
         }
     }

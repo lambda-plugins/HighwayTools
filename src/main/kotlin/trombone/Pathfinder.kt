@@ -1,6 +1,6 @@
 package trombone
 
-import HighwayTools.bridging
+import HighwayTools.scaffold
 import HighwayTools.maxReach
 import HighwayTools.moveSpeed
 import com.lambda.client.event.SafeClientEvent
@@ -123,7 +123,7 @@ object Pathfinder {
     }
 
     fun SafeClientEvent.shouldBridge(): Boolean {
-        return bridging &&
+        return scaffold &&
             world.isAirBlock(currentBlockPos.add(startingDirection.directionVec)) &&
             world.isAirBlock(currentBlockPos.add(startingDirection.directionVec).up()) &&
             world.getBlockState(currentBlockPos.add(startingDirection.directionVec).down()).isReplaceable &&

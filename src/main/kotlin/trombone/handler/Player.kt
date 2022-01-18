@@ -7,12 +7,14 @@ import HighwayTools.saveMaterial
 import HighwayTools.saveTools
 import HighwayTools.storageManagement
 import com.lambda.client.event.SafeClientEvent
+import com.lambda.client.manager.managers.MessageManager
 import com.lambda.client.manager.managers.PlayerInventoryManager
 import com.lambda.client.manager.managers.PlayerInventoryManager.addInventoryTask
 import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
 import com.lambda.client.module.modules.player.InventoryManager
 import com.lambda.client.util.items.*
 import com.lambda.client.util.math.RotationUtils.getRotationTo
+import com.lambda.client.util.text.MessageSendHelper
 import kotlinx.coroutines.sync.Mutex
 import net.minecraft.block.Block.getBlockFromName
 import net.minecraft.enchantment.EnchantmentHelper
@@ -173,7 +175,7 @@ object Player {
         if (blockTask.block == material && storageManagement) {
             handleRestock(material.item)
         } else {
-            disableError("No usable filler material was found in inventory.")
+            disableError("No usable material was found in inventory.")
         }
     }
 

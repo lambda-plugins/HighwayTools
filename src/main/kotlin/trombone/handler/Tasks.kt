@@ -2,7 +2,7 @@ package trombone.handler
 
 import HighwayTools.anonymizeStats
 import HighwayTools.breakDelay
-import HighwayTools.debugMessages
+import HighwayTools.debugLevel
 import HighwayTools.dynamicDelay
 import HighwayTools.fakeSounds
 import HighwayTools.fillerMat
@@ -45,7 +45,7 @@ import net.minecraft.util.math.BlockPos
 import trombone.Blueprint.blueprint
 import trombone.Blueprint.generateBluePrint
 import trombone.Blueprint.isInsideBlueprintBuild
-import trombone.IO.DebugMessages
+import trombone.IO.DebugLevel
 import trombone.IO.disableError
 import trombone.Pathfinder.MovementState
 import trombone.Pathfinder.currentBlockPos
@@ -341,7 +341,7 @@ object Tasks {
                     blockTask.updateState(TaskState.PLACE)
                 }
                 else -> {
-                    if (debugMessages != DebugMessages.OFF) {
+                    if (debugLevel != DebugLevel.OFF) {
                         if (!anonymizeStats) {
                             MessageSendHelper.sendChatMessage("${module.chatName} Stuck while ${blockTask.taskState}@(${blockTask.blockPos.asString()}) for more than $timeout ticks (${blockTask.stuckTicks}), refreshing data.")
                         } else {
@@ -417,7 +417,7 @@ object Tasks {
                         .all { it.stack.isEmpty
                             || InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
                         }) {
-                    if (debugMessages != DebugMessages.OFF) {
+                    if (debugLevel != DebugLevel.OFF) {
                         if (!anonymizeStats) {
                             MessageSendHelper.sendChatMessage("${module.chatName} Left empty ${containerTask.block.localizedName}@(${containerTask.blockPos.asString()})")
                         } else {
@@ -713,7 +713,7 @@ object Tasks {
 
         if (!updateOnly) {
             if (!world.isPlaceable(blockTask.blockPos)) {
-                if (debugMessages == DebugMessages.ALL) {
+                if (debugLevel == DebugLevel.VERBOSE) {
                     if (!anonymizeStats) {
                         MessageSendHelper.sendChatMessage("${module.chatName} Invalid place position @(${blockTask.blockPos.asString()}) Removing task")
                     } else {
