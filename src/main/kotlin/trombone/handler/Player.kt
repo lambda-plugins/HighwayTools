@@ -3,6 +3,7 @@ package trombone.handler
 import HighwayTools.fillerMat
 import HighwayTools.grindObsidian
 import HighwayTools.material
+import HighwayTools.mode
 import HighwayTools.saveMaterial
 import HighwayTools.saveTools
 import HighwayTools.storageManagement
@@ -29,6 +30,7 @@ import trombone.Blueprint.isInsideBlueprintBuild
 import trombone.IO.disableError
 import trombone.Pathfinder.MovementState
 import trombone.Pathfinder.moveState
+import trombone.Trombone
 import trombone.Trombone.module
 import trombone.handler.Container.containerTask
 import trombone.handler.Container.getShulkerWith
@@ -95,11 +97,14 @@ object Player {
             }
             return true
         } else {
-            if (storageManagement && grindObsidian &&
-                containerTask.taskState == TaskState.DONE &&
-                material == Blocks.OBSIDIAN &&
-                (player.inventorySlots.countBlock(Blocks.OBSIDIAN) <= saveMaterial &&
-                    grindCycles == 0)) {
+            if (mode != Trombone.Mode.TUNNEL
+                && storageManagement
+                && grindObsidian
+                && containerTask.taskState == TaskState.DONE
+                && material == Blocks.OBSIDIAN
+                && (player.inventorySlots.countBlock(Blocks.OBSIDIAN) <= saveMaterial &&
+                    grindCycles == 0)
+            ) {
                 val cycles = (player.inventorySlots.count { it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) } - 1) * 8
                 if (cycles > 0) {
                     moveState = MovementState.RESTOCK
@@ -128,7 +133,7 @@ object Player {
 
     private fun SafeClientEvent.findMaterial(blockTask: BlockTask) = when {
         blockTask.isFiller -> {
-            if (isInsideBlueprintBuild(blockTask.blockPos)) {
+            if (isInsideBlueprintBuild(blockTask.blockPos) && mode == Trombone.Mode.HIGHWAY) {
                 if (player.inventorySlots.countBlock(material) > 0) {
                     material
                 } else {
