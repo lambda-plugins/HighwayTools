@@ -171,7 +171,7 @@ object Statistics {
         if (!anonymizeStats) displayText.add("    Start:", primaryColor)
         if (!anonymizeStats) displayText.addLine("(${startingBlockPos.asString()})", secondaryColor)
 
-        displayText.add("    Session placed / destroyed:", primaryColor)
+        displayText.add("    Placed / destroyed:", primaryColor)
         displayText.addLine("%,d".format(totalBlocksPlaced) + " / " + "%,d".format(totalBlocksBroken), secondaryColor)
 
 

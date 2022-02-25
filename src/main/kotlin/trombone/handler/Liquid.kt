@@ -1,7 +1,7 @@
 package trombone.handler
 
 import HighwayTools.anonymizeStats
-import HighwayTools.debugMessages
+import HighwayTools.debugLevel
 import HighwayTools.fillerMat
 import HighwayTools.maxReach
 import com.lambda.client.event.SafeClientEvent
@@ -28,7 +28,7 @@ object Liquid {
             if (world.getBlockState(neighbourPos).block !is BlockLiquid) continue
 
             if (player.distanceTo(neighbourPos) > maxReach) {
-                if (debugMessages == IO.DebugMessages.ALL) {
+                if (debugLevel == IO.DebugLevel.VERBOSE) {
                     if (!anonymizeStats) {
                         MessageSendHelper.sendChatMessage("${module.chatName} Liquid@(${neighbourPos.asString()}) out of reach (${player.distanceTo(neighbourPos)})")
                     } else {

@@ -1,7 +1,14 @@
 package trombone.handler
 
+import HighwayTools.material
 import HighwayTools.maxReach
+import HighwayTools.preferEnderChests
 import HighwayTools.saveEnder
+import HighwayTools.saveFood
+import HighwayTools.saveMaterial
+import HighwayTools.saveTools
+import HighwayTools.searchEChest
+import com.lambda.client.commons.extension.ceilToInt
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.EntityUtils.getDroppedItems
 import com.lambda.client.util.TickTimer
@@ -12,7 +19,6 @@ import com.lambda.client.util.math.VectorUtils.toVec3dCenter
 import com.lambda.client.util.world.getVisibleSides
 import com.lambda.client.util.world.isPlaceable
 import com.lambda.client.util.world.isReplaceable
-import com.lambda.commons.extension.ceilToInt
 import net.minecraft.init.Blocks
 import net.minecraft.init.Items
 import net.minecraft.inventory.ItemStackHelper
@@ -23,6 +29,7 @@ import net.minecraft.item.ItemStack
 import net.minecraft.util.EnumFacing
 import net.minecraft.util.NonNullList
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.text.TextFormatting
 import trombone.Blueprint.isInsideBlueprintBuild
 import trombone.IO.disableError
 import trombone.Pathfinder.currentBlockPos
@@ -36,14 +43,24 @@ object Container {
     var grindCycles = 0
 
     fun SafeClientEvent.handleRestock(item: Item) {
-        getShulkerWith(player.inventorySlots, item)?.let { slot ->
-            getRemotePos()?.let { pos ->
-                containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, item)
-                containerTask.isShulker = true
+        if (preferEnderChests && item.block == Blocks.OBSIDIAN) {
+            handleEnderChest(item)
+        } else {
+            getShulkerWith(player.inventorySlots, item)?.let { slot ->
+                getRemotePos()?.let { pos ->
+                    containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, item)
+                    containerTask.isShulker = true
+                } ?: run {
+                    disableError("Can't find possible container position (Case: 1)")
+                }
             } ?: run {
-                disableError("Can't find possible container position (Case: 1)")
+                handleEnderChest(item)
             }
-        } ?: run {
+        }
+    }
+
+    private fun SafeClientEvent.handleEnderChest(item: Item) {
+        if (searchEChest) {
             if (item.block == Blocks.OBSIDIAN) {
                 if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) <= saveEnder) {
                     getShulkerWith(player.inventorySlots, Blocks.ENDER_CHEST.item)?.let { slot ->
@@ -70,6 +87,8 @@ object Container {
             } else {
                 dispatchEnderChest(item)
             }
+        } else {
+            disableError("${insufficientMaterial(item)}\nTo solve insufficient material grant access to Ender Chest. Activate in Settings ${TextFormatting.GRAY}Storage Management > Search Ender Chest")
         }
     }
 
@@ -90,7 +109,7 @@ object Container {
                     disableError("Can't find possible container position (Case: 5)")
                 }
             } ?: run {
-                disableError("No ${Blocks.ENDER_CHEST.item.registryName} was found in inventory.")
+                disableError("No ${Blocks.ENDER_CHEST.localizedName} was found in inventory.")
             }
         }
     }
@@ -100,12 +119,13 @@ object Container {
 
         return VectorUtils.getBlockPosInSphere(origin, maxReach).asSequence()
             .filter { pos ->
-                !isInsideBlueprintBuild(pos) &&
-                    pos != currentBlockPos &&
-                    world.isPlaceable(pos) &&
-                    !world.getBlockState(pos.down()).isReplaceable &&
-                    world.isAirBlock(pos.up()) &&
-                    getVisibleSides(pos.down()).contains(EnumFacing.UP)
+                !isInsideBlueprintBuild(pos)
+                    && pos != currentBlockPos
+                    && world.isPlaceable(pos)
+                    && !world.getBlockState(pos.down()).isReplaceable
+                    && world.isAirBlock(pos.up())
+                    && getVisibleSides(pos.down()).contains(EnumFacing.UP)
+                    && player.positionVector.distanceTo(pos.toVec3dCenter()) > 1.1
             }.sortedWith(
                 compareByDescending<BlockPos> {
                     safeValue(it)
@@ -171,4 +191,17 @@ object Container {
             }
         return null
     }
+
+    private fun SafeClientEvent.insufficientMaterial(item: Item): String {
+        val itemCount = player.inventorySlots.countItem(item)
+        var message = ""
+        if (saveMaterial > 0 && item == material.item) message += insufficientMaterialPrint(itemCount, saveMaterial, material.localizedName)
+        if (saveEnder > 0 && item.block == Blocks.ENDER_CHEST) message += insufficientMaterialPrint(itemCount, saveEnder, Blocks.ENDER_CHEST.localizedName)
+        if (saveTools > 0 && item == Items.DIAMOND_PICKAXE) message += insufficientMaterialPrint(itemCount, saveTools, "Diamond Pickaxe(s)")
+        if (saveFood > 0 && item == Items.GOLDEN_APPLE ) message += insufficientMaterialPrint(itemCount, saveFood, "Golden Apple(s)")
+        return "$message\nTo continue anyways, set setting in ${TextFormatting.GRAY}Storage Management > Save <Material>${TextFormatting.RESET} to zero."
+    }
+
+    private fun insufficientMaterialPrint(itemCount: Int, settingCount: Int, name: String) =
+        "For safety purposes you need ${TextFormatting.AQUA}${settingCount - itemCount + 1}${TextFormatting.RED} more $name in your inventory ($itemCount/${settingCount + 1})."
 }

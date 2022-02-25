@@ -4,14 +4,19 @@ import HighwayTools.illegalPlacements
 import HighwayTools.maxReach
 import HighwayTools.placementSearch
 import com.lambda.client.event.SafeClientEvent
+import com.lambda.client.util.items.getSlots
 import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.world.PlaceInfo
 import com.lambda.client.util.world.getNeighbourSequence
 import net.minecraft.block.Block
 import net.minecraft.block.BlockLiquid
+import net.minecraft.block.state.IBlockState
+import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.init.Items
+import net.minecraft.inventory.Slot
 import net.minecraft.item.Item
+import net.minecraft.item.ItemStack
 import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
@@ -46,6 +51,8 @@ class BlockTask(
     var aabb = AxisAlignedBB(1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
 
     var toRemove = false
+    var ticksMined = 1
+    var toolToUse = ItemStack(Items.AIR)
 
     fun updateState(state: TaskState) {
         if (state == taskState) return
@@ -66,6 +73,10 @@ class BlockTask(
 
     fun onStuck(weight: Int = 1) {
         stuckTicks += weight
+    }
+
+    fun resetStuck() {
+        stuckTicks = 0
     }
 
     fun updateTask(event: SafeClientEvent, eyePos: Vec3d) {

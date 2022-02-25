@@ -2,6 +2,7 @@ package trombone
 
 import HighwayTools.anonymizeStats
 import HighwayTools.disableMode
+import HighwayTools.disableWarnings
 import HighwayTools.fillerMat
 import HighwayTools.height
 import HighwayTools.ignoreBlocks
@@ -31,6 +32,7 @@ import kotlinx.coroutines.launch
 import net.minecraft.client.audio.PositionedSoundRecord
 import net.minecraft.init.SoundEvents
 import net.minecraft.util.text.TextComponentString
+import net.minecraft.util.text.TextFormatting
 import net.minecraft.world.EnumDifficulty
 import trombone.Pathfinder.currentBlockPos
 import trombone.Pathfinder.startingBlockPos
@@ -46,8 +48,8 @@ object IO {
         NONE, ANTI_AFK, LOGOUT
     }
 
-    enum class DebugMessages {
-        OFF, IMPORTANT, ALL
+    enum class DebugLevel {
+        OFF, IMPORTANT, VERBOSE
     }
 
     fun SafeClientEvent.pauseCheck(): Boolean =
@@ -69,7 +71,7 @@ object IO {
                     MessageSendHelper.sendRawChatMessage("    §9> §7Axis offset: §a%,d %,d§r".format(startingBlockPos.x, startingBlockPos.z))
 
                     if (abs(startingBlockPos.x) != abs(startingBlockPos.z)) {
-                        MessageSendHelper.sendRawChatMessage("    §9> §cYou may have an offset to diagonal highway position!")
+                        MessageSendHelper.sendRawChatMessage("    §c[!] You may have an offset to diagonal highway position!")
                     }
                 } else {
                     if (startingDirection == Direction.NORTH || startingDirection == Direction.SOUTH) {
@@ -81,38 +83,39 @@ object IO {
                 }
             }
 
-            if (startingBlockPos.y != 120 && mode != Mode.TUNNEL) {
-                MessageSendHelper.sendRawChatMessage("    §9> §cCheck altitude and make sure to build at Y: 120 for the correct height")
-            }
+            if (!disableWarnings) {
+                if (startingBlockPos.y != 120 && mode != Mode.TUNNEL) {
+                    MessageSendHelper.sendRawChatMessage("    §c[!] Check altitude and make sure to build at Y: 120 for the correct height")
+                }
 
-            if (AntiHunger.isEnabled) {
-                MessageSendHelper.sendRawChatMessage("    §9> §cAntiHunger does slow down block interactions.")
-            }
+                if (AntiHunger.isEnabled) {
+                    MessageSendHelper.sendRawChatMessage("    §c[!] AntiHunger does slow down block interactions.")
+                }
 
-            if (LagNotifier.isDisabled) {
-                MessageSendHelper.sendRawChatMessage("    §9> §cYou should activate LagNotifier to make the bot stop on server lag.")
-            }
+                if (LagNotifier.isDisabled) {
+                    MessageSendHelper.sendRawChatMessage("    §c[!] You should activate LagNotifier to make the bot stop on server lag.")
+                }
 
-            if (AutoEat.isDisabled) {
-                MessageSendHelper.sendRawChatMessage("    §9> §cYou should activate AutoEat to not die on starvation.")
-            }
+                if (AutoEat.isDisabled) {
+                    MessageSendHelper.sendRawChatMessage("    §c[!] You should activate AutoEat to not die on starvation.")
+                }
 
-            if (AutoLog.isDisabled) {
-                MessageSendHelper.sendRawChatMessage("    §9> §cYou should activate AutoLog to prevent most deaths when afk.")
-            }
+                if (AutoLog.isDisabled) {
+                    MessageSendHelper.sendRawChatMessage("    §c[!] You should activate AutoLog to prevent most deaths when afk.")
+                }
 
-            if (multiBuilding && Velocity.isDisabled) {
-                MessageSendHelper.sendRawChatMessage("    §9> §cMake sure to enable Velocity to not get pushed from your mates.")
-            }
+                if (multiBuilding && Velocity.isDisabled) {
+                    MessageSendHelper.sendRawChatMessage("    §c[!] Make sure to enable Velocity to not get pushed from your mates.")
+                }
 
-            if (material == fillerMat) {
-                MessageSendHelper.sendRawChatMessage("    §9> §cMake sure to use §aTunnel Mode§c instead of having same material for both main and filler!")
-            }
+                if (material == fillerMat) {
+                    MessageSendHelper.sendRawChatMessage("    §c[!] Make sure to use §aTunnel Mode§c instead of having same material for both main and filler!")
+                }
 
-            if (mode == Mode.HIGHWAY && height < 3) {
-                MessageSendHelper.sendRawChatMessage("    §9> §cYou may increase the height to at least 3")
+                if (mode == Mode.HIGHWAY && height < 3) {
+                    MessageSendHelper.sendRawChatMessage("    §c[!] You may increase the height to at least 3")
+                }
             }
-
         }
     }
 
@@ -139,17 +142,17 @@ object IO {
         }
     }
 
-    fun SafeClientEvent.disableError(message: String) {
-        MessageSendHelper.sendChatMessage("${module.chatName} $message")
+    fun SafeClientEvent.disableError(error: String) {
+        MessageSendHelper.sendChatMessage("${module.chatName} §c[!] $error")
         mc.soundHandler.playSound(PositionedSoundRecord.getRecord(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f))
         module.disable()
         when (disableMode) {
             DisableMode.ANTI_AFK -> {
-                MessageSendHelper.sendChatMessage("${module.chatName} Going into AFK mode.")
+                MessageSendHelper.sendChatMessage("${module.chatName} §c[!] ${TextFormatting.AQUA}Going into AFK mode.")
                 AntiAFK.enable()
             }
             DisableMode.LOGOUT -> {
-                MessageSendHelper.sendChatMessage("${module.chatName} CAUTION: Logging of in 1 minute!")
+                MessageSendHelper.sendChatMessage("${module.chatName} §c[!] ${TextFormatting.DARK_RED}CAUTION: Logging of in 1 minute!")
                 defaultScope.launch {
                     delay(6000L)
                     if (disableMode == DisableMode.LOGOUT && module.isEnabled) {
@@ -160,6 +163,8 @@ object IO {
                                 connection.networkManager.closeChannel(TextComponentString("Done building highways."))
                             }
                         }
+                    } else {
+                        MessageSendHelper.sendChatMessage("${module.chatName} ${TextFormatting.GREEN}Logout canceled.")
                     }
                 }
             }

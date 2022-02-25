@@ -3,8 +3,9 @@ package trombone
 import HighwayTools.backfill
 import HighwayTools.cleanCorner
 import HighwayTools.cleanFloor
+import HighwayTools.cleanLeftWall
+import HighwayTools.cleanRightWall
 import HighwayTools.cleanRoof
-import HighwayTools.cleanWalls
 import HighwayTools.clearSpace
 import HighwayTools.cornerBlock
 import HighwayTools.fillerMat
@@ -15,11 +16,11 @@ import HighwayTools.mode
 import HighwayTools.railing
 import HighwayTools.railingHeight
 import HighwayTools.width
+import com.lambda.client.commons.extension.ceilToInt
+import com.lambda.client.commons.extension.floorToInt
 import com.lambda.client.util.math.Direction
 import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.math.VectorUtils.multiply
-import com.lambda.commons.extension.ceilToInt
-import com.lambda.commons.extension.floorToInt
 import net.minecraft.block.Block
 import net.minecraft.init.Blocks
 import net.minecraft.util.math.BlockPos
@@ -46,7 +47,7 @@ object Blueprint {
                         generateBackfill(thisPos, xDirection)
                     } else {
                         if (cleanFloor) generateFloor(thisPos, xDirection)
-                        if (cleanWalls) generateWalls(thisPos, xDirection)
+                        if (cleanRightWall || cleanLeftWall) generateWalls(thisPos, xDirection)
                         if (cleanRoof) generateRoof(thisPos, xDirection)
                         if (cleanCorner && !cornerBlock && width > 2) generateCorner(thisPos, xDirection)
                     }
@@ -128,8 +129,8 @@ object Blueprint {
             0
         }
         for (h in cb until height) {
-            blueprint[basePos.add(xDirection.directionVec.multiply(-1 - width / 2)).up(h + 1)] = fillerMat
-            blueprint[basePos.add(xDirection.directionVec.multiply(width - width / 2)).up(h + 1)] = fillerMat
+            if (cleanRightWall) blueprint[basePos.add(xDirection.directionVec.multiply(width - width / 2)).up(h + 1)] = fillerMat
+            if (cleanLeftWall) blueprint[basePos.add(xDirection.directionVec.multiply(-1 - width / 2)).up(h + 1)] = fillerMat
         }
     }
 

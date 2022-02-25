@@ -1,7 +1,7 @@
 package trombone.interaction
 
 import HighwayTools.anonymizeStats
-import HighwayTools.debugMessages
+import HighwayTools.debugLevel
 import HighwayTools.dynamicDelay
 import HighwayTools.placeDelay
 import HighwayTools.taskTimeout
@@ -21,7 +21,7 @@ import net.minecraft.network.play.client.CPacketPlayerTryUseItemOnBlock
 import net.minecraft.util.EnumFacing
 import net.minecraft.util.EnumHand
 import net.minecraft.util.math.BlockPos
-import trombone.IO.DebugMessages
+import trombone.IO.DebugLevel
 import trombone.Trombone.module
 import trombone.handler.Container.containerTask
 import trombone.handler.Player.lastHitVec
@@ -39,7 +39,7 @@ object Place {
                 if (blockTask.taskState == TaskState.LIQUID) {
                     blockTask.updateState(TaskState.DONE)
                 }
-                if (debugMessages == DebugMessages.ALL) {
+                if (debugLevel == DebugLevel.VERBOSE) {
                     if (!anonymizeStats) {
                         MessageSendHelper.sendChatMessage("${module.chatName} No neighbours found for ${blockTask.blockPos.asString()}")
                     } else {

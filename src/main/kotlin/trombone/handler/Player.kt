@@ -1,23 +1,23 @@
 package trombone.handler
 
-import HighwayTools.anonymizeStats
-import HighwayTools.debugMessages
 import HighwayTools.fillerMat
 import HighwayTools.grindObsidian
-import HighwayTools.interacting
-import HighwayTools.leaveEmptyShulkers
 import HighwayTools.material
+import HighwayTools.mode
 import HighwayTools.saveMaterial
 import HighwayTools.saveTools
 import HighwayTools.storageManagement
 import com.lambda.client.event.SafeClientEvent
+import com.lambda.client.manager.managers.MessageManager
+import com.lambda.client.manager.managers.PlayerInventoryManager
+import com.lambda.client.manager.managers.PlayerInventoryManager.addInventoryTask
 import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
 import com.lambda.client.module.modules.player.InventoryManager
 import com.lambda.client.util.items.*
-import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.math.RotationUtils.getRotationTo
 import com.lambda.client.util.text.MessageSendHelper
 import kotlinx.coroutines.sync.Mutex
+import net.minecraft.block.Block.getBlockFromName
 import net.minecraft.enchantment.EnchantmentHelper
 import net.minecraft.init.Blocks
 import net.minecraft.init.Enchantments
@@ -27,10 +27,10 @@ import net.minecraft.inventory.Slot
 import net.minecraft.item.ItemBlock
 import net.minecraft.util.math.Vec3d
 import trombone.Blueprint.isInsideBlueprintBuild
-import trombone.IO.DebugMessages
 import trombone.IO.disableError
 import trombone.Pathfinder.MovementState
 import trombone.Pathfinder.moveState
+import trombone.Trombone
 import trombone.Trombone.module
 import trombone.handler.Container.containerTask
 import trombone.handler.Container.getShulkerWith
@@ -59,19 +59,8 @@ object Player {
         if (lastHitVec == Vec3d.ZERO) return
         val rotation = getRotationTo(lastHitVec)
 
-        when (interacting) {
-            RotationMode.SPOOF -> {
-                module.sendPlayerPacket {
-                    rotate(rotation)
-                }
-            }
-            RotationMode.VIEW_LOCK -> {
-                player.rotationYaw = rotation.x
-                player.rotationPitch = rotation.y
-            }
-            else -> {
-                // RotationMode.OFF
-            }
+        module.sendPlayerPacket {
+            rotate(rotation)
         }
     }
 
@@ -108,11 +97,14 @@ object Player {
             }
             return true
         } else {
-            if (storageManagement && grindObsidian &&
-                containerTask.taskState == TaskState.DONE &&
-                material == Blocks.OBSIDIAN &&
-                (player.inventorySlots.countBlock(Blocks.OBSIDIAN) <= saveMaterial &&
-                    grindCycles == 0)) {
+            if (mode != Trombone.Mode.TUNNEL
+                && storageManagement
+                && grindObsidian
+                && containerTask.taskState == TaskState.DONE
+                && material == Blocks.OBSIDIAN
+                && (player.inventorySlots.countBlock(Blocks.OBSIDIAN) <= saveMaterial &&
+                    grindCycles == 0)
+            ) {
                 val cycles = (player.inventorySlots.count { it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) } - 1) * 8
                 if (cycles > 0) {
                     moveState = MovementState.RESTOCK
@@ -123,45 +115,72 @@ object Player {
                 return false
             }
 
-            val useBlock = when {
-                blockTask.isFiller -> {
-                    if (isInsideBlueprintBuild(blockTask.blockPos)) {
-                        if (player.inventorySlots.countBlock(material) > 0) {
-                            material
-                        } else {
-                            disableError("No ${blockTask.block.localizedName} was found in inventory. (1)")
-                            return false
-                        }
-                    } else {
-                        if (player.inventorySlots.countBlock(fillerMat) > 0) {
-                            fillerMat
-                        } else {
-                            disableError("No ${blockTask.block.localizedName} was found in inventory. (2)")
-                            return false
-                        }
-                    }
-                }
-                player.inventorySlots.countBlock(blockTask.block) > 0 -> blockTask.block
-                else -> {
-                    if (blockTask.block == material) {
-                        handleRestock(Blocks.OBSIDIAN.item)
-                    } else {
-                        disableError("No ${blockTask.block.localizedName} was found in inventory. (3)")
-                    }
-                    return false
-                }
-            }
+            val useMat = findMaterial(blockTask)
+            if (useMat == Blocks.AIR) return false
 
-            val success = swapToBlockOrMove(useBlock, predicateSlot = {
+            val success = swapToBlockOrMove(useMat, predicateSlot = {
                 it.item is ItemBlock
             })
 
             return if (!success) {
-                disableError("No ${blockTask.block.localizedName} was found in inventory. (4)")
+                disableError("Inventory transaction of $useMat failed.")
                 false
             } else {
                 true
             }
+        }
+    }
+
+    private fun SafeClientEvent.findMaterial(blockTask: BlockTask) = when {
+        blockTask.isFiller -> {
+            if (isInsideBlueprintBuild(blockTask.blockPos) && mode == Trombone.Mode.HIGHWAY) {
+                if (player.inventorySlots.countBlock(material) > 0) {
+                    material
+                } else {
+                    restockFallback(blockTask)
+                    Blocks.AIR
+                }
+            } else {
+                if (player.inventorySlots.countBlock(fillerMat) > 0) {
+                    fillerMat
+                } else {
+                    val possibleMaterials = InventoryManager.ejectList.filter { stringName ->
+                        getBlockFromName(stringName)?.let {
+                            player.inventorySlots.countBlock(it) > 0
+                        } ?: run {
+                            false
+                        }
+                    }
+                    possibleMaterials.firstOrNull()?.let { stringMaterial ->
+                        getBlockFromName(stringMaterial) ?: run {
+                            disableError("Invalid eject material: $stringMaterial")
+                            Blocks.AIR
+                        }
+                    } ?: run {
+                        if (player.inventorySlots.countBlock(material) > 0) {
+                            material
+                        } else {
+                            restockFallback(blockTask)
+                            Blocks.AIR
+                        }
+                    }
+                }
+            }
+        }
+        player.inventorySlots.countBlock(blockTask.block) > 0 -> {
+            blockTask.block
+        }
+        else -> {
+            restockFallback(blockTask)
+            Blocks.AIR
+        }
+    }
+
+    private fun SafeClientEvent.restockFallback(blockTask: BlockTask) {
+        if (blockTask.block == material && storageManagement) {
+            handleRestock(material.item)
+        } else {
+            disableError("No usable material was found in inventory.")
         }
     }
 
@@ -180,6 +199,7 @@ object Player {
 
     private fun SafeClientEvent.swapOrMoveTool(blockTask: BlockTask) =
         getBestTool(blockTask)?.let { slotFrom ->
+            blockTask.toolToUse = slotFrom.stack
             slotFrom.toHotbarSlotOrNull()?.let {
                 swapToSlot(it)
             } ?: run {
@@ -196,34 +216,33 @@ object Player {
             (slot.stack.item == it.stack.item && it.stack.count < slot.slotStackLimit - slot.stack.count) ||
                 it.stack.item == Items.AIR
         }?.let {
-            clickSlot(player.openContainer.windowId, slot, 0, ClickType.QUICK_MOVE)
+            module.addInventoryTask(
+                PlayerInventoryManager.ClickInfo(
+                    player.openContainer.windowId,
+                    slot.slotIndex,
+                    0,
+                    ClickType.QUICK_MOVE
+                )
+            )
+            Tasks.isInventoryManaging = true
         } ?: run {
             player.hotbarSlots.firstOrNull {
                 InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
             }?.let {
-                clickSlot(player.openContainer.windowId, slot, it.hotbarSlot, ClickType.SWAP)
+                module.addInventoryTask(
+                    PlayerInventoryManager.ClickInfo(
+                        player.openContainer.windowId,
+                        slot.slotIndex,
+                        it.hotbarSlot,
+                        ClickType.SWAP
+                    )
+                )
+                Tasks.isInventoryManaging = true
             } ?: run {
                 // ToDo: SWAP Item from hotbar to ejectable item in inventory and then swap target slot with hotbar
                 disableError("Inventory full.")
             }
         }
-
-        if (leaveEmptyShulkers &&
-            player.openContainer.getSlots(0..26).all { it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) }) {
-            if (debugMessages != DebugMessages.OFF) {
-                if (!anonymizeStats) {
-                    MessageSendHelper.sendChatMessage("${module.chatName} Left empty ${containerTask.block.localizedName}@(${containerTask.blockPos.asString()})")
-                } else {
-                    MessageSendHelper.sendChatMessage("${module.chatName} Left empty ${containerTask.block.localizedName}")
-                }
-            }
-            containerTask.updateState(TaskState.DONE)
-        } else {
-            containerTask.updateState(TaskState.BREAK)
-        }
-
-        containerTask.isOpen = false
-        player.closeScreen()
     }
 
     fun SafeClientEvent.getEjectSlot(): Slot? {
