@@ -16,11 +16,11 @@ import HighwayTools.mode
 import HighwayTools.railing
 import HighwayTools.railingHeight
 import HighwayTools.width
+import com.lambda.client.commons.extension.ceilToInt
+import com.lambda.client.commons.extension.floorToInt
 import com.lambda.client.util.math.Direction
 import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.math.VectorUtils.multiply
-import com.lambda.commons.extension.ceilToInt
-import com.lambda.commons.extension.floorToInt
 import net.minecraft.block.Block
 import net.minecraft.init.Blocks
 import net.minecraft.util.math.BlockPos

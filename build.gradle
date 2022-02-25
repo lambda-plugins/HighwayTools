@@ -8,8 +8,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'net.minecraftforge.gradle:ForgeGradle:4.+'
-        classpath 'org.spongepowered:mixingradle:0.7-SNAPSHOT'
+        classpath 'net.minecraftforge.gradle:ForgeGradle:5.+'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
     }
 }
@@ -17,7 +16,6 @@ buildscript {
 apply plugin: 'idea'
 apply plugin: 'kotlin'
 apply plugin: 'net.minecraftforge.gradle'
-apply plugin: 'org.spongepowered.mixin'
 
 compileJava {
     sourceCompatibility = targetCompatibility = '1.8'
@@ -67,11 +65,10 @@ configurations {
 dependencies {
     minecraft "net.minecraftforge:forge:$minecraftVersion-$forgeVersion"
 
-    // API coming soon
-//    implementation 'com.github.lambda-client:lambda:2.12'
-    implementation(files("lib/lambda-3.0.1-api.jar"))
+    // Online maven dependency coming soon
+    implementation files("lib/lambda-3.1-api.jar")
 
-    implementation('org.spongepowered:mixin:0.7.11-SNAPSHOT') {
+    implementation('org.spongepowered:mixin:0.8.3') {
         exclude module: 'commons-io'
         exclude module: 'gson'
         exclude module: 'guava'
@@ -80,7 +77,7 @@ dependencies {
     }
 
     // Hacky way to get mixin work
-    annotationProcessor('org.spongepowered:mixin:0.8.2:processor') {
+    annotationProcessor('org.spongepowered:mixin:0.8.3:processor') {
         exclude module: 'gson'
     }
 
@@ -113,29 +110,29 @@ dependencies {
 
     // Add them back to compileOnly (provided)
     compileOnly "org.jetbrains.kotlin:kotlin-stdlib-common:$kotlinVersion"
-    compileOnly 'org.jetbrains:annotations:22.0.0'
+    compileOnly 'org.jetbrains:annotations:23.0.0'
 
     // This Baritone will NOT be included in the jar
     implementation 'com.github.cabaletta:baritone:1.2.14'
+
+    // Unit Testing frameworks
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
 
     // Add your dependencies below
     // jarLibs 'com.lambda:example:1.0.0'
 }
 
-mixin {
-    defaultObfuscationEnv 'searge'
-    add sourceSets.main, 'mixins.lambda.refmap.json'
-}
-
 processResources {
-    inputs.property 'version', project.version
-
     exclude '**/rawimagefiles'
 
     from(sourceSets.main.resources.srcDirs) {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
         include 'plugin_info.json'
         expand 'version': project.version
     }
 }
 
-jar.finalizedBy('reobfJar')
+test {
+    useJUnitPlatform()
+}
