@@ -10,12 +10,15 @@ import HighwayTools.maxReach
 import HighwayTools.miningSpeedFactor
 import HighwayTools.taskTimeout
 import com.lambda.client.event.SafeClientEvent
+import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.math.isInSight
+import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.defaultScope
 import com.lambda.client.util.threads.onMainThreadSafe
 import com.lambda.client.util.threads.runSafeSuspend
 import com.lambda.client.util.world.getHitVec
 import com.lambda.client.util.world.getMiningSide
+import com.lambda.client.util.world.getNeighbour
 import com.lambda.client.util.world.getNeighbourSequence
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -43,19 +46,18 @@ object Break {
 
     fun SafeClientEvent.mineBlock(blockTask: BlockTask) {
         val blockState = world.getBlockState(blockTask.blockPos)
-        val ticksNeeded = ceil((1 / blockState.getPlayerRelativeBlockHardness(player, world, blockTask.blockPos)) * miningSpeedFactor).toInt()
 
         if (blockState.block == Blocks.FIRE) {
-            val sides = getNeighbourSequence(blockTask.blockPos, 1, maxReach, !illegalPlacements)
-            if (sides.isEmpty()) {
+            getNeighbour(blockTask.blockPos, 1, maxReach, !illegalPlacements)?.let {
+                lastHitVec = getHitVec(it.pos, it.side)
+
+                extinguishFire(blockTask, it.pos, it.side)
+            } ?: run {
                 blockTask.updateState(TaskState.PLACE)
-                return
             }
-
-            lastHitVec = getHitVec(sides.last().pos, sides.last().side)
-
-            mineBlockNormal(blockTask, sides.last().side, 1)
         } else {
+            val ticksNeeded = ceil((1 / blockState.getPlayerRelativeBlockHardness(player, world, blockTask.blockPos)) * miningSpeedFactor).toInt()
+
             var side = getMiningSide(blockTask.blockPos) ?: run {
                 blockTask.onStuck()
                 return
@@ -158,9 +160,30 @@ object Break {
         }
     }
 
-    private suspend fun sendMiningPackets(pos: BlockPos, side: EnumFacing, start: Boolean = false, stop: Boolean = false) {
+    private fun extinguishFire(blockTask: BlockTask, pos: BlockPos, side: EnumFacing) {
+        waitTicks = breakDelay
+        blockTask.updateState(TaskState.PENDING_BREAK)
+
+        defaultScope.launch {
+            packetLimiterMutex.withLock {
+                packetLimiter.add(System.currentTimeMillis())
+            }
+
+            sendMiningPackets(pos, side, start = true, abort = true)
+
+            delay(50L * taskTimeout)
+            if (blockTask.taskState == TaskState.PENDING_BREAK) {
+                stateUpdateMutex.withLock {
+                    blockTask.updateState(TaskState.BREAK)
+                }
+            }
+        }
+    }
+
+    private suspend fun sendMiningPackets(pos: BlockPos, side: EnumFacing, start: Boolean = false, stop: Boolean = false, abort: Boolean = false) {
         onMainThreadSafe {
             if (start || packetFlood) connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.START_DESTROY_BLOCK, pos, side))
+            if (abort) connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.ABORT_DESTROY_BLOCK, pos, side))
             if (stop || packetFlood) connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.STOP_DESTROY_BLOCK, pos, side))
             player.swingArm(EnumHand.MAIN_HAND)
         }
