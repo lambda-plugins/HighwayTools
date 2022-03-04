@@ -2,6 +2,7 @@ package trombone.handler
 
 import HighwayTools.material
 import HighwayTools.maxReach
+import HighwayTools.minDistance
 import HighwayTools.preferEnderChests
 import HighwayTools.saveEnder
 import HighwayTools.saveFood
@@ -125,7 +126,7 @@ object Container {
                     && !world.getBlockState(pos.down()).isReplaceable
                     && world.isAirBlock(pos.up())
                     && getVisibleSides(pos.down()).contains(EnumFacing.UP)
-                    && player.positionVector.distanceTo(pos.toVec3dCenter()) > 1.1
+                    && player.positionVector.distanceTo(pos.toVec3dCenter()) > minDistance
             }.sortedWith(
                 compareByDescending<BlockPos> {
                     safeValue(it)
