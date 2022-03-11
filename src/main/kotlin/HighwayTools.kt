@@ -14,6 +14,7 @@ import net.minecraft.block.Block
 import net.minecraft.init.Blocks
 import net.minecraft.init.Items
 import net.minecraft.item.Item
+import net.minecraftforge.client.event.ClientChatReceivedEvent
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import trombone.IO.DebugLevel
 import trombone.IO.DisableMode
@@ -27,6 +28,10 @@ import trombone.Trombone.tick
 import trombone.Trombone.onDisable
 import trombone.Trombone.onEnable
 import trombone.handler.Packet.handlePacket
+import trombone.handler.Player.LimitMode
+import trombone.handler.Player.RotationMode
+import trombone.handler.Skynet.handleChatEvent
+import trombone.handler.Skynet.protocolPrefix
 
 /**
  * @author Avanatiker
@@ -111,6 +116,15 @@ object HighwayTools : PluginModule(
     val usingProxy by setting("Proxy", false, { disableMode == DisableMode.LOGOUT && page == Page.STORAGE_MANAGEMENT }, description = "Enable this if you are using a proxy to call the given command")
     val proxyCommand by setting("Proxy Command", "/dc", { usingProxy && disableMode == DisableMode.LOGOUT && page == Page.STORAGE_MANAGEMENT }, description = "Command to be sent to log out")
 
+    // skynet
+    val skynet by setting("Skynet", false, { page == Page.SKYNET }, description = "Makes HighwayBots communicate over $protocolPrefix")
+    val friends by setting("Only Friends", true, { page == Page.SKYNET }, description = "Only communicate with players that were added as friends")
+    val whisperDelay by setting("Whisper Delay", 100, 1..1000, 10, { page == Page.SKYNET }, description = "Sets the delay ticks between whispers")
+    val testLane by setting("Test Lane", 1, -10..10, 1, { page == Page.SKYNET }, description = "Sets the delay ticks between whispers")
+    val noWhispersShown by setting("Hide whispers", false, { page == Page.SKYNET }, description = "Hides HTProtocol whispers")
+    val suppressWhisper by setting("Suppress whispers", false, { page == Page.SKYNET }, description = "Suppresses whispers for debugging")
+    val debugLog by setting("Debug", true, { page == Page.SKYNET }, description = "Shows HTProtocol debug logs")
+
     // render
     val anonymizeStats by setting("Anonymize", false, { page == Page.RENDER }, description = "Censors all coordinates in HUD and Chat")
     val fakeSounds by setting("Fake Sounds", true, { page == Page.RENDER }, description = "Adds artificial sounds to the actions")
@@ -131,7 +145,7 @@ object HighwayTools : PluginModule(
     val thickness by setting("Thickness", 2.0f, 0.25f..4.0f, 0.25f, { outline && page == Page.RENDER }, description = "Sets thickness of outline")
 
     private enum class Page {
-        BLUEPRINT, BEHAVIOR, MINING, PLACING, STORAGE_MANAGEMENT, RENDER
+        BLUEPRINT, BEHAVIOR, MINING, PLACING, STORAGE_MANAGEMENT, SKYNET, RENDER
     }
 
     // internal settings
@@ -193,6 +207,10 @@ object HighwayTools : PluginModule(
 
         safeListener<PlayerTravelEvent> {
             if (!pauseCheck()) updatePathing()
+        }
+
+        safeListener<ClientChatReceivedEvent> { event ->
+            if (skynet) handleChatEvent(event)
         }
     }
 }
