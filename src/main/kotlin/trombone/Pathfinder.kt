@@ -37,6 +37,9 @@ object Pathfinder {
     var startingBlockPos = BlockPos(0, -1, 0)
     private var targetBlockPos = BlockPos(0, -1, 0)
     var distancePending = 0
+    var stashPos = BlockPos(0, -1, 0)
+    var stashNetherPos = BlockPos(0, -1, 0)
+    var returnPos = BlockPos(0, -1, 0)
 
     enum class MovementState {
         RUNNING, PICKUP, BRIDGE, RESTOCK
@@ -100,14 +103,9 @@ object Pathfinder {
             MovementState.PICKUP -> {
                 goal = getCollectingPosition()
             }
+
             MovementState.RESTOCK -> {
-                val target = currentBlockPos.toVec3dCenter()
-                if (player.positionVector.distanceTo(target) < 2) {
-                    goal = null
-                    moveTo(target)
-                } else {
-                    goal = currentBlockPos
-                }
+                returnPos = currentBlockPos
             }
         }
     }

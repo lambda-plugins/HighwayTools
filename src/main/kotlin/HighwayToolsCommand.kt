@@ -1,7 +1,10 @@
 import com.lambda.client.command.ClientCommand
 import com.lambda.client.util.text.MessageSendHelper.sendChatMessage
+import net.minecraft.util.math.BlockPos
 import trombone.IO.printSettings
 import trombone.Pathfinder.distancePending
+import trombone.Pathfinder.stashNetherPos
+import trombone.Pathfinder.stashPos
 
 object HighwayToolsCommand : ClientCommand(
     name = "highwaytools",
@@ -66,6 +69,17 @@ object HighwayToolsCommand : ClientCommand(
                 execute("Sets the target distance until the bot stops") {
                     distancePending = distanceArg.value
                     sendChatMessage("HighwayTools will stop after (${distanceArg.value}) blocks distance. To remove the limit use distance 0")
+                }
+            }
+        }
+
+        literal("stash", "s") {
+            string("position") { stringArg ->
+                execute("Sets the stash position for the bots refill") {
+                    val temp = stringArg.value.split(" ".toRegex()).map { it.toInt() }
+                    stashPos = BlockPos(temp[0], temp[1], temp[2])
+                    stashNetherPos = BlockPos(temp[0].div(8), temp[1], temp[2].div(8))
+                    sendChatMessage("HighwayTools will go to ${stringArg.value} to restock.")
                 }
             }
         }
