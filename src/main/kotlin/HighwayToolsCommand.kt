@@ -74,12 +74,42 @@ object HighwayToolsCommand : ClientCommand(
         }
 
         literal("stash", "s") {
-            string("position") { stringArg ->
-                execute("Sets the stash position for the bots refill") {
-                    val temp = stringArg.value.split(" ".toRegex()).map { it.toInt() }
-                    stashPos = BlockPos(temp[0], temp[1], temp[2])
-                    stashNetherPos = BlockPos(temp[0].div(8), temp[1], temp[2].div(8))
-                    sendChatMessage("HighwayTools will go to ${stringArg.value} to restock.")
+            int("x> <y> <z> Nether portal <x> <y> <z") { xArg ->
+                execute("Not enough arguments") {
+                    sendChatMessage("You need to specify chest y and z, and Nether portal x, y and z pos")
+                }
+
+                int("y> <z> Nether portal <x> <y> <z") { yArg ->
+                    execute("Not enough arguments") {
+                        sendChatMessage("You need to specify chest z and Nether portal x, y and z pos")
+                    }
+
+                    int("z> Nether portal <x> <y> <z") { zArg ->
+                        execute("Sets the stash position for the bots refill") {
+                            sendChatMessage("You need to specify Nether portal x, y and z pos")
+                        }
+
+                        int("x> <y> <z") { xNetherArg ->
+                            execute("Not enough arguments") {
+                                sendChatMessage("You need to specify Nether portal x, y and z pos")
+                            }
+
+                            int("y> <z") { yNetherArg ->
+                                execute("Not enough arguments") {
+                                    sendChatMessage("You need to specify Nether portal y and z pos")
+                                }
+
+                                int("z") { zNetherArg ->
+                                    execute("Sets the stash position for the bots refill") {
+                                        stashPos = BlockPos(xArg.value, yArg.value, zArg.value)
+                                        stashNetherPos = BlockPos(xNetherArg.value, yNetherArg.value, zNetherArg.value)
+                                        sendChatMessage("HighwayTools will go to ${stashPos.toString().replace("BlockPos".toRegex(), "").replace("\\{([^}]+)}".toRegex(), "$1")} to restock.")
+                                        sendChatMessage("And will go through nether portal at ${stashNetherPos.toString().replace("BlockPos".toRegex(), "").replace("\\{([^}]+)}".toRegex(), "$1")}.")
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
