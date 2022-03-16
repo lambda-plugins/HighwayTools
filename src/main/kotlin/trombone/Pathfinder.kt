@@ -35,11 +35,11 @@ object Pathfinder {
     var startingDirection = Direction.NORTH
     var currentBlockPos = BlockPos(0, -1, 0)
     var startingBlockPos = BlockPos(0, -1, 0)
-    private var targetBlockPos = BlockPos(0, -1, 0)
     var distancePending = 0
     var stashPos = BlockPos(0, -1, 0)
     var stashNetherPos = BlockPos(0, -1, 0)
-    var returnPos = BlockPos(0, -1, 0)
+    private var returnPos = BlockPos(0, -1, 0)
+    private var targetBlockPos = BlockPos(0, -1, 0)
 
     enum class MovementState {
         RUNNING, PICKUP, BRIDGE, RESTOCK
@@ -106,6 +106,7 @@ object Pathfinder {
 
             MovementState.RESTOCK -> {
                 returnPos = currentBlockPos
+                moveTo(stashNetherPos.toVec3dCenter())
             }
         }
     }
