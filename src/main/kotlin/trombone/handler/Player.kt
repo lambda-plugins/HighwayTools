@@ -209,8 +209,8 @@ object Player {
 
     fun SafeClientEvent.moveToInventory(slot: Slot) {
         player.openContainer.getSlots(27..62).firstOrNull {
-            (slot.stack.item == it.stack.item && it.stack.count < slot.slotStackLimit - slot.stack.count) ||
-                it.stack.item == Items.AIR
+            (slot.stack.item == it.stack.item && it.stack.count < slot.slotStackLimit - slot.stack.count)
+                || it.stack.item == Items.AIR
         }?.let {
             module.addInventoryTask(
                 PlayerInventoryManager.ClickInfo(

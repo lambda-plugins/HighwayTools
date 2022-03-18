@@ -115,7 +115,6 @@ object HighwayTools : PluginModule(
     val anonymizeStats by setting("Anonymize", false, { page == Page.RENDER }, description = "Censors all coordinates in HUD and Chat")
     val fakeSounds by setting("Fake Sounds", true, { page == Page.RENDER }, description = "Adds artificial sounds to the actions")
     val info by setting("Show Info", true, { page == Page.RENDER }, description = "Prints session stats in chat")
-    val printDebug by setting("Show Queue", false, { page == Page.RENDER }, description = "Shows task queue in HUD")
     val debugLevel by setting("Debug Level", DebugLevel.IMPORTANT, { page == Page.RENDER }, description = "Sets the debug log depth level")
     val goalRender by setting("Baritone Goal", false, { page == Page.RENDER }, description = "Renders the baritone goal")
     val showCurrentPos by setting("Current Pos", false, { page == Page.RENDER }, description = "Renders the current position")

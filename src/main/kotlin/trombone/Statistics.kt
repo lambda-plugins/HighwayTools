@@ -8,13 +8,13 @@ import HighwayTools.height
 import HighwayTools.material
 import HighwayTools.mode
 import HighwayTools.placeDelay
-import HighwayTools.printDebug
 import HighwayTools.width
 import HighwayToolsHud
 import HighwayToolsHud.showEnvironment
 import HighwayToolsHud.showEstimations
 import HighwayToolsHud.showLifeTime
 import HighwayToolsHud.showPerformance
+import HighwayToolsHud.showQueue
 import HighwayToolsHud.showSession
 import HighwayToolsHud.showTask
 import com.lambda.client.event.SafeClientEvent
@@ -132,17 +132,7 @@ object Statistics {
 
         if (showEstimations) gatherEstimations(displayText, runtimeSec, distanceDone)
 
-        if (printDebug) {
-            if (containerTask.taskState != TaskState.DONE) {
-                displayText.addLine("Container", primaryColor, scale = 0.6f)
-                displayText.addLine(containerTask.prettyPrint(), primaryColor, scale = 0.6f)
-            }
-
-            if (sortedTasks.isNotEmpty()) {
-                displayText.addLine("Pending", primaryColor, scale = 0.6f)
-                addTaskComponentList(displayText, sortedTasks)
-            }
-        }
+        if (showQueue) gatherQueue(displayText)
 
         displayText.addLine("by Constructor#9948/Avanatiker", primaryColor, scale = 0.6f)
     }
@@ -340,6 +330,18 @@ object Statistics {
                 displayText.add("    ETA:", primaryColor)
                 displayText.addLine("$hoursLeft:$minutesLeft:$secondsLeft", secondaryColor)
             }
+        }
+    }
+
+    private fun gatherQueue(displayText: TextComponent) {
+        if (containerTask.taskState != TaskState.DONE) {
+            displayText.addLine("Container", primaryColor, scale = 0.6f)
+            displayText.addLine(containerTask.prettyPrint(), primaryColor, scale = 0.6f)
+        }
+
+        if (sortedTasks.isNotEmpty()) {
+            displayText.addLine("Pending", primaryColor, scale = 0.6f)
+            addTaskComponentList(displayText, sortedTasks)
         }
     }
 
