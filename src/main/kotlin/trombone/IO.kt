@@ -34,7 +34,6 @@ import net.minecraft.init.SoundEvents
 import net.minecraft.util.text.TextComponentString
 import net.minecraft.util.text.TextFormatting
 import net.minecraft.world.EnumDifficulty
-import trombone.IO.isInQueue
 import trombone.Pathfinder.currentBlockPos
 import trombone.Pathfinder.startingBlockPos
 import trombone.Pathfinder.startingDirection
@@ -64,7 +63,7 @@ object IO {
         world.difficulty == EnumDifficulty.PEACEFUL
             && player.dimension == 1
             && @Suppress("UNNECESSARY_SAFE_CALL")
-            player.serverBrand?.contains("2b2t") == true
+        player.serverBrand?.contains("2b2t") == true
 
     fun SafeClientEvent.printEnable() {
         MessageSendHelper.sendRawChatMessage("    §9> §7Direction: §a${startingDirection.displayName} / ${startingDirection.displayNameXY}§r")

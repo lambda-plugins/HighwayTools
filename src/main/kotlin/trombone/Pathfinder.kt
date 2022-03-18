@@ -1,8 +1,8 @@
 package trombone
 
-import HighwayTools.scaffold
 import HighwayTools.maxReach
 import HighwayTools.moveSpeed
+import HighwayTools.scaffold
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.BaritoneUtils
 import com.lambda.client.util.EntityUtils.flooredPosition
@@ -117,9 +117,9 @@ object Pathfinder {
             pos.toVec3dCenter().distanceTo(containerTask.blockPos.toVec3dCenter()) < maxReach - 0.5) ||
             containerTask.taskState == TaskState.DONE) &&
             tasks.values.all {
-            it.taskState == TaskState.DONE ||
-                pos.toVec3dCenter().distanceTo(it.blockPos.toVec3dCenter()) < maxReach - 0.5
-        }
+                it.taskState == TaskState.DONE ||
+                    pos.toVec3dCenter().distanceTo(it.blockPos.toVec3dCenter()) < maxReach - 0.5
+            }
     }
 
     fun SafeClientEvent.shouldBridge(): Boolean {
@@ -128,14 +128,14 @@ object Pathfinder {
             && world.isAirBlock(currentBlockPos.add(startingDirection.directionVec).up())
             && world.getBlockState(currentBlockPos.add(startingDirection.directionVec).down()).isReplaceable
             && tasks.values.filter {
-                it.taskState == TaskState.PLACE ||
-                    it.taskState == TaskState.LIQUID
-            }.none {
-                it.sequence.isNotEmpty()
-            }
+            it.taskState == TaskState.PLACE ||
+                it.taskState == TaskState.LIQUID
+        }.none {
+            it.sequence.isNotEmpty()
+        }
             && tasks.values.none {
-                it.taskState == TaskState.PENDING_PLACE
-            }
+            it.taskState == TaskState.PENDING_PLACE
+        }
     }
 
     private fun SafeClientEvent.moveTo(target: Vec3d) {

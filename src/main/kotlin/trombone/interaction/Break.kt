@@ -1,28 +1,24 @@
 package trombone.interaction
 
-import HighwayTools.packetFlood
 import HighwayTools.breakDelay
 import HighwayTools.illegalPlacements
 import HighwayTools.instantMine
 import HighwayTools.interactionLimit
-import HighwayTools.multiBreak
 import HighwayTools.maxReach
 import HighwayTools.miningSpeedFactor
+import HighwayTools.multiBreak
+import HighwayTools.packetFlood
 import HighwayTools.taskTimeout
 import com.lambda.client.event.SafeClientEvent
-import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.math.isInSight
-import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.defaultScope
 import com.lambda.client.util.threads.onMainThreadSafe
 import com.lambda.client.util.threads.runSafeSuspend
 import com.lambda.client.util.world.getHitVec
 import com.lambda.client.util.world.getMiningSide
 import com.lambda.client.util.world.getNeighbour
-import com.lambda.client.util.world.getNeighbourSequence
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.withLock
 import net.minecraft.init.Blocks
 import net.minecraft.network.play.client.CPacketPlayerDigging
 import net.minecraft.util.EnumFacing
@@ -32,7 +28,6 @@ import net.minecraft.util.math.BlockPos
 import trombone.handler.Liquid.handleLiquid
 import trombone.handler.Player.lastHitVec
 import trombone.handler.Player.packetLimiter
-import trombone.handler.Player.packetLimiterMutex
 import trombone.handler.Player.waitTicks
 import trombone.handler.Tasks.sortedTasks
 import trombone.task.BlockTask
@@ -89,10 +84,6 @@ object Break {
         blockTask.updateState(TaskState.PENDING_BREAK)
 
         defaultScope.launch {
-            packetLimiterMutex.withLock {
-                packetLimiter.add(System.currentTimeMillis())
-            }
-
             sendMiningPackets(blockTask.blockPos, side, start = true)
 
             if (multiBreak) tryMultiBreak(blockTask)
@@ -115,16 +106,13 @@ object Break {
                 if (ceil((1 / world.getBlockState(task.blockPos).getPlayerRelativeBlockHardness(player, world, blockTask.blockPos)) * miningSpeedFactor).toInt() > 1) continue
                 if (handleLiquid(task)) break
 
-                val limiterUsage = packetLimiterMutex.withLock { packetLimiter.size }
+                val limiterUsage = packetLimiter.size
 
                 if (limiterUsage > interactionLimit) break // Drop instant mine action when exceeded limit
 
                 val box = AxisAlignedBB(task.blockPos)
-                val rayTraceResult = box.isInSight(eyePos, viewVec, range = maxReach.toDouble(), tolerance = 0.0) ?: continue
-
-                packetLimiterMutex.withLock {
-                    packetLimiter.add(System.currentTimeMillis())
-                }
+                val rayTraceResult = box.isInSight(eyePos, viewVec, range = maxReach.toDouble(), tolerance = 0.0)
+                    ?: continue
 
                 defaultScope.launch {
                     sendMiningPackets(task.blockPos, rayTraceResult.sideHit, start = true)
@@ -158,10 +146,6 @@ object Break {
         blockTask.updateState(TaskState.PENDING_BREAK)
 
         defaultScope.launch {
-            packetLimiterMutex.withLock {
-                packetLimiter.add(System.currentTimeMillis())
-            }
-
             sendMiningPackets(pos, side, start = true, abort = true)
 
             delay(50L * taskTimeout)
@@ -173,9 +157,18 @@ object Break {
 
     private suspend fun sendMiningPackets(pos: BlockPos, side: EnumFacing, start: Boolean = false, stop: Boolean = false, abort: Boolean = false) {
         onMainThreadSafe {
-            if (start || packetFlood) connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.START_DESTROY_BLOCK, pos, side))
-            if (abort) connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.ABORT_DESTROY_BLOCK, pos, side))
-            if (stop || packetFlood) connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.STOP_DESTROY_BLOCK, pos, side))
+            if (start || packetFlood) {
+                connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.START_DESTROY_BLOCK, pos, side))
+                packetLimiter.add(System.currentTimeMillis())
+            }
+            if (abort) {
+                connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.ABORT_DESTROY_BLOCK, pos, side))
+                packetLimiter.add(System.currentTimeMillis())
+            }
+            if (stop || packetFlood) {
+                connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.STOP_DESTROY_BLOCK, pos, side))
+                packetLimiter.add(System.currentTimeMillis())
+            }
             player.swingArm(EnumHand.MAIN_HAND)
         }
     }

@@ -9,13 +9,13 @@ import HighwayTools.fillerMat
 import HighwayTools.food
 import HighwayTools.ignoreBlocks
 import HighwayTools.leaveEmptyShulkers
+import HighwayTools.manageFood
 import HighwayTools.material
 import HighwayTools.maxReach
 import HighwayTools.mode
 import HighwayTools.multiBuilding
-import HighwayTools.saveTools
 import HighwayTools.saveFood
-import HighwayTools.manageFood
+import HighwayTools.saveTools
 import HighwayTools.storageManagement
 import com.lambda.client.commons.extension.ceilToInt
 import com.lambda.client.event.SafeClientEvent
@@ -122,11 +122,11 @@ object Tasks {
             currentBlockPos.distanceTo(blockPos) > maxReach
                 || (blockPos == containerTask.blockPos && containerTask.taskState != TaskState.DONE)
                 || startingBlockPos.add(
-                    startingDirection
-                        .clockwise(4)
-                        .directionVec
-                        .multiply((maxReach * 2).ceilToInt() - 1)
-                ).distanceTo(blockPos) < maxReach * 2 -> {
+                startingDirection
+                    .clockwise(4)
+                    .directionVec
+                    .multiply((maxReach * 2).ceilToInt() - 1)
+            ).distanceTo(blockPos) < maxReach * 2 -> {
                 //
             }
             /* Ignored blocks */
@@ -240,8 +240,8 @@ object Tasks {
                 || taskState == TaskState.LIQUID
                 || (it.taskState != taskState
                     && (it.taskState == TaskState.DONE
-                        || (it.taskState == TaskState.PLACE
-                            && !world.isPlaceable(it.blockPos))))) {
+                    || (it.taskState == TaskState.PLACE
+                    && !world.isPlaceable(it.blockPos))))) {
 //                (it.taskState != taskState &&
 //                    it.taskState != TaskState.BREAKING &&
 //                    it.taskState != TaskState.PENDING_BREAK &&
@@ -349,7 +349,7 @@ object Tasks {
             TaskState.PENDING_BREAK, TaskState.PENDING_PLACE -> {
                 blockTask.onStuck()
             }
-            else -> { }
+            else -> {}
         }
     }
 
@@ -360,8 +360,9 @@ object Tasks {
             if (!isInventoryManaging) {
                 if (leaveEmptyShulkers &&
                     container.getSlots(0..26)
-                        .all { it.stack.isEmpty
-                            || InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
+                        .all {
+                            it.stack.isEmpty
+                                || InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
                         }) {
                     if (debugLevel != DebugLevel.OFF) {
                         if (!anonymizeStats) {
@@ -390,13 +391,13 @@ object Tasks {
                         .forEach {
                             found += it.stack.count
                             if (found < itemsFree) moveToInventory(it)
-                    }
+                        }
                 } else {
                     container.getSlots(0..26)
                         .firstItem(containerTask.item)?.let {
                             moveToInventory(it)
                             found += 1
-                    }
+                        }
                 }
 
                 if (found == 0) {
@@ -424,9 +425,10 @@ object Tasks {
             moveState = MovementState.RUNNING
             containerTask.updateState(TaskState.DONE)
             if (grindCycles > 0) {
-                grindCycles = (player.inventorySlots.count { it.stack.isEmpty ||
-                    InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) } - 1) * 8 -
-                    (player.inventorySlots.countBlock(Blocks.OBSIDIAN) / 8)
+                grindCycles = (player.inventorySlots.count {
+                    it.stack.isEmpty
+                        || InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
+                } - 1) * 8 - (player.inventorySlots.countBlock(Blocks.OBSIDIAN) / 8)
             }
         } else {
             if (player.inventorySlots.firstEmpty() == null) {

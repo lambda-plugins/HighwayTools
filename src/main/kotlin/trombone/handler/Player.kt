@@ -8,15 +8,12 @@ import HighwayTools.saveMaterial
 import HighwayTools.saveTools
 import HighwayTools.storageManagement
 import com.lambda.client.event.SafeClientEvent
-import com.lambda.client.manager.managers.MessageManager
 import com.lambda.client.manager.managers.PlayerInventoryManager
 import com.lambda.client.manager.managers.PlayerInventoryManager.addInventoryTask
 import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
 import com.lambda.client.module.modules.player.InventoryManager
 import com.lambda.client.util.items.*
 import com.lambda.client.util.math.RotationUtils.getRotationTo
-import com.lambda.client.util.text.MessageSendHelper
-import kotlinx.coroutines.sync.Mutex
 import net.minecraft.block.Block.getBlockFromName
 import net.minecraft.enchantment.EnchantmentHelper
 import net.minecraft.init.Blocks
@@ -38,13 +35,13 @@ import trombone.handler.Container.grindCycles
 import trombone.handler.Container.handleRestock
 import trombone.task.BlockTask
 import trombone.task.TaskState
+import java.util.concurrent.ConcurrentLinkedDeque
 
 object Player {
     var lastHitVec: Vec3d = Vec3d.ZERO
     var waitTicks = 0
 
-    val packetLimiterMutex = Mutex()
-    val packetLimiter = ArrayDeque<Long>()
+    val packetLimiter = ConcurrentLinkedDeque<Long>()
 
     @Suppress("UNUSED")
     enum class RotationMode {

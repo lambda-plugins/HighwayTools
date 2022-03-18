@@ -204,7 +204,7 @@ object Container {
         if (saveMaterial > 0 && item == material.item) message += insufficientMaterialPrint(itemCount, saveMaterial, material.localizedName)
         if (saveEnder > 0 && item.block == Blocks.ENDER_CHEST) message += insufficientMaterialPrint(itemCount, saveEnder, Blocks.ENDER_CHEST.localizedName)
         if (saveTools > 0 && item == Items.DIAMOND_PICKAXE) message += insufficientMaterialPrint(itemCount, saveTools, "Diamond Pickaxe(s)")
-        if (saveFood > 0 && item == Items.GOLDEN_APPLE ) message += insufficientMaterialPrint(itemCount, saveFood, "Golden Apple(s)")
+        if (saveFood > 0 && item == Items.GOLDEN_APPLE) message += insufficientMaterialPrint(itemCount, saveFood, "Golden Apple(s)")
         return "$message\nTo continue anyways, set setting in ${TextFormatting.GRAY}Storage Management > Save <Material>${TextFormatting.RESET} to zero."
     }
 

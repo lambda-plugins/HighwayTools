@@ -28,8 +28,6 @@ import com.lambda.client.util.items.item
 import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.math.VectorUtils.multiply
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.withLock
 import net.minecraft.init.Blocks
 import net.minecraft.init.Items
 import net.minecraft.item.ItemPickaxe
@@ -44,16 +42,16 @@ import trombone.Trombone.Mode
 import trombone.handler.Container.containerTask
 import trombone.handler.Container.grindCycles
 import trombone.handler.Player.packetLimiter
-import trombone.handler.Player.packetLimiterMutex
 import trombone.handler.Tasks.sortedTasks
 import trombone.interaction.Place.extraPlaceDelay
 import trombone.task.BlockTask
 import trombone.task.TaskState
+import java.util.concurrent.ConcurrentLinkedDeque
 
 object Statistics {
-    val simpleMovingAveragePlaces = ArrayDeque<Long>()
-    val simpleMovingAverageBreaks = ArrayDeque<Long>()
-    val simpleMovingAverageDistance = ArrayDeque<Long>()
+    val simpleMovingAveragePlaces = ConcurrentLinkedDeque<Long>()
+    val simpleMovingAverageBreaks = ConcurrentLinkedDeque<Long>()
+    val simpleMovingAverageDistance = ConcurrentLinkedDeque<Long>()
     var totalBlocksPlaced = 0
     var totalBlocksBroken = 0
     private var totalDistance = 0.0
@@ -103,14 +101,10 @@ object Statistics {
         updateDeque(simpleMovingAverageBreaks, removeTime)
         updateDeque(simpleMovingAverageDistance, removeTime)
 
-        runBlocking {
-            packetLimiterMutex.withLock {
-                updateDeque(packetLimiter, System.currentTimeMillis() - 1000L)
-            }
-        }
+        updateDeque(packetLimiter, System.currentTimeMillis() - 1000L)
     }
 
-    private fun updateDeque(deque: ArrayDeque<Long>, removeTime: Long) {
+    private fun updateDeque(deque: ConcurrentLinkedDeque<Long>, removeTime: Long) {
         while (deque.isNotEmpty() && deque.first() < removeTime) {
             deque.removeFirst()
         }

@@ -15,7 +15,6 @@ import com.lambda.client.util.world.getHitVec
 import com.lambda.client.util.world.getHitVecOffset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.withLock
 import net.minecraft.network.play.client.CPacketEntityAction
 import net.minecraft.network.play.client.CPacketPlayerTryUseItemOnBlock
 import net.minecraft.util.EnumFacing

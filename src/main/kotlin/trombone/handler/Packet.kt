@@ -1,8 +1,6 @@
 package trombone.handler
 
 import com.lambda.client.event.SafeClientEvent
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.withLock
 import net.minecraft.init.Blocks
 import net.minecraft.network.Packet
 import net.minecraft.network.play.server.SPacketBlockChange
