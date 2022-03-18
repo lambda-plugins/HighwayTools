@@ -59,11 +59,11 @@ object IO {
             || AutoObsidian.isActive()
             || isInQueue()
 
-    fun SafeClientEvent.isInQueue() =
+    private fun SafeClientEvent.isInQueue() =
         world.difficulty == EnumDifficulty.PEACEFUL
             && player.dimension == 1
             && @Suppress("UNNECESSARY_SAFE_CALL")
-        player.serverBrand?.contains("2b2t") == true
+            player.serverBrand?.contains("2b2t") == true
 
     fun SafeClientEvent.printEnable() {
         MessageSendHelper.sendRawChatMessage("    §9> §7Direction: §a${startingDirection.displayName} / ${startingDirection.displayNameXY}§r")

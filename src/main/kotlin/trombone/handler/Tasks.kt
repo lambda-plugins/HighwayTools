@@ -33,6 +33,7 @@ import net.minecraft.block.BlockLiquid
 import net.minecraft.client.gui.inventory.GuiContainer
 import net.minecraft.init.Blocks
 import net.minecraft.init.Items
+import net.minecraft.item.ItemPickaxe
 import net.minecraft.network.play.client.CPacketPlayerTryUseItemOnBlock
 import net.minecraft.util.EnumFacing
 import net.minecraft.util.EnumHand
@@ -242,10 +243,6 @@ object Tasks {
                     && (it.taskState == TaskState.DONE
                     || (it.taskState == TaskState.PLACE
                     && !world.isPlaceable(it.blockPos))))) {
-//                (it.taskState != taskState &&
-//                    it.taskState != TaskState.BREAKING &&
-//                    it.taskState != TaskState.PENDING_BREAK &&
-//                    it.taskState != TaskState.PENDING_PLACE)) {
                 tasks[blockPos] = task
             }
         } ?: run {
@@ -360,10 +357,8 @@ object Tasks {
             if (!isInventoryManaging) {
                 if (leaveEmptyShulkers &&
                     container.getSlots(0..26)
-                        .all {
-                            it.stack.isEmpty
-                                || InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
-                        }) {
+                        .all { it.stack.isEmpty
+                            || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) }) {
                     if (debugLevel != DebugLevel.OFF) {
                         if (!anonymizeStats) {
                             MessageSendHelper.sendChatMessage("${module.chatName} Left empty ${containerTask.block.localizedName}@(${containerTask.blockPos.asString()})")
@@ -376,28 +371,46 @@ object Tasks {
 
                 var found = 0
 
-                if (containerTask.item == material.item) {
-                    val itemsFree = player.inventorySlots.sumOf {
-                        val stack = it.stack
-                        when {
-                            stack.isEmpty -> 64
-                            stack.item == material.item -> 64 - stack.count
-                            else -> 0
-                        }
-                    } - 64 // To keep one slot free to collect the shulker
-
-                    container.getSlots(0..26)
-                        .filterByItem(containerTask.item)
-                        .forEach {
-                            found += it.stack.count
-                            if (found < itemsFree) moveToInventory(it)
-                        }
-                } else {
-                    container.getSlots(0..26)
-                        .firstItem(containerTask.item)?.let {
-                            moveToInventory(it)
-                            found += 1
-                        }
+                when (containerTask.item) {
+//                    material.item -> {
+//                        val itemsFree = player.inventorySlots.sumOf {
+//                            val stack = it.stack
+//                            when {
+//                                stack.isEmpty -> 64
+//                                stack.item == material.item -> 64 - stack.count
+//                                else -> 0
+//                            }
+//                        } - 64 // To keep one slot free to collect the shulker
+//
+//                        container.getSlots(0..26)
+//                            .filterByItem(containerTask.item)
+//                            .forEach {
+//                                found += it.stack.count
+//                                if (found < itemsFree) moveToInventory(it)
+//                            }
+//                    }
+//                    is ItemPickaxe -> {
+//                        val slotsFree = player.inventorySlots.count {
+//                            InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
+//                                || it.stack.isEmpty
+//                        } - 1
+//
+//                        MessageSendHelper.sendChatMessage("$slotsFree")
+//
+//                        container.getSlots(0..26)
+//                            .filterByItem(containerTask.item)
+//                            .forEach {
+//                                found += 1
+//                                if (found < slotsFree) moveToInventory(it)
+//                            }
+//                    }
+                    else -> {
+                        container.getSlots(0..26)
+                            .firstItem(containerTask.item)?.let {
+                                moveToInventory(it)
+                                found += 1
+                            }
+                    }
                 }
 
                 if (found == 0) {

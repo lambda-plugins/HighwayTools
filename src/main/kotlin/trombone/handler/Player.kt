@@ -14,6 +14,7 @@ import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
 import com.lambda.client.module.modules.player.InventoryManager
 import com.lambda.client.util.items.*
 import com.lambda.client.util.math.RotationUtils.getRotationTo
+import com.lambda.client.util.text.MessageSendHelper
 import net.minecraft.block.Block.getBlockFromName
 import net.minecraft.enchantment.EnchantmentHelper
 import net.minecraft.init.Blocks
@@ -204,15 +205,15 @@ object Player {
             false
         }
 
-    fun SafeClientEvent.moveToInventory(slot: Slot) {
+    fun SafeClientEvent.moveToInventory(originSlot: Slot) {
         player.openContainer.getSlots(27..62).firstOrNull {
-            (slot.stack.item == it.stack.item && it.stack.count < slot.slotStackLimit - slot.stack.count)
-                || it.stack.item == Items.AIR
-        }?.let {
+            originSlot.stack.item == it.stack.item
+                && it.stack.count < originSlot.slotStackLimit - originSlot.stack.count
+        }?.let { _ ->
             module.addInventoryTask(
                 PlayerInventoryManager.ClickInfo(
                     player.openContainer.windowId,
-                    slot.slotIndex,
+                    originSlot.slotIndex,
                     0,
                     ClickType.QUICK_MOVE
                 )
@@ -221,19 +222,43 @@ object Player {
         } ?: run {
             player.hotbarSlots.firstOrNull {
                 InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
-            }?.let {
+                    || it.stack.item == Items.AIR
+            }?.let { freeHotbarSlot ->
                 module.addInventoryTask(
                     PlayerInventoryManager.ClickInfo(
                         player.openContainer.windowId,
-                        slot.slotIndex,
-                        it.hotbarSlot,
+                        originSlot.slotNumber,
+                        freeHotbarSlot.hotbarSlot,
                         ClickType.SWAP
                     )
                 )
                 Tasks.isInventoryManaging = true
             } ?: run {
-                // ToDo: SWAP Item from hotbar to ejectable item in inventory and then swap target slot with hotbar
-                disableError("Inventory full.")
+                MessageSendHelper.sendChatMessage("LOL") //ToDo: Remove
+                player.inventorySlots.firstOrNull {
+                    InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
+                        || it.stack.item == Items.AIR
+                }?.let { freeSlot ->
+                    module.addInventoryTask(
+                        PlayerInventoryManager.ClickInfo(
+                            player.openContainer.windowId,
+                            freeSlot.slotNumber,
+                            0,
+                            ClickType.SWAP
+                        )
+                    )
+                    module.addInventoryTask(
+                        PlayerInventoryManager.ClickInfo(
+                            player.openContainer.windowId,
+                            originSlot.slotNumber,
+                            0,
+                            ClickType.SWAP
+                        )
+                    )
+                    Tasks.isInventoryManaging = true
+                } ?: run {
+                    disableError("Inventory full.")
+                }
             }
         }
     }
