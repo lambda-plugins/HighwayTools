@@ -130,9 +130,9 @@ object Tasks {
         when {
             /* Out of range, or is container pos and start padding */
             // ToDo: Fix padding for diagonal
-            currentBlockPos.distanceTo(blockPos) > maxReach ||
-                (blockPos == containerTask.blockPos && containerTask.taskState != TaskState.DONE) ||
-                startingBlockPos.add(
+            currentBlockPos.distanceTo(blockPos) > maxReach
+                || (blockPos == containerTask.blockPos && containerTask.taskState != TaskState.DONE)
+                || startingBlockPos.add(
                     startingDirection
                         .clockwise(4)
                         .directionVec
@@ -150,8 +150,8 @@ object Tasks {
             }
             /* To place */
             currentState.isReplaceable && targetBlock != Blocks.AIR -> {
-                if (checkSupport(blockPos, targetBlock) ||
-                    !world.checkNoEntityCollision(AxisAlignedBB(blockPos), null)) {
+                if (checkSupport(blockPos, targetBlock)
+                    || !world.checkNoEntityCollision(AxisAlignedBB(blockPos), null)) {
                     safeTask(blockPos, TaskState.DONE, targetBlock)
                 } else {
                     safeTask(blockPos, TaskState.PLACE, targetBlock)
@@ -192,13 +192,11 @@ object Tasks {
                 }
                 doTask(containerTask, false)
             }
-            grindCycles > 0 -> {
-                if (storageManagement) {
-                    if (player.inventorySlots.countItem(Items.DIAMOND_PICKAXE) > saveTools) {
-                        handleRestock(material.item)
-                    } else {
-                        handleRestock(Items.DIAMOND_PICKAXE)
-                    }
+            storageManagement && grindCycles > 0 -> {
+                if (player.inventorySlots.countItem(Items.DIAMOND_PICKAXE) > saveTools) {
+                    handleRestock(material.item)
+                } else {
+                    handleRestock(Items.DIAMOND_PICKAXE)
                 }
             }
             tasks.values.all { it.taskState == TaskState.DONE } -> {
@@ -210,10 +208,6 @@ object Tasks {
             }
             else -> {
                 waitTicks--
-
-                if (storageManagement && manageFood && player.inventorySlots.countItem(food) < saveFood) {
-                    handleRestock(food)
-                }
 
                 tasks.values.toList().forEach {
                     doTask(it, true)
@@ -669,14 +663,14 @@ object Tasks {
     private fun SafeClientEvent.doPlace(blockTask: BlockTask, updateOnly: Boolean) {
         val currentBlock = world.getBlockState(blockTask.blockPos).block
 
-        if (shouldBridge() &&
-            moveState != MovementState.RESTOCK &&
-            player.positionVector.distanceTo(currentBlockPos) < 1) {
+        if (shouldBridge()
+            && moveState != MovementState.RESTOCK
+            && player.positionVector.distanceTo(currentBlockPos) < 1) {
             moveState = MovementState.BRIDGE
         }
 
-        if (blockTask.taskState == TaskState.LIQUID &&
-            world.getBlockState(blockTask.blockPos).block !is BlockLiquid) {
+        if (blockTask.taskState == TaskState.LIQUID
+            && world.getBlockState(blockTask.blockPos).block !is BlockLiquid) {
             blockTask.updateState(TaskState.DONE)
             return
         }
@@ -692,9 +686,9 @@ object Tasks {
                 if (currentBlock == fillerMat) {
                     blockTask.updateState(TaskState.PLACED)
                     return
-                } else if (currentBlock != fillerMat &&
-                    mode == Mode.HIGHWAY &&
-                    world.getBlockState(blockTask.blockPos.up()).block == material) {
+                } else if (currentBlock != fillerMat
+                    && mode == Mode.HIGHWAY
+                    && world.getBlockState(blockTask.blockPos.up()).block == material) {
                     blockTask.updateState(TaskState.DONE)
                     return
                 }
@@ -722,6 +716,7 @@ object Tasks {
                 }
 
                 if (blockTask == containerTask) {
+                    MessageSendHelper.sendChatMessage("${module.chatName} Failed container task. Trying to break block.")
                     containerTask.updateState(TaskState.BREAK)
                 } else {
                     tasks.remove(blockTask.blockPos)

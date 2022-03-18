@@ -123,17 +123,17 @@ object Pathfinder {
     }
 
     fun SafeClientEvent.shouldBridge(): Boolean {
-        return scaffold &&
-            world.isAirBlock(currentBlockPos.add(startingDirection.directionVec)) &&
-            world.isAirBlock(currentBlockPos.add(startingDirection.directionVec).up()) &&
-            world.getBlockState(currentBlockPos.add(startingDirection.directionVec).down()).isReplaceable &&
-            tasks.values.filter {
+        return scaffold
+            && world.isAirBlock(currentBlockPos.add(startingDirection.directionVec))
+            && world.isAirBlock(currentBlockPos.add(startingDirection.directionVec).up())
+            && world.getBlockState(currentBlockPos.add(startingDirection.directionVec).down()).isReplaceable
+            && tasks.values.filter {
                 it.taskState == TaskState.PLACE ||
                     it.taskState == TaskState.LIQUID
             }.none {
                 it.sequence.isNotEmpty()
-            } &&
-            tasks.values.none {
+            }
+            && tasks.values.none {
                 it.taskState == TaskState.PENDING_PLACE
             }
     }

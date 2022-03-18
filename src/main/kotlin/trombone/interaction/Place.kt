@@ -46,7 +46,10 @@ object Place {
                         MessageSendHelper.sendChatMessage("${module.chatName} No neighbours found")
                     }
                 }
-                if (blockTask == containerTask) blockTask.updateState(TaskState.DONE)
+                if (blockTask == containerTask) {
+                    MessageSendHelper.sendChatMessage("${module.chatName} Can't find neighbours for container task to place on")
+                    blockTask.updateState(TaskState.DONE)
+                }
                 blockTask.onStuck(21)
                 return
             }
@@ -81,7 +84,7 @@ object Place {
         }
 
         defaultScope.launch {
-            delay(20L)
+            delay(20L) // ToDo: Check if necessary
             onMainThreadSafe {
                 val placePacket = CPacketPlayerTryUseItemOnBlock(placePos, side, EnumHand.MAIN_HAND, hitVecOffset.x.toFloat(), hitVecOffset.y.toFloat(), hitVecOffset.z.toFloat())
                 connection.sendPacket(placePacket)

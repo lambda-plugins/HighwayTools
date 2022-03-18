@@ -34,6 +34,7 @@ import net.minecraft.init.SoundEvents
 import net.minecraft.util.text.TextComponentString
 import net.minecraft.util.text.TextFormatting
 import net.minecraft.world.EnumDifficulty
+import trombone.IO.isInQueue
 import trombone.Pathfinder.currentBlockPos
 import trombone.Pathfinder.startingBlockPos
 import trombone.Pathfinder.startingDirection
@@ -53,68 +54,72 @@ object IO {
     }
 
     fun SafeClientEvent.pauseCheck(): Boolean =
-        !Pathfinder.rubberbandTimer.tick(rubberbandTimeout.toLong(), false) ||
-            player.inventory.isEmpty ||
-            PauseProcess.isActive ||
-            AutoObsidian.isActive() ||
-            (world.difficulty == EnumDifficulty.PEACEFUL &&
-                player.dimension == 1 &&
-                @Suppress("UNNECESSARY_SAFE_CALL")
-                player.serverBrand?.contains("2b2t") == true)
+        !Pathfinder.rubberbandTimer.tick(rubberbandTimeout.toLong(), false)
+            || player.inventory.isEmpty
+            || PauseProcess.isActive
+            || AutoObsidian.isActive()
+            || isInQueue()
 
-    fun printEnable() {
-        if (info) {
-            MessageSendHelper.sendRawChatMessage("    §9> §7Direction: §a${startingDirection.displayName} / ${startingDirection.displayNameXY}§r")
+    fun SafeClientEvent.isInQueue() =
+        world.difficulty == EnumDifficulty.PEACEFUL
+            && player.dimension == 1
+            && @Suppress("UNNECESSARY_SAFE_CALL")
+            player.serverBrand?.contains("2b2t") == true
 
-            if (!anonymizeStats) {
-                if (startingDirection.isDiagonal) {
-                    MessageSendHelper.sendRawChatMessage("    §9> §7Axis offset: §a%,d %,d§r".format(startingBlockPos.x, startingBlockPos.z))
+    fun SafeClientEvent.printEnable() {
+        MessageSendHelper.sendRawChatMessage("    §9> §7Direction: §a${startingDirection.displayName} / ${startingDirection.displayNameXY}§r")
 
-                    if (abs(startingBlockPos.x) != abs(startingBlockPos.z)) {
-                        MessageSendHelper.sendRawChatMessage("    §c[!] You may have an offset to diagonal highway position!")
-                    }
+        if (!anonymizeStats) {
+            if (startingDirection.isDiagonal) {
+                MessageSendHelper.sendRawChatMessage("    §9> §7Axis offset: §a%,d %,d§r".format(startingBlockPos.x, startingBlockPos.z))
+
+                if (abs(startingBlockPos.x) != abs(startingBlockPos.z)) {
+                    MessageSendHelper.sendRawChatMessage("    §c[!] You may have an offset to diagonal highway position!")
+                }
+            } else {
+                if (startingDirection == Direction.NORTH || startingDirection == Direction.SOUTH) {
+                    MessageSendHelper.sendRawChatMessage("    §9> §7Axis offset: §a%,d§r".format(startingBlockPos.x))
                 } else {
-                    if (startingDirection == Direction.NORTH || startingDirection == Direction.SOUTH) {
-                        MessageSendHelper.sendRawChatMessage("    §9> §7Axis offset: §a%,d§r".format(startingBlockPos.x))
-                    } else {
-                        MessageSendHelper.sendRawChatMessage("    §9> §7Axis offset: §a%,d§r".format(startingBlockPos.z))
-                    }
-
+                    MessageSendHelper.sendRawChatMessage("    §9> §7Axis offset: §a%,d§r".format(startingBlockPos.z))
                 }
             }
+        }
 
-            if (!disableWarnings) {
-                if (startingBlockPos.y != 120 && mode != Mode.TUNNEL) {
-                    MessageSendHelper.sendRawChatMessage("    §c[!] Check altitude and make sure to build at Y: 120 for the correct height")
-                }
+        if (!disableWarnings) {
+            if (startingBlockPos.y != 120 && mode != Mode.TUNNEL) {
+                MessageSendHelper.sendRawChatMessage("    §c[!] Check altitude and make sure to build at Y: 120 for the correct height")
+            }
 
-                if (AntiHunger.isEnabled) {
-                    MessageSendHelper.sendRawChatMessage("    §c[!] AntiHunger does slow down block interactions.")
-                }
+            if (AntiHunger.isEnabled) {
+                MessageSendHelper.sendRawChatMessage("    §c[!] AntiHunger does slow down block interactions.")
+            }
 
-                if (LagNotifier.isDisabled) {
-                    MessageSendHelper.sendRawChatMessage("    §c[!] You should activate LagNotifier to make the bot stop on server lag.")
-                }
+            if (LagNotifier.isDisabled) {
+                MessageSendHelper.sendRawChatMessage("    §c[!] You should activate LagNotifier to make the bot stop on server lag.")
+            }
 
-                if (AutoEat.isDisabled) {
-                    MessageSendHelper.sendRawChatMessage("    §c[!] You should activate AutoEat to not die on starvation.")
-                }
+            if (AutoEat.isDisabled) {
+                MessageSendHelper.sendRawChatMessage("    §c[!] You should activate AutoEat to not die on starvation.")
+            }
 
-                if (AutoLog.isDisabled) {
-                    MessageSendHelper.sendRawChatMessage("    §c[!] You should activate AutoLog to prevent most deaths when afk.")
-                }
+            if (AutoLog.isDisabled) {
+                MessageSendHelper.sendRawChatMessage("    §c[!] You should activate AutoLog to prevent most deaths when afk.")
+            }
 
-                if (multiBuilding && Velocity.isDisabled) {
-                    MessageSendHelper.sendRawChatMessage("    §c[!] Make sure to enable Velocity to not get pushed from your mates.")
-                }
+            if (multiBuilding && Velocity.isDisabled) {
+                MessageSendHelper.sendRawChatMessage("    §c[!] Make sure to enable Velocity to not get pushed from your mates.")
+            }
 
-                if (material == fillerMat) {
-                    MessageSendHelper.sendRawChatMessage("    §c[!] Make sure to use §aTunnel Mode§c instead of having same material for both main and filler!")
-                }
+            if (material == fillerMat) {
+                MessageSendHelper.sendRawChatMessage("    §c[!] Make sure to use §aTunnel Mode§c instead of having same material for both main and filler!")
+            }
 
-                if (mode == Mode.HIGHWAY && height < 3) {
-                    MessageSendHelper.sendRawChatMessage("    §c[!] You may increase the height to at least 3")
-                }
+            if (mode == Mode.HIGHWAY && height < 3) {
+                MessageSendHelper.sendRawChatMessage("    §c[!] You may increase the height to at least 3")
+            }
+
+            if (isInQueue()) {
+                MessageSendHelper.sendRawChatMessage("    §c[!] You should not activate the bot in queue! Bot will move to 0 0.")
             }
         }
     }
@@ -152,10 +157,10 @@ object IO {
                 AntiAFK.enable()
             }
             DisableMode.LOGOUT -> {
-                MessageSendHelper.sendChatMessage("${module.chatName} §c[!] ${TextFormatting.DARK_RED}CAUTION: Logging of in 1 minute!")
+                MessageSendHelper.sendChatMessage("${module.chatName} §c[!] ${TextFormatting.DARK_RED}CAUTION: Logging off in 1 minute!")
                 defaultScope.launch {
                     delay(6000L)
-                    if (disableMode == DisableMode.LOGOUT && module.isEnabled) {
+                    if (disableMode == DisableMode.LOGOUT && module.isDisabled) {
                         onMainThreadSafe {
                             if (usingProxy) {
                                 player.sendChatMessage(proxyCommand)

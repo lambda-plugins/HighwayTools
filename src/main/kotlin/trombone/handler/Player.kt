@@ -46,10 +46,6 @@ object Player {
     val packetLimiterMutex = Mutex()
     val packetLimiter = ArrayDeque<Long>()
 
-    enum class LimitMode {
-        FIXED, SERVER
-    }
-
     @Suppress("UNUSED")
     enum class RotationMode {
         OFF, SPOOF, VIEW_LOCK

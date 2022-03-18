@@ -1,6 +1,7 @@
 package trombone
 
 import HighwayTools
+import HighwayTools.info
 import com.lambda.client.event.SafeClientEvent
 import trombone.BaritoneHelper.resetBaritone
 import trombone.BaritoneHelper.setupBaritone
@@ -30,8 +31,7 @@ object Trombone {
         clearTasks()
         setupPathing()
         setupBaritone()
-        printEnable()
-        updateTasks()
+        if (info) printEnable()
     }
 
     fun onDisable() {

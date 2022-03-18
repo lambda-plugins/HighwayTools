@@ -89,7 +89,7 @@ object Container {
                 dispatchEnderChest(item)
             }
         } else {
-            disableError("${insufficientMaterial(item)}\nTo solve insufficient material grant access to Ender Chest. Activate in Settings ${TextFormatting.GRAY}Storage Management > Search Ender Chest")
+            disableError("${insufficientMaterial(item)}\nTo provide sufficient material, grant access to your ender chest. Activate in settings: ${TextFormatting.GRAY}Storage Management > Search Ender Chest")
         }
     }
 

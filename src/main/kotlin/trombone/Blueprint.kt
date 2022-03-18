@@ -29,7 +29,7 @@ import trombone.Pathfinder.startingDirection
 import trombone.Trombone.Mode
 
 object Blueprint {
-    val blueprint = LinkedHashMap<BlockPos, Block>()
+    val blueprint = HashMap<BlockPos, Block>()
 
     fun generateBluePrint() {
         blueprint.clear()
