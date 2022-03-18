@@ -103,12 +103,16 @@ object Break {
             for (task in sortedTasks) {
                 if (task.taskState != TaskState.BREAK) continue
                 if (task == blockTask) continue
-                if (ceil((1 / world.getBlockState(task.blockPos).getPlayerRelativeBlockHardness(player, world, blockTask.blockPos)) * miningSpeedFactor).toInt() > 1) continue
+
+                try {
+                    if (ceil((1 / world.getBlockState(task.blockPos).getPlayerRelativeBlockHardness(player, world, blockTask.blockPos)) * miningSpeedFactor).toInt() > 1) continue
+                } catch (_: IllegalArgumentException) {
+                    break
+                }
+
                 if (handleLiquid(task)) break
 
-                val limiterUsage = packetLimiter.size
-
-                if (limiterUsage > interactionLimit) break // Drop instant mine action when exceeded limit
+                if (packetLimiter.size > interactionLimit) break // Drop instant mine action when exceeded limit
 
                 val box = AxisAlignedBB(task.blockPos)
                 val rayTraceResult = box.isInSight(eyePos, viewVec, range = maxReach.toDouble(), tolerance = 0.0)

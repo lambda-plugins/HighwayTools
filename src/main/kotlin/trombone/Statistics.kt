@@ -211,6 +211,9 @@ object Statistics {
 
         displayText.add("    Pickaxes / h:", primaryColor)
         displayText.addLine("%.2f".format((durabilityUsages / runtimeSec) * 60.0 * 60.0 / 1561.0), secondaryColor)
+
+        displayText.add("    Mining packets / s:", primaryColor)
+        displayText.addLine("${packetLimiter.size}", secondaryColor)
     }
 
     private fun gatherEnvironment(displayText: TextComponent) {
