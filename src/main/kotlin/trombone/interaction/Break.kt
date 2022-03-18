@@ -35,7 +35,6 @@ import trombone.handler.Player.packetLimiter
 import trombone.handler.Player.packetLimiterMutex
 import trombone.handler.Player.waitTicks
 import trombone.handler.Tasks.sortedTasks
-import trombone.handler.Tasks.stateUpdateMutex
 import trombone.task.BlockTask
 import trombone.task.TaskState
 import kotlin.math.ceil
@@ -100,9 +99,7 @@ object Break {
 
             delay(50L * taskTimeout)
             if (blockTask.taskState == TaskState.PENDING_BREAK) {
-                stateUpdateMutex.withLock {
-                    blockTask.updateState(TaskState.BREAK)
-                }
+                blockTask.updateState(TaskState.BREAK)
             }
         }
     }
@@ -134,9 +131,7 @@ object Break {
 
                     delay(50L * taskTimeout)
                     if (blockTask.taskState == TaskState.PENDING_BREAK) {
-                        stateUpdateMutex.withLock {
-                            blockTask.updateState(TaskState.BREAK)
-                        }
+                        blockTask.updateState(TaskState.BREAK)
                     }
                 }
             }
@@ -147,9 +142,7 @@ object Break {
         defaultScope.launch {
             if (blockTask.taskState == TaskState.BREAK) {
                 sendMiningPackets(blockTask.blockPos, side, start = true)
-                stateUpdateMutex.withLock {
-                    blockTask.updateState(TaskState.BREAKING)
-                }
+                blockTask.updateState(TaskState.BREAKING)
             } else {
                 if (blockTask.ticksMined >= ticks) {
                     sendMiningPackets(blockTask.blockPos, side, stop = true)
@@ -173,9 +166,7 @@ object Break {
 
             delay(50L * taskTimeout)
             if (blockTask.taskState == TaskState.PENDING_BREAK) {
-                stateUpdateMutex.withLock {
-                    blockTask.updateState(TaskState.BREAK)
-                }
+                blockTask.updateState(TaskState.BREAK)
             }
         }
     }

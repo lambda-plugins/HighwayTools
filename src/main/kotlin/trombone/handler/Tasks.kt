@@ -28,7 +28,6 @@ import com.lambda.client.util.math.VectorUtils.multiply
 import com.lambda.client.util.math.VectorUtils.toVec3dCenter
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.world.*
-import kotlinx.coroutines.sync.Mutex
 import net.minecraft.block.Block
 import net.minecraft.block.BlockLiquid
 import net.minecraft.client.gui.inventory.GuiContainer
@@ -86,8 +85,6 @@ object Tasks {
     val sortedTasks = ConcurrentSkipListSet(blockTaskComparator())
     var lastTask: BlockTask? = null
     var isInventoryManaging = false
-
-    val stateUpdateMutex = Mutex()
 
     fun clearTasks() {
         tasks.clear()
@@ -535,7 +532,7 @@ object Tasks {
                 prePrimedPos = blockTask.blockPos
                 simpleMovingAveragePlaces.add(System.currentTimeMillis())
 
-                if (dynamicDelay && extraPlaceDelay > 0) extraPlaceDelay -= 1
+                if (dynamicDelay && extraPlaceDelay > 0) extraPlaceDelay /= 2
 
                 if (blockTask == containerTask) {
                     if (blockTask.destroy) {
@@ -546,6 +543,9 @@ object Tasks {
                 } else {
                     blockTask.updateState(TaskState.DONE)
                 }
+
+                tasks.values.filter { it.taskState == TaskState.PLACE }.forEach { it.resetStuck() }
+
                 if (fakeSounds) {
                     val soundType = currentBlock.getSoundType(world.getBlockState(blockTask.blockPos), world, blockTask.blockPos, player)
                     world.playSound(player, blockTask.blockPos, soundType.placeSound, SoundCategory.BLOCKS, (soundType.getVolume() + 1.0f) / 2.0f, soundType.getPitch() * 0.8f)

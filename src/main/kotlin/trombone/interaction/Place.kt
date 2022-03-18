@@ -26,7 +26,6 @@ import trombone.Trombone.module
 import trombone.handler.Container.containerTask
 import trombone.handler.Player.lastHitVec
 import trombone.handler.Player.waitTicks
-import trombone.handler.Tasks.stateUpdateMutex
 import trombone.task.BlockTask
 import trombone.task.TaskState
 
@@ -100,9 +99,7 @@ object Place {
 
             delay(50L * taskTimeout)
             if (blockTask.taskState == TaskState.PENDING_PLACE) {
-                stateUpdateMutex.withLock {
-                    blockTask.updateState(TaskState.PLACE)
-                }
+                blockTask.updateState(TaskState.PLACE)
                 if (dynamicDelay && extraPlaceDelay < 10) extraPlaceDelay += 1
             }
         }
