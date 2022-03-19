@@ -222,7 +222,7 @@ object Player {
         } ?: run {
             player.hotbarSlots.firstOrNull {
                 InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
-                    || it.stack.item == Items.AIR
+                    || it.stack.isEmpty
             }?.let { freeHotbarSlot ->
                 module.addInventoryTask(
                     PlayerInventoryManager.ClickInfo(
@@ -237,7 +237,7 @@ object Player {
                 MessageSendHelper.sendChatMessage("LOL") //ToDo: Remove
                 player.inventorySlots.firstOrNull {
                     InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
-                        || it.stack.item == Items.AIR
+                        || it.stack.isEmpty
                 }?.let { freeSlot ->
                     module.addInventoryTask(
                         PlayerInventoryManager.ClickInfo(
