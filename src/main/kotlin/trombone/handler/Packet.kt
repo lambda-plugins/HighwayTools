@@ -1,8 +1,6 @@
 package trombone.handler
 
 import com.lambda.client.event.SafeClientEvent
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.withLock
 import net.minecraft.init.Blocks
 import net.minecraft.network.Packet
 import net.minecraft.network.play.server.SPacketBlockChange
@@ -12,7 +10,6 @@ import net.minecraft.network.play.server.SPacketWindowItems
 import trombone.Blueprint.isInsideBlueprint
 import trombone.Pathfinder.rubberbandTimer
 import trombone.handler.Container.containerTask
-import trombone.handler.Tasks.stateUpdateMutex
 import trombone.handler.Tasks.tasks
 import trombone.task.TaskState
 
@@ -36,20 +33,12 @@ object Packet {
                     when (task.taskState) {
                         TaskState.PENDING_BREAK, TaskState.BREAKING -> {
                             if (new == Blocks.AIR) {
-                                runBlocking {
-                                    stateUpdateMutex.withLock {
-                                        task.updateState(TaskState.BROKEN)
-                                    }
-                                }
+                                task.updateState(TaskState.BROKEN)
                             }
                         }
                         TaskState.PENDING_PLACE -> {
                             if (task.block != Blocks.AIR && task.block == new) {
-                                runBlocking {
-                                    stateUpdateMutex.withLock {
-                                        task.updateState(TaskState.PLACED)
-                                    }
-                                }
+                                task.updateState(TaskState.PLACED)
                             }
                         }
                         else -> {

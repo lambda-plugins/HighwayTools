@@ -4,17 +4,13 @@ import HighwayTools.illegalPlacements
 import HighwayTools.maxReach
 import HighwayTools.placementSearch
 import com.lambda.client.event.SafeClientEvent
-import com.lambda.client.util.items.getSlots
 import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.world.PlaceInfo
 import com.lambda.client.util.world.getNeighbourSequence
 import net.minecraft.block.Block
 import net.minecraft.block.BlockLiquid
-import net.minecraft.block.state.IBlockState
-import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.init.Items
-import net.minecraft.inventory.Slot
 import net.minecraft.item.Item
 import net.minecraft.item.ItemStack
 import net.minecraft.util.math.AxisAlignedBB
@@ -84,7 +80,7 @@ class BlockTask(
             TaskState.PLACE, TaskState.LIQUID -> {
                 sequence = event.getNeighbourSequence(blockPos, placementSearch, maxReach, !illegalPlacements)
             }
-            else -> { }
+            else -> {}
         }
 
         startDistance = startingBlockPos.distanceTo(blockPos)
@@ -116,8 +112,8 @@ class BlockTask(
     }
 
     override fun equals(other: Any?) = this === other
-        || (other is BlockTask
-        && blockPos == other.blockPos)
+            || (other is BlockTask
+            && blockPos == other.blockPos)
 
     override fun hashCode() = blockPos.hashCode()
 }

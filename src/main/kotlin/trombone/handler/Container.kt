@@ -61,36 +61,41 @@ object Container {
     }
 
     private fun SafeClientEvent.handleEnderChest(item: Item) {
-        if (searchEChest) {
-            if (item.block == Blocks.OBSIDIAN) {
-                if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) <= saveEnder) {
-                    getShulkerWith(player.inventorySlots, Blocks.ENDER_CHEST.item)?.let { slot ->
-                        getRemotePos()?.let { pos ->
-                            containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, Blocks.ENDER_CHEST.item)
-                            containerTask.isShulker = true
-                        } ?: run {
-                            disableError("Can't find possible container position (Case: 2)")
-                        }
-                    } ?: run {
-                        dispatchEnderChest(Blocks.ENDER_CHEST.item)
-                    }
-                } else {
+        if (item.block == Blocks.OBSIDIAN) {
+            if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) <= saveEnder) {
+                getShulkerWith(player.inventorySlots, Blocks.ENDER_CHEST.item)?.let { slot ->
                     getRemotePos()?.let { pos ->
-                        containerTask = BlockTask(pos, TaskState.PLACE, Blocks.ENDER_CHEST, Blocks.OBSIDIAN.item)
-                        containerTask.destroy = true
-                        if (grindCycles > 1) containerTask.collect = false
-                        containerTask.itemID = Blocks.OBSIDIAN.id
-                        grindCycles--
+                        containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, Blocks.ENDER_CHEST.item)
+                        containerTask.isShulker = true
                     } ?: run {
-                        disableError("Can't find possible container position (Case: 3)")
+                        disableError("Can't find possible container position (Case: 2)")
+                    }
+                } ?: run {
+                    if (searchEChest) {
+                        dispatchEnderChest(Blocks.ENDER_CHEST.item)
+                    } else {
+                        disableError("${insufficientMaterial(item)}\nTo provide sufficient material, grant access to your ender chest. Activate in settings: ${TextFormatting.GRAY}Storage Management > Search Ender Chest")
                     }
                 }
             } else {
-                dispatchEnderChest(item)
+                getRemotePos()?.let { pos ->
+                    containerTask = BlockTask(pos, TaskState.PLACE, Blocks.ENDER_CHEST, Blocks.OBSIDIAN.item)
+                    containerTask.destroy = true
+                    if (grindCycles > 1) containerTask.collect = false
+                    containerTask.itemID = Blocks.OBSIDIAN.id
+                    grindCycles--
+                } ?: run {
+                    disableError("Can't find possible container position (Case: 3)")
+                }
             }
         } else {
-            disableError("${insufficientMaterial(item)}\nTo solve insufficient material grant access to Ender Chest. Activate in Settings ${TextFormatting.GRAY}Storage Management > Search Ender Chest")
+            if (searchEChest) {
+                dispatchEnderChest(item)
+            } else {
+                disableError("${insufficientMaterial(item)}\nTo provide sufficient material, grant access to your ender chest. Activate in settings: ${TextFormatting.GRAY}Storage Management > Search Ender Chest")
+            }
         }
+
     }
 
     private fun SafeClientEvent.dispatchEnderChest(item: Item) {
@@ -121,12 +126,12 @@ object Container {
         return VectorUtils.getBlockPosInSphere(origin, maxReach).asSequence()
             .filter { pos ->
                 !isInsideBlueprintBuild(pos)
-                    && pos != currentBlockPos
-                    && world.isPlaceable(pos)
-                    && !world.getBlockState(pos.down()).isReplaceable
-                    && world.isAirBlock(pos.up())
-                    && getVisibleSides(pos.down()).contains(EnumFacing.UP)
-                    && player.positionVector.distanceTo(pos.toVec3dCenter()) > minDistance
+                        && pos != currentBlockPos
+                        && world.isPlaceable(pos)
+                        && !world.getBlockState(pos.down()).isReplaceable
+                        && world.isAirBlock(pos.up())
+                        && getVisibleSides(pos.down()).contains(EnumFacing.UP)
+                        && player.positionVector.distanceTo(pos.toVec3dCenter()) > minDistance
             }.sortedWith(
                 compareByDescending<BlockPos> {
                     safeValue(it)
@@ -179,8 +184,8 @@ object Container {
                 return VectorUtils.getBlockPosInSphere(itemVec, range).asSequence()
                     .filter { pos ->
                         world.isAirBlock(pos.up()) &&
-                            world.isAirBlock(pos) &&
-                            !world.isPlaceable(pos.down())
+                                world.isAirBlock(pos) &&
+                                !world.isPlaceable(pos.down())
                     }
                     .sortedWith(
                         compareBy<BlockPos> {
@@ -199,7 +204,7 @@ object Container {
         if (saveMaterial > 0 && item == material.item) message += insufficientMaterialPrint(itemCount, saveMaterial, material.localizedName)
         if (saveEnder > 0 && item.block == Blocks.ENDER_CHEST) message += insufficientMaterialPrint(itemCount, saveEnder, Blocks.ENDER_CHEST.localizedName)
         if (saveTools > 0 && item == Items.DIAMOND_PICKAXE) message += insufficientMaterialPrint(itemCount, saveTools, "Diamond Pickaxe(s)")
-        if (saveFood > 0 && item == Items.GOLDEN_APPLE ) message += insufficientMaterialPrint(itemCount, saveFood, "Golden Apple(s)")
+        if (saveFood > 0 && item == Items.GOLDEN_APPLE) message += insufficientMaterialPrint(itemCount, saveFood, "Golden Apple(s)")
         return "$message\nTo continue anyways, set setting in ${TextFormatting.GRAY}Storage Management > Save <Material>${TextFormatting.RESET} to zero."
     }
 

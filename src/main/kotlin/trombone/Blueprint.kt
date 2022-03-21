@@ -29,7 +29,7 @@ import trombone.Pathfinder.startingDirection
 import trombone.Trombone.Mode
 
 object Blueprint {
-    val blueprint = LinkedHashMap<BlockPos, Block>()
+    val blueprint = HashMap<BlockPos, Block>()
 
     fun generateBluePrint() {
         blueprint.clear()
@@ -153,7 +153,7 @@ object Blueprint {
                 val x = w - width / 2
                 val pos = basePos.add(xDirection.directionVec.multiply(x)).up(h + 1)
 
-                if (Pathfinder.startingBlockPos.distanceTo(pos) < Pathfinder.startingBlockPos.distanceTo(Pathfinder.currentBlockPos)) {
+                if (Pathfinder.startingBlockPos.distanceTo(pos) < Pathfinder.startingBlockPos.distanceTo(currentBlockPos)) {
                     blueprint[pos] = fillerMat
                 }
             }

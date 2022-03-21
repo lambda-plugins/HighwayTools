@@ -15,7 +15,6 @@ import com.lambda.client.util.world.getHitVec
 import com.lambda.client.util.world.getHitVecOffset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.withLock
 import net.minecraft.network.play.client.CPacketEntityAction
 import net.minecraft.network.play.client.CPacketPlayerTryUseItemOnBlock
 import net.minecraft.util.EnumFacing
@@ -26,7 +25,6 @@ import trombone.Trombone.module
 import trombone.handler.Container.containerTask
 import trombone.handler.Player.lastHitVec
 import trombone.handler.Player.waitTicks
-import trombone.handler.Tasks.stateUpdateMutex
 import trombone.task.BlockTask
 import trombone.task.TaskState
 
@@ -46,7 +44,10 @@ object Place {
                         MessageSendHelper.sendChatMessage("${module.chatName} No neighbours found")
                     }
                 }
-                if (blockTask == containerTask) blockTask.updateState(TaskState.DONE)
+                if (blockTask == containerTask) {
+                    MessageSendHelper.sendChatMessage("${module.chatName} Can't find neighbours for container task to place on")
+                    blockTask.updateState(TaskState.DONE)
+                }
                 blockTask.onStuck(21)
                 return
             }
@@ -81,7 +82,7 @@ object Place {
         }
 
         defaultScope.launch {
-            delay(20L)
+            delay(20L) // ToDo: Check if necessary
             onMainThreadSafe {
                 val placePacket = CPacketPlayerTryUseItemOnBlock(placePos, side, EnumHand.MAIN_HAND, hitVecOffset.x.toFloat(), hitVecOffset.y.toFloat(), hitVecOffset.z.toFloat())
                 connection.sendPacket(placePacket)
@@ -97,9 +98,7 @@ object Place {
 
             delay(50L * taskTimeout)
             if (blockTask.taskState == TaskState.PENDING_PLACE) {
-                stateUpdateMutex.withLock {
-                    blockTask.updateState(TaskState.PLACE)
-                }
+                blockTask.updateState(TaskState.PLACE)
                 if (dynamicDelay && extraPlaceDelay < 10) extraPlaceDelay += 1
             }
         }

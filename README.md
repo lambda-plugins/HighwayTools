@@ -38,6 +38,7 @@ It is fully compatible with most modules of Lambda like `LagNotifier`, `AutoEat`
     - `;ht filler <block>` Choose an alternative filler block to fill liquids (default: Netherrack)
     - `;ht settings` or `;ht` Shows detailed settings of the module
     - `;ht distance 500` for running the bot for a limited distance. (e.g. 500 blocks)
+    - `;ht stash <Pos x> <Pos y> <Pos z>` or `;ht s <Pos x> <Pos y> <Pos z>` for automatically going to your stash to restock
 - [x] Compatible with:
     - `LagNotifier (Baritone mode)` To stop while lagging to not get kicked
     - `AutoObsidian` to automatically get new Obsidian from Ender Chests even from shulker boxes
@@ -71,6 +72,7 @@ It is fully compatible with most modules of Lambda like `LagNotifier`, `AutoEat`
 - If stuck check, if AutoCenter is on `MOTION` to get moved to middle of the block (Baritone can't move exactly to block center)
 - If placed block disappear increase the `TickDelayPlace` until it works
 - Deactivate `IllegalPlacements` if the server requires (like 2b2t)
+- Reset stash position if the bot keeps going to 0, 0
 
 Any suggestions and questions: Constructor#9948 on Discord Made by @Avanatiker
 Report bugs on [Issues](https://github.com/lambda-plugins/HighwayTools/issues) and if not possible message EnigmA_008#1505 on Discord.
@@ -78,3 +80,8 @@ Report bugs on [Issues](https://github.com/lambda-plugins/HighwayTools/issues) a
 `Copyright ©2019-2022` Constructor#9948 alias Avanatiker. All Rights Reserved. Permission to use, copy, modify, and distribute this software and its documentation for educational, research, and not-for-profit purposes, without fee and without a signed licensing agreement, is hereby granted, provided that the above copyright notice, this paragraph appears in all copies, modifications, and distributions.
 
 By downloading this software you agree to be bound by the terms of service.
+
+
+## Stars over time
+
+[![Stargazers over time](https://starchart.cc/lambda-plugins/HighwayTools.svg)](https://starchart.cc/lambda-plugins/HighwayTools)

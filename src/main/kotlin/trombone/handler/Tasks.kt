@@ -9,13 +9,13 @@ import HighwayTools.fillerMat
 import HighwayTools.food
 import HighwayTools.ignoreBlocks
 import HighwayTools.leaveEmptyShulkers
+import HighwayTools.manageFood
 import HighwayTools.material
 import HighwayTools.maxReach
 import HighwayTools.mode
 import HighwayTools.multiBuilding
-import HighwayTools.saveTools
 import HighwayTools.saveFood
-import HighwayTools.manageFood
+import HighwayTools.saveTools
 import HighwayTools.storageManagement
 import com.lambda.client.commons.extension.ceilToInt
 import com.lambda.client.event.SafeClientEvent
@@ -28,9 +28,6 @@ import com.lambda.client.util.math.VectorUtils.multiply
 import com.lambda.client.util.math.VectorUtils.toVec3dCenter
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.world.*
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import net.minecraft.block.Block
 import net.minecraft.block.BlockLiquid
 import net.minecraft.client.gui.inventory.GuiContainer
@@ -80,48 +77,40 @@ import trombone.interaction.Place.extraPlaceDelay
 import trombone.interaction.Place.placeBlock
 import trombone.task.BlockTask
 import trombone.task.TaskState
-import java.util.*
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentSkipListSet
 
 object Tasks {
-    val tasks = LinkedHashMap<BlockPos, BlockTask>()
-    var sortedTasks: List<BlockTask> = emptyList()
+    val tasks = ConcurrentHashMap<BlockPos, BlockTask>()
+    val sortedTasks = ConcurrentSkipListSet(blockTaskComparator())
     var lastTask: BlockTask? = null
     var isInventoryManaging = false
 
-    val stateUpdateMutex = Mutex()
-
     fun clearTasks() {
         tasks.clear()
-        sortedTasks = emptyList()
+        sortedTasks.clear()
         containerTask.updateState(TaskState.DONE)
         lastTask = null
         grindCycles = 0
     }
 
     fun SafeClientEvent.updateTasks() {
-        val toRemove = LinkedList<BlockPos>()
-        tasks.filter {
-            it.value.taskState == TaskState.DONE
-        }.forEach {
-            if (currentBlockPos.distanceTo(it.key) > maxReach + 2) {
-                if (it.value.toRemove) {
-                    if (System.currentTimeMillis() - it.value.timestamp > 1000L) {
-                        toRemove.add(it.key)
-                    }
-                } else {
-                    it.value.toRemove = true
-                    it.value.timestamp = System.currentTimeMillis()
-                }
-            }
-        }
-        toRemove.forEach {
-            tasks.remove(it)
-        }
-
         generateBluePrint()
 
         blueprint.forEach { (pos, block) ->
             addTask(pos, block)
+        }
+
+        tasks.filter {
+            it.value.taskState == TaskState.DONE
+                    && currentBlockPos.distanceTo(it.key) > maxReach + 2
+        }.forEach {
+            if (it.value.toRemove) {
+                if (System.currentTimeMillis() - it.value.timestamp > 1000L) tasks.remove(it.key)
+            } else {
+                it.value.toRemove = true
+                it.value.timestamp = System.currentTimeMillis()
+            }
         }
     }
 
@@ -130,14 +119,14 @@ object Tasks {
         when {
             /* Out of range, or is container pos and start padding */
             // ToDo: Fix padding for diagonal
-            currentBlockPos.distanceTo(blockPos) > maxReach ||
-                (blockPos == containerTask.blockPos && containerTask.taskState != TaskState.DONE) ||
-                startingBlockPos.add(
-                    startingDirection
-                        .clockwise(4)
-                        .directionVec
-                        .multiply((maxReach * 2).ceilToInt() - 1)
-                ).distanceTo(blockPos) < maxReach * 2 -> {
+            currentBlockPos.distanceTo(blockPos) > maxReach
+                    || (blockPos == containerTask.blockPos && containerTask.taskState != TaskState.DONE)
+                    || startingBlockPos.add(
+                startingDirection
+                    .clockwise(4)
+                    .directionVec
+                    .multiply((maxReach * 2).ceilToInt() - 1)
+            ).distanceTo(blockPos) < maxReach * 2 -> {
                 //
             }
             /* Ignored blocks */
@@ -150,8 +139,8 @@ object Tasks {
             }
             /* To place */
             currentState.isReplaceable && targetBlock != Blocks.AIR -> {
-                if (checkSupport(blockPos, targetBlock) ||
-                    !world.checkNoEntityCollision(AxisAlignedBB(blockPos), null)) {
+                if (checkSupport(blockPos, targetBlock)
+                    || !world.checkNoEntityCollision(AxisAlignedBB(blockPos), null)) {
                     safeTask(blockPos, TaskState.DONE, targetBlock)
                 } else {
                     safeTask(blockPos, TaskState.PLACE, targetBlock)
@@ -159,7 +148,7 @@ object Tasks {
             }
             /* Is liquid */
             currentState.block is BlockLiquid -> {
-                safeTask(blockPos, TaskState.LIQUID, Blocks.AIR).updateLiquid(this)
+                safeTask(blockPos, TaskState.LIQUID, targetBlock).updateLiquid(this)
             }
             /* Break to place */
             else -> {
@@ -192,13 +181,11 @@ object Tasks {
                 }
                 doTask(containerTask, false)
             }
-            grindCycles > 0 -> {
-                if (storageManagement) {
-                    if (player.inventorySlots.countItem(Items.DIAMOND_PICKAXE) > saveTools) {
-                        handleRestock(material.item)
-                    } else {
-                        handleRestock(Items.DIAMOND_PICKAXE)
-                    }
+            storageManagement && grindCycles > 0 -> {
+                if (player.inventorySlots.countItem(Items.DIAMOND_PICKAXE) > saveTools) {
+                    handleRestock(material.item)
+                } else {
+                    handleRestock(Items.DIAMOND_PICKAXE)
                 }
             }
             tasks.values.all { it.taskState == TaskState.DONE } -> {
@@ -211,15 +198,14 @@ object Tasks {
             else -> {
                 waitTicks--
 
-                if (storageManagement && manageFood && player.inventorySlots.countItem(food) < saveFood) {
-                    handleRestock(food)
-                }
-
-                tasks.values.toList().forEach {
+                tasks.values.forEach {
                     doTask(it, true)
+
+                    it.updateTask(this, player.getPositionEyes(1.0f))
+                    if (multiBuilding) it.shuffle()
                 }
 
-                sortTasks()
+                sortedTasks.addAll(tasks.values)
 
                 for (task in sortedTasks) {
                     if (!checkStuckTimeout(task)) return
@@ -242,23 +228,20 @@ object Tasks {
 
     private fun SafeClientEvent.checkSupport(pos: BlockPos, block: Block): Boolean {
         return mode == Mode.HIGHWAY &&
-            startingDirection.isDiagonal &&
-            world.getBlockState(pos.up()).block == material &&
-            block == fillerMat
+                startingDirection.isDiagonal &&
+                world.getBlockState(pos.up()).block == material &&
+                block == fillerMat
     }
 
     fun SafeClientEvent.safeTask(blockPos: BlockPos, taskState: TaskState, material: Block): BlockTask {
         val task = BlockTask(blockPos, taskState, material)
         tasks[blockPos]?.let {
-            if (it.stuckTicks > it.taskState.stuckTimeout ||
-                taskState == TaskState.LIQUID ||
-                (it.taskState != taskState &&
-                    (it.taskState == TaskState.DONE ||
-                        (it.taskState == TaskState.PLACE && !world.isPlaceable(it.blockPos))))) {
-//                (it.taskState != taskState &&
-//                    it.taskState != TaskState.BREAKING &&
-//                    it.taskState != TaskState.PENDING_BREAK &&
-//                    it.taskState != TaskState.PENDING_PLACE)) {
+            if (it.stuckTicks > it.taskState.stuckTimeout
+                || taskState == TaskState.LIQUID
+                || (it.taskState != taskState
+                        && (it.taskState == TaskState.DONE
+                        || (it.taskState == TaskState.PLACE
+                        && !world.isPlaceable(it.blockPos))))) {
                 tasks[blockPos] = task
             }
         } ?: run {
@@ -272,61 +255,20 @@ object Tasks {
             it.taskState == TaskState.DONE && world.getBlockState(pos).block != Blocks.PORTAL
         } ?: false
 
-    private fun SafeClientEvent.sortTasks() {
-        val eyePos = player.getPositionEyes(1.0f)
-        tasks.values.forEach {
-            it.updateTask(this, eyePos)
-        }
-
-        if (multiBuilding) {
-            tasks.values.forEach {
-                it.shuffle()
-            }
-
-            runBlocking {
-                stateUpdateMutex.withLock {
-                    sortedTasks = tasks.values.sortedWith(
-                        compareBy<BlockTask> {
-                            it.taskState.ordinal
-                        }.thenBy {
-                            it.stuckTicks
-                        }.thenBy {
-                            it.shuffle
-                        }
-                    )
-                }
-            }
+    private fun blockTaskComparator() = compareBy<BlockTask> {
+        it.taskState.ordinal
+    }.thenBy {
+        it.stuckTicks
+    }.thenBy {
+        if (it.isLiquidSource) 0 else 1
+    }.thenBy {
+        if (moveState == MovementState.BRIDGE) {
+            if (it.sequence.isEmpty()) 69 else it.sequence.size
         } else {
-            runBlocking {
-                stateUpdateMutex.withLock {
-                    sortedTasks = tasks.values.sortedWith(
-                        compareBy<BlockTask> {
-                            it.taskState.ordinal
-                        }.thenBy {
-                            it.stuckTicks
-                        }.thenBy {
-                            if (it.isLiquidSource) {
-                                0
-                            } else {
-                                1
-                            }
-                        }.thenBy {
-                            if (moveState == MovementState.BRIDGE) {
-                                if (it.sequence.isEmpty()) {
-                                    69
-                                } else {
-                                    it.sequence.size
-                                }
-                            } else {
-                                it.startDistance
-                            }
-                        }.thenBy {
-                            it.eyeDistance
-                        }
-                    )
-                }
-            }
+            if (multiBuilding) it.shuffle else it.startDistance
         }
+    }.thenBy {
+        it.eyeDistance
     }
 
     private fun SafeClientEvent.checkStuckTimeout(blockTask: BlockTask): Boolean {
@@ -403,7 +345,7 @@ object Tasks {
             TaskState.PENDING_BREAK, TaskState.PENDING_PLACE -> {
                 blockTask.onStuck()
             }
-            else -> { }
+            else -> {}
         }
     }
 
@@ -415,8 +357,7 @@ object Tasks {
                 if (leaveEmptyShulkers &&
                     container.getSlots(0..26)
                         .all { it.stack.isEmpty
-                            || InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
-                        }) {
+                                || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) }) {
                     if (debugLevel != DebugLevel.OFF) {
                         if (!anonymizeStats) {
                             MessageSendHelper.sendChatMessage("${module.chatName} Left empty ${containerTask.block.localizedName}@(${containerTask.blockPos.asString()})")
@@ -429,27 +370,45 @@ object Tasks {
 
                 var found = 0
 
-                if (containerTask.item == material.item) {
-                    val itemsFree = player.inventorySlots.sumOf {
-                        val stack = it.stack
-                        when {
-                            stack.isEmpty -> 64
-                            stack.item == material.item -> 64 - stack.count
-                            else -> 0
-                        }
-                    } - 64 // To keep one slot free to collect the shulker
-
-                    container.getSlots(0..26)
-                        .filterByItem(containerTask.item)
-                        .forEach {
-                            found += it.stack.count
-                            if (found < itemsFree) moveToInventory(it)
-                    }
-                } else {
-                    container.getSlots(0..26)
-                        .firstItem(containerTask.item)?.let {
-                            moveToInventory(it)
-                            found += 1
+                when (containerTask.item) {
+//                    material.item -> {
+//                        val itemsFree = player.inventorySlots.sumOf {
+//                            val stack = it.stack
+//                            when {
+//                                stack.isEmpty -> 64
+//                                stack.item == material.item -> 64 - stack.count
+//                                else -> 0
+//                            }
+//                        } - 64 // To keep one slot free to collect the shulker
+//
+//                        container.getSlots(0..26)
+//                            .filterByItem(containerTask.item)
+//                            .forEach {
+//                                found += it.stack.count
+//                                if (found < itemsFree) moveToInventory(it)
+//                            }
+//                    }
+//                    is ItemPickaxe -> {
+//                        val slotsFree = player.inventorySlots.count {
+//                            InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
+//                                || it.stack.isEmpty
+//                        } - 1
+//
+//                        MessageSendHelper.sendChatMessage("$slotsFree")
+//
+//                        container.getSlots(0..26)
+//                            .filterByItem(containerTask.item)
+//                            .forEach {
+//                                found += 1
+//                                if (found < slotsFree) moveToInventory(it)
+//                            }
+//                    }
+                    else -> {
+                        container.getSlots(0..26)
+                            .firstItem(containerTask.item)?.let {
+                                moveToInventory(it)
+                                found += 1
+                            }
                     }
                 }
 
@@ -478,9 +437,10 @@ object Tasks {
             moveState = MovementState.RUNNING
             containerTask.updateState(TaskState.DONE)
             if (grindCycles > 0) {
-                grindCycles = (player.inventorySlots.count { it.stack.isEmpty ||
-                    InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) } - 1) * 8 -
-                    (player.inventorySlots.countBlock(Blocks.OBSIDIAN) / 8)
+                grindCycles = (player.inventorySlots.count {
+                    it.stack.isEmpty
+                            || InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
+                } - 1) * 8 - (player.inventorySlots.countBlock(Blocks.OBSIDIAN) / 8)
             }
         } else {
             if (player.inventorySlots.firstEmpty() == null) {
@@ -586,7 +546,7 @@ object Tasks {
                 prePrimedPos = blockTask.blockPos
                 simpleMovingAveragePlaces.add(System.currentTimeMillis())
 
-                if (dynamicDelay && extraPlaceDelay > 0) extraPlaceDelay -= 1
+                if (dynamicDelay && extraPlaceDelay > 0) extraPlaceDelay /= 2
 
                 if (blockTask == containerTask) {
                     if (blockTask.destroy) {
@@ -597,6 +557,9 @@ object Tasks {
                 } else {
                     blockTask.updateState(TaskState.DONE)
                 }
+
+                tasks.values.filter { it.taskState == TaskState.PLACE }.forEach { it.resetStuck() }
+
                 if (fakeSounds) {
                     val soundType = currentBlock.getSoundType(world.getBlockState(blockTask.blockPos), world, blockTask.blockPos, player)
                     world.playSound(player, blockTask.blockPos, soundType.placeSound, SoundCategory.BLOCKS, (soundType.getVolume() + 1.0f) / 2.0f, soundType.getPitch() * 0.8f)
@@ -631,7 +594,7 @@ object Tasks {
             fillerMat -> {
                 if (world.getBlockState(blockTask.blockPos.up()).block == material ||
                     (!world.isPlaceable(blockTask.blockPos) &&
-                        world.getCollisionBox(blockTask.blockPos) != null)) {
+                            world.getCollisionBox(blockTask.blockPos) != null)) {
                     blockTask.updateState(TaskState.DONE)
                     return
                 }
@@ -669,14 +632,14 @@ object Tasks {
     private fun SafeClientEvent.doPlace(blockTask: BlockTask, updateOnly: Boolean) {
         val currentBlock = world.getBlockState(blockTask.blockPos).block
 
-        if (shouldBridge() &&
-            moveState != MovementState.RESTOCK &&
-            player.positionVector.distanceTo(currentBlockPos) < 1) {
+        if (shouldBridge()
+            && moveState != MovementState.RESTOCK
+            && player.positionVector.distanceTo(currentBlockPos) < 1) {
             moveState = MovementState.BRIDGE
         }
 
-        if (blockTask.taskState == TaskState.LIQUID &&
-            world.getBlockState(blockTask.blockPos).block !is BlockLiquid) {
+        if (blockTask.taskState == TaskState.LIQUID
+            && world.getBlockState(blockTask.blockPos).block !is BlockLiquid) {
             blockTask.updateState(TaskState.DONE)
             return
         }
@@ -692,9 +655,9 @@ object Tasks {
                 if (currentBlock == fillerMat) {
                     blockTask.updateState(TaskState.PLACED)
                     return
-                } else if (currentBlock != fillerMat &&
-                    mode == Mode.HIGHWAY &&
-                    world.getBlockState(blockTask.blockPos.up()).block == material) {
+                } else if (currentBlock != fillerMat
+                    && mode == Mode.HIGHWAY
+                    && world.getBlockState(blockTask.blockPos.up()).block == material) {
                     blockTask.updateState(TaskState.DONE)
                     return
                 }
@@ -722,6 +685,7 @@ object Tasks {
                 }
 
                 if (blockTask == containerTask) {
+                    MessageSendHelper.sendChatMessage("${module.chatName} Failed container task. Trying to break block.")
                     containerTask.updateState(TaskState.BREAK)
                 } else {
                     tasks.remove(blockTask.blockPos)

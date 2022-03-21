@@ -8,7 +8,6 @@ import HighwayTools.saveMaterial
 import HighwayTools.saveTools
 import HighwayTools.storageManagement
 import com.lambda.client.event.SafeClientEvent
-import com.lambda.client.manager.managers.MessageManager
 import com.lambda.client.manager.managers.PlayerInventoryManager
 import com.lambda.client.manager.managers.PlayerInventoryManager.addInventoryTask
 import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
@@ -16,7 +15,6 @@ import com.lambda.client.module.modules.player.InventoryManager
 import com.lambda.client.util.items.*
 import com.lambda.client.util.math.RotationUtils.getRotationTo
 import com.lambda.client.util.text.MessageSendHelper
-import kotlinx.coroutines.sync.Mutex
 import net.minecraft.block.Block.getBlockFromName
 import net.minecraft.enchantment.EnchantmentHelper
 import net.minecraft.init.Blocks
@@ -38,17 +36,13 @@ import trombone.handler.Container.grindCycles
 import trombone.handler.Container.handleRestock
 import trombone.task.BlockTask
 import trombone.task.TaskState
+import java.util.concurrent.ConcurrentLinkedDeque
 
 object Player {
     var lastHitVec: Vec3d = Vec3d.ZERO
     var waitTicks = 0
 
-    val packetLimiterMutex = Mutex()
-    val packetLimiter = ArrayDeque<Long>()
-
-    enum class LimitMode {
-        FIXED, SERVER
-    }
+    val packetLimiter = ConcurrentLinkedDeque<Long>()
 
     @Suppress("UNUSED")
     enum class RotationMode {
@@ -103,7 +97,7 @@ object Player {
                 && containerTask.taskState == TaskState.DONE
                 && material == Blocks.OBSIDIAN
                 && (player.inventorySlots.countBlock(Blocks.OBSIDIAN) <= saveMaterial &&
-                    grindCycles == 0)
+                        grindCycles == 0)
             ) {
                 val cycles = (player.inventorySlots.count { it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) } - 1) * 8
                 if (cycles > 0) {
@@ -211,15 +205,15 @@ object Player {
             false
         }
 
-    fun SafeClientEvent.moveToInventory(slot: Slot) {
+    fun SafeClientEvent.moveToInventory(originSlot: Slot) {
         player.openContainer.getSlots(27..62).firstOrNull {
-            (slot.stack.item == it.stack.item && it.stack.count < slot.slotStackLimit - slot.stack.count) ||
-                it.stack.item == Items.AIR
-        }?.let {
+            originSlot.stack.item == it.stack.item
+                    && it.stack.count < originSlot.slotStackLimit - originSlot.stack.count
+        }?.let { _ ->
             module.addInventoryTask(
                 PlayerInventoryManager.ClickInfo(
                     player.openContainer.windowId,
-                    slot.slotIndex,
+                    originSlot.slotIndex,
                     0,
                     ClickType.QUICK_MOVE
                 )
@@ -228,19 +222,43 @@ object Player {
         } ?: run {
             player.hotbarSlots.firstOrNull {
                 InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
-            }?.let {
+                        || it.stack.isEmpty
+            }?.let { freeHotbarSlot ->
                 module.addInventoryTask(
                     PlayerInventoryManager.ClickInfo(
                         player.openContainer.windowId,
-                        slot.slotIndex,
-                        it.hotbarSlot,
+                        originSlot.slotNumber,
+                        freeHotbarSlot.hotbarSlot,
                         ClickType.SWAP
                     )
                 )
                 Tasks.isInventoryManaging = true
             } ?: run {
-                // ToDo: SWAP Item from hotbar to ejectable item in inventory and then swap target slot with hotbar
-                disableError("Inventory full.")
+                MessageSendHelper.sendChatMessage("LOL") //ToDo: Remove
+                player.inventorySlots.firstOrNull {
+                    InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
+                            || it.stack.isEmpty
+                }?.let { freeSlot ->
+                    module.addInventoryTask(
+                        PlayerInventoryManager.ClickInfo(
+                            player.openContainer.windowId,
+                            freeSlot.slotNumber,
+                            0,
+                            ClickType.SWAP
+                        )
+                    )
+                    module.addInventoryTask(
+                        PlayerInventoryManager.ClickInfo(
+                            player.openContainer.windowId,
+                            originSlot.slotNumber,
+                            0,
+                            ClickType.SWAP
+                        )
+                    )
+                    Tasks.isInventoryManaging = true
+                } ?: run {
+                    disableError("Inventory full.")
+                }
             }
         }
     }
@@ -248,7 +266,7 @@ object Player {
     fun SafeClientEvent.getEjectSlot(): Slot? {
         return player.inventorySlots.firstByStack {
             !it.isEmpty &&
-                InventoryManager.ejectList.contains(it.item.registryName.toString())
+                    InventoryManager.ejectList.contains(it.item.registryName.toString())
         }
     }
 }
