@@ -7,7 +7,6 @@ import trombone.Pathfinder.cleanStashPos
 import trombone.Pathfinder.distancePending
 import trombone.Pathfinder.netherPortalPos
 import trombone.Pathfinder.stashBlockPos
-import kotlin.math.roundToInt
 
 object HighwayToolsCommand : ClientCommand(
     name = "highwaytools",
@@ -77,22 +76,39 @@ object HighwayToolsCommand : ClientCommand(
         }
 
         literal("stash", "s") {
-            int("x:Int> <y:Int> <z") { xArg ->
+            int("x:Int> <y:Int> <z: Int> Nether portal pos: <x:Int> <y:Int> <z") { xArg ->
                 execute("Not enough arguments") {
                     sendChatMessage("You need to specify chest y and z, and Nether portal x, y and z pos")
                 }
 
-                int("y:int> <z") { yArg ->
+                int("y:int> <z:Int> Nether portal pos: <x:Int> <y:Int> <z") { yArg ->
                     execute("Not enough arguments") {
                         sendChatMessage("You need to specify chest z and Nether portal x, y and z pos")
                     }
 
-                    int("z") { zArg ->
-                        execute("Sets the stash position for the bots refill") {
-                            stashBlockPos = BlockPos(xArg.value, yArg.value, zArg.value)
-                            cleanStashPos = mutableListOf(xArg.value, yArg.value, zArg.value)
-                            netherPortalPos = mutableListOf(xArg.value.div(8).toDouble().roundToInt(), yArg.value, zArg.value.div(8).toDouble().roundToInt())
-                            sendChatMessage("HighwayTools will go to ${cleanStashPos[0]} ${cleanStashPos[1]} ${cleanStashPos[2]} to restock.")
+                    int("z: Int> Nether portal pos: <x:Int> <y:Int> <z") { zArg ->
+                        execute("You need to specify nether portal x, y and z pos") {
+                        }
+
+                        int("x:Int> <y:Int> <z") { xNArg ->
+                            execute("Not enough arguments") {
+                                sendChatMessage("You need to specify nether portal x, y and z pos")
+                            }
+
+                            int("y:int> <z") { yNArg ->
+                                execute("Not enough arguments") {
+                                    sendChatMessage("You need to specify nether portal x, y and z pos")
+                                }
+
+                                int("z") { zNArg ->
+                                    execute("Sets the stash position for the bots refill") {
+                                        stashBlockPos = BlockPos(xArg.value, yArg.value, zArg.value)
+                                        cleanStashPos = mutableListOf(xArg.value, yArg.value, zArg.value)
+                                        netherPortalPos = mutableListOf(xNArg.value, yNArg.value, zNArg.value)
+                                        sendChatMessage("HighwayTools will go to ${cleanStashPos[0]} ${cleanStashPos[1]} ${cleanStashPos[2]} to restock.")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -100,9 +116,11 @@ object HighwayToolsCommand : ClientCommand(
         }
 
         literal("forceRestock", "fr") {
-            string("") {
-                Pathfinder.MovementState.RESTOCK
-                sendChatMessage("Force restocking")
+            string("none") { Arg ->
+                execute("Done") {
+                    Pathfinder.MovementState.RESTOCK
+                    sendChatMessage("Force restocking")
+                }
             }
         }
 

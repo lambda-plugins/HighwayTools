@@ -50,6 +50,7 @@ import trombone.Pathfinder.moveState
 import trombone.Pathfinder.shouldBridge
 import trombone.Pathfinder.startingBlockPos
 import trombone.Pathfinder.startingDirection
+import trombone.Pathfinder.stashBlockPos
 import trombone.Statistics.simpleMovingAverageBreaks
 import trombone.Statistics.simpleMovingAveragePlaces
 import trombone.Statistics.totalBlocksBroken
@@ -416,7 +417,11 @@ object Tasks {
                     getShulkerWith(container.getSlots(0..26), containerTask.item)?.let {
                         moveToInventory(it)
                     } ?: run {
-                        disableError("No ${containerTask.item.registryName} left in any container.")
+                        if (stashBlockPos == BlockPos(0, -1, 0)) {
+                            disableError("No ${containerTask.item.registryName} left in any container.")
+                        } else {
+                            MovementState.RESTOCK
+                        }
                     }
                 }
             } else {
