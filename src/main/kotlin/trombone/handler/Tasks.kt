@@ -33,6 +33,7 @@ import net.minecraft.block.BlockLiquid
 import net.minecraft.client.gui.inventory.GuiContainer
 import net.minecraft.init.Blocks
 import net.minecraft.init.Items
+import net.minecraft.item.ItemPickaxe
 import net.minecraft.network.play.client.CPacketPlayerTryUseItemOnBlock
 import net.minecraft.util.EnumFacing
 import net.minecraft.util.EnumHand

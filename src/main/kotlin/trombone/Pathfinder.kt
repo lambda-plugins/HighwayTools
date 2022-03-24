@@ -120,7 +120,7 @@ object Pathfinder {
             MovementState.RESTOCK -> {
                 returnPos.clear()
                 returnPos = clearCurrentPos()
-
+               
                 sendBaritoneCommand("#goto ${netherPortalPos[0]} ${netherPortalPos[1]} ${netherPortalPos[2]}")
                 sendBaritoneCommand("#goto portal")
                 sleep(35000)
@@ -139,6 +139,16 @@ object Pathfinder {
                 moveState = MovementState.RUNNING
             }
         }
+        
+        
+    private fun checkTasks(pos: BlockPos): Boolean {
+        return ((containerTask.taskState != TaskState.DONE &&
+            pos.toVec3dCenter().distanceTo(containerTask.blockPos.toVec3dCenter()) < maxReach - 0.5) ||
+            containerTask.taskState == TaskState.DONE) &&
+            tasks.values.all {
+                it.taskState == TaskState.DONE ||
+                    pos.toVec3dCenter().distanceTo(it.blockPos.toVec3dCenter()) < maxReach - 0.5
+            }
     }
 
     fun SafeClientEvent.shouldBridge(): Boolean {
@@ -155,6 +165,10 @@ object Pathfinder {
                 && tasks.values.none {
             it.taskState == TaskState.PENDING_PLACE
         }
+
+    private fun SafeClientEvent.moveTo(target: Vec3d) {
+        player.motionX = (target.x - player.posX).coerceIn((-moveSpeed).toDouble(), moveSpeed.toDouble())
+        player.motionZ = (target.z - player.posZ).coerceIn((-moveSpeed).toDouble(), moveSpeed.toDouble())
     }
 
     fun updateProcess() {
