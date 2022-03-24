@@ -126,12 +126,12 @@ object Container {
         return VectorUtils.getBlockPosInSphere(origin, maxReach).asSequence()
             .filter { pos ->
                 !isInsideBlueprintBuild(pos)
-                    && pos != currentBlockPos
-                    && world.isPlaceable(pos)
-                    && !world.getBlockState(pos.down()).isReplaceable
-                    && world.isAirBlock(pos.up())
-                    && getVisibleSides(pos.down()).contains(EnumFacing.UP)
-                    && player.positionVector.distanceTo(pos.toVec3dCenter()) > minDistance
+                        && pos != currentBlockPos
+                        && world.isPlaceable(pos)
+                        && !world.getBlockState(pos.down()).isReplaceable
+                        && world.isAirBlock(pos.up())
+                        && getVisibleSides(pos.down()).contains(EnumFacing.UP)
+                        && player.positionVector.distanceTo(pos.toVec3dCenter()) > minDistance
             }.sortedWith(
                 compareByDescending<BlockPos> {
                     safeValue(it)
@@ -184,8 +184,8 @@ object Container {
                 return VectorUtils.getBlockPosInSphere(itemVec, range).asSequence()
                     .filter { pos ->
                         world.isAirBlock(pos.up()) &&
-                            world.isAirBlock(pos) &&
-                            !world.isPlaceable(pos.down())
+                                world.isAirBlock(pos) &&
+                                !world.isPlaceable(pos.down())
                     }
                     .sortedWith(
                         compareBy<BlockPos> {

@@ -51,6 +51,7 @@ import trombone.Pathfinder.moveState
 import trombone.Pathfinder.shouldBridge
 import trombone.Pathfinder.startingBlockPos
 import trombone.Pathfinder.startingDirection
+import trombone.Pathfinder.stashBlockPos
 import trombone.Statistics.simpleMovingAverageBreaks
 import trombone.Statistics.simpleMovingAveragePlaces
 import trombone.Statistics.totalBlocksBroken
@@ -104,7 +105,7 @@ object Tasks {
 
         tasks.filter {
             it.value.taskState == TaskState.DONE
-                && currentBlockPos.distanceTo(it.key) > maxReach + 2
+                    && currentBlockPos.distanceTo(it.key) > maxReach + 2
         }.forEach {
             if (it.value.toRemove) {
                 if (System.currentTimeMillis() - it.value.timestamp > 1000L) tasks.remove(it.key)
@@ -121,8 +122,8 @@ object Tasks {
             /* Out of range, or is container pos and start padding */
             // ToDo: Fix padding for diagonal
             currentBlockPos.distanceTo(blockPos) > maxReach
-                || (blockPos == containerTask.blockPos && containerTask.taskState != TaskState.DONE)
-                || startingBlockPos.add(
+                    || (blockPos == containerTask.blockPos && containerTask.taskState != TaskState.DONE)
+                    || startingBlockPos.add(
                 startingDirection
                     .clockwise(4)
                     .directionVec
@@ -229,9 +230,9 @@ object Tasks {
 
     private fun SafeClientEvent.checkSupport(pos: BlockPos, block: Block): Boolean {
         return mode == Mode.HIGHWAY &&
-            startingDirection.isDiagonal &&
-            world.getBlockState(pos.up()).block == material &&
-            block == fillerMat
+                startingDirection.isDiagonal &&
+                world.getBlockState(pos.up()).block == material &&
+                block == fillerMat
     }
 
     fun SafeClientEvent.safeTask(blockPos: BlockPos, taskState: TaskState, material: Block): BlockTask {
@@ -240,9 +241,9 @@ object Tasks {
             if (it.stuckTicks > it.taskState.stuckTimeout
                 || taskState == TaskState.LIQUID
                 || (it.taskState != taskState
-                    && (it.taskState == TaskState.DONE
-                    || (it.taskState == TaskState.PLACE
-                    && !world.isPlaceable(it.blockPos))))) {
+                        && (it.taskState == TaskState.DONE
+                        || (it.taskState == TaskState.PLACE
+                        && !world.isPlaceable(it.blockPos))))) {
                 tasks[blockPos] = task
             }
         } ?: run {
@@ -358,7 +359,7 @@ object Tasks {
                 if (leaveEmptyShulkers &&
                     container.getSlots(0..26)
                         .all { it.stack.isEmpty
-                            || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) }) {
+                                || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) }) {
                     if (debugLevel != DebugLevel.OFF) {
                         if (!anonymizeStats) {
                             MessageSendHelper.sendChatMessage("${module.chatName} Left empty ${containerTask.block.localizedName}@(${containerTask.blockPos.asString()})")
@@ -417,7 +418,11 @@ object Tasks {
                     getShulkerWith(container.getSlots(0..26), containerTask.item)?.let {
                         moveToInventory(it)
                     } ?: run {
-                        disableError("No ${containerTask.item.registryName} left in any container.")
+                        if (stashBlockPos == BlockPos(0, -1, 0)) {
+                            disableError("No ${containerTask.item.registryName} left in any container.")
+                        } else {
+                            MovementState.RESTOCK
+                        }
                     }
                 }
             } else {
@@ -440,7 +445,7 @@ object Tasks {
             if (grindCycles > 0) {
                 grindCycles = (player.inventorySlots.count {
                     it.stack.isEmpty
-                        || InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
+                            || InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
                 } - 1) * 8 - (player.inventorySlots.countBlock(Blocks.OBSIDIAN) / 8)
             }
         } else {
@@ -595,7 +600,7 @@ object Tasks {
             fillerMat -> {
                 if (world.getBlockState(blockTask.blockPos.up()).block == material ||
                     (!world.isPlaceable(blockTask.blockPos) &&
-                        world.getCollisionBox(blockTask.blockPos) != null)) {
+                            world.getCollisionBox(blockTask.blockPos) != null)) {
                     blockTask.updateState(TaskState.DONE)
                     return
                 }

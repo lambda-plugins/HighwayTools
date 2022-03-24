@@ -112,8 +112,8 @@ class BlockTask(
     }
 
     override fun equals(other: Any?) = this === other
-        || (other is BlockTask
-        && blockPos == other.blockPos)
+            || (other is BlockTask
+            && blockPos == other.blockPos)
 
     override fun hashCode() = blockPos.hashCode()
 }

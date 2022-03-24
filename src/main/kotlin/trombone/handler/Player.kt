@@ -97,7 +97,7 @@ object Player {
                 && containerTask.taskState == TaskState.DONE
                 && material == Blocks.OBSIDIAN
                 && (player.inventorySlots.countBlock(Blocks.OBSIDIAN) <= saveMaterial &&
-                    grindCycles == 0)
+                        grindCycles == 0)
             ) {
                 val cycles = (player.inventorySlots.count { it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) } - 1) * 8
                 if (cycles > 0) {
@@ -208,7 +208,7 @@ object Player {
     fun SafeClientEvent.moveToInventory(originSlot: Slot) {
         player.openContainer.getSlots(27..62).firstOrNull {
             originSlot.stack.item == it.stack.item
-                && it.stack.count < originSlot.slotStackLimit - originSlot.stack.count
+                    && it.stack.count < originSlot.slotStackLimit - originSlot.stack.count
         }?.let { _ ->
             module.addInventoryTask(
                 PlayerInventoryManager.ClickInfo(
@@ -222,7 +222,7 @@ object Player {
         } ?: run {
             player.hotbarSlots.firstOrNull {
                 InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
-                    || it.stack.isEmpty
+                        || it.stack.isEmpty
             }?.let { freeHotbarSlot ->
                 module.addInventoryTask(
                     PlayerInventoryManager.ClickInfo(
@@ -237,7 +237,7 @@ object Player {
                 MessageSendHelper.sendChatMessage("LOL") //ToDo: Remove
                 player.inventorySlots.firstOrNull {
                     InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
-                        || it.stack.isEmpty
+                            || it.stack.isEmpty
                 }?.let { freeSlot ->
                     module.addInventoryTask(
                         PlayerInventoryManager.ClickInfo(
@@ -266,7 +266,7 @@ object Player {
     fun SafeClientEvent.getEjectSlot(): Slot? {
         return player.inventorySlots.firstByStack {
             !it.isEmpty &&
-                InventoryManager.ejectList.contains(it.item.registryName.toString())
+                    InventoryManager.ejectList.contains(it.item.registryName.toString())
         }
     }
 }

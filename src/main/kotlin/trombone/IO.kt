@@ -54,16 +54,16 @@ object IO {
 
     fun SafeClientEvent.pauseCheck(): Boolean =
         !Pathfinder.rubberbandTimer.tick(rubberbandTimeout.toLong(), false)
-            || player.inventory.isEmpty
-            || PauseProcess.isActive
-            || AutoObsidian.isActive()
-            || isInQueue()
+                || player.inventory.isEmpty
+                || PauseProcess.isActive
+                || AutoObsidian.isActive()
+                || isInQueue()
 
     private fun SafeClientEvent.isInQueue() =
         world.difficulty == EnumDifficulty.PEACEFUL
-            && player.dimension == 1
-            && @Suppress("UNNECESSARY_SAFE_CALL")
-            player.serverBrand?.contains("2b2t") == true
+                && player.dimension == 1
+                && @Suppress("UNNECESSARY_SAFE_CALL")
+        player.serverBrand?.contains("2b2t") == true
 
     fun SafeClientEvent.printEnable() {
         MessageSendHelper.sendRawChatMessage("    §9> §7Direction: §a${startingDirection.displayName} / ${startingDirection.displayNameXY}§r")
@@ -134,9 +134,9 @@ object IO {
     fun printSettings() {
         StringBuilder(ignoreBlocks.size + 1).run {
             append("${module.chatName} Settings" +
-                "\n §9> §rMain material: §7${material.localizedName}" +
-                "\n §9> §rFiller material: §7${fillerMat.localizedName}" +
-                "\n §9> §rIgnored Blocks:")
+                    "\n §9> §rMain material: §7${material.localizedName}" +
+                    "\n §9> §rFiller material: §7${fillerMat.localizedName}" +
+                    "\n §9> §rIgnored Blocks:")
 
             ignoreBlocks.forEach {
                 append("\n     §9> §7$it")
