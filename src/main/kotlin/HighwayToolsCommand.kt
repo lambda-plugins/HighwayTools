@@ -7,6 +7,7 @@ import trombone.Pathfinder.cleanStashPos
 import trombone.Pathfinder.distancePending
 import trombone.Pathfinder.netherPortalPos
 import trombone.Pathfinder.stashBlockPos
+import trombone.Pathfinder.updateProcess
 
 object HighwayToolsCommand : ClientCommand(
     name = "highwaytools",
@@ -116,11 +117,10 @@ object HighwayToolsCommand : ClientCommand(
         }
 
         literal("forceRestock", "fr") {
-            string("none") { Arg ->
-                execute("Done") {
-                    Pathfinder.MovementState.RESTOCK
-                    sendChatMessage("Force restocking")
-                }
+            execute("Done") {
+                Pathfinder.MovementState.RESTOCK
+                updateProcess()
+                sendChatMessage("Force restocked")
             }
         }
 
