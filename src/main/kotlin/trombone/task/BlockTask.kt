@@ -32,12 +32,11 @@ class BlockTask(
     var eyeDistance = 0.0; private set
 
     var sequence: List<PlaceInfo> = emptyList(); private set
-    var isFiller = false
     var isLiquidSource = false
-    var isSupport = false
 
     var isShulker = false
     var isOpen = false
+    var stopPull = false
     var isLoaded = false
     var itemID = 0
     var destroy = false
@@ -51,12 +50,12 @@ class BlockTask(
     var toolToUse = ItemStack(Items.AIR)
 
     fun updateState(state: TaskState) {
-        if (state == taskState) return
+        if (state != taskState) {
+            timestamp = System.currentTimeMillis()
 
-        taskState = state
-        timestamp = System.currentTimeMillis()
-        if (state == TaskState.DONE || state == TaskState.PLACED || state == TaskState.BROKEN) {
-            onUpdate()
+            stuckTicks = 0
+            ranTicks = 0
+            taskState = state
         }
     }
 
@@ -91,7 +90,6 @@ class BlockTask(
         isLiquidSource = event.world.getBlockState(blockPos).let {
             it.block is BlockLiquid && it.getValue(BlockLiquid.LEVEL) == 0
         }
-        isFiller = true
     }
 
     fun shuffle() {
@@ -100,11 +98,6 @@ class BlockTask(
 
     fun prettyPrint(): String {
         return "    ${block.localizedName}@(${blockPos.asString()}) State: $taskState Timings: (Threshold: ${taskState.stuckThreshold} Timeout: ${taskState.stuckTimeout}) Priority: ${taskState.ordinal} Stuck: $stuckTicks"
-    }
-
-    private fun onUpdate() {
-        stuckTicks = 0
-        ranTicks = 0
     }
 
     override fun toString(): String {

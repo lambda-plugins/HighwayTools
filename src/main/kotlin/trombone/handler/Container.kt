@@ -62,7 +62,17 @@ object Container {
 
     private fun SafeClientEvent.handleEnderChest(item: Item) {
         if (item.block == Blocks.OBSIDIAN) {
-            if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) <= saveEnder) {
+            if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) > saveEnder) {
+                getRemotePos()?.let { pos ->
+                    containerTask = BlockTask(pos, TaskState.PLACE, Blocks.ENDER_CHEST, Blocks.OBSIDIAN.item)
+                    containerTask.destroy = true
+                    if (grindCycles > 1) containerTask.collect = false
+                    containerTask.itemID = Blocks.OBSIDIAN.id
+                    grindCycles--
+                } ?: run {
+                    disableError("Can't find possible container position (Case: 3)")
+                }
+            } else {
                 getShulkerWith(player.inventorySlots, Blocks.ENDER_CHEST.item)?.let { slot ->
                     getRemotePos()?.let { pos ->
                         containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, Blocks.ENDER_CHEST.item)
@@ -76,16 +86,6 @@ object Container {
                     } else {
                         disableError("${insufficientMaterial(item)}\nTo provide sufficient material, grant access to your ender chest. Activate in settings: ${TextFormatting.GRAY}Storage Management > Search Ender Chest")
                     }
-                }
-            } else {
-                getRemotePos()?.let { pos ->
-                    containerTask = BlockTask(pos, TaskState.PLACE, Blocks.ENDER_CHEST, Blocks.OBSIDIAN.item)
-                    containerTask.destroy = true
-                    if (grindCycles > 1) containerTask.collect = false
-                    containerTask.itemID = Blocks.OBSIDIAN.id
-                    grindCycles--
-                } ?: run {
-                    disableError("Can't find possible container position (Case: 3)")
                 }
             }
         } else {

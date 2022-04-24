@@ -5,6 +5,7 @@ import HighwayTools.breakDelay
 import HighwayTools.debugLevel
 import HighwayTools.dynamicDelay
 import HighwayTools.fakeSounds
+import HighwayTools.fastFill
 import HighwayTools.fillerMat
 import HighwayTools.food
 import HighwayTools.ignoreBlocks
@@ -85,7 +86,6 @@ object Tasks {
     val tasks = ConcurrentHashMap<BlockPos, BlockTask>()
     val sortedTasks = ConcurrentSkipListSet(blockTaskComparator())
     var lastTask: BlockTask? = null
-    var isInventoryManaging = false
 
     fun clearTasks() {
         tasks.clear()
@@ -168,19 +168,16 @@ object Tasks {
                 val eyePos = player.getPositionEyes(1.0f)
                 containerTask.updateTask(this, eyePos)
                 if (containerTask.stuckTicks > containerTask.taskState.stuckTimeout) {
-                    if (containerTask.taskState == TaskState.PICKUP) {
-                        MessageSendHelper.sendChatMessage("${module.chatName} Can't pickup ${containerTask.item.registryName}@(${containerTask.blockPos.asString()})")
-                        moveState = MovementState.RUNNING
-                    } else {
-                        MessageSendHelper.sendChatMessage("${module.chatName} Failed container action: ${containerTask.item.registryName}@(${containerTask.blockPos.asString()})")
-                    }
+                    if (containerTask.taskState == TaskState.PICKUP) moveState = MovementState.RUNNING
+
+                    MessageSendHelper.sendChatMessage("${module.chatName} Failed container action ${containerTask.taskState.name} with ${containerTask.item.registryName}@(${containerTask.blockPos.asString()}) stuck for ${containerTask.stuckTicks} ticks")
                     containerTask.updateState(TaskState.DONE)
-                    return
+                } else {
+                    tasks.values.forEach {
+                        doTask(it, true)
+                    }
+                    doTask(containerTask, false)
                 }
-                tasks.values.forEach {
-                    doTask(it, true)
-                }
-                doTask(containerTask, false)
             }
             storageManagement && grindCycles > 0 -> {
                 if (player.inventorySlots.countItem(Items.DIAMOND_PICKAXE) > saveTools) {
@@ -354,78 +351,56 @@ object Tasks {
         if (mc.currentScreen is GuiContainer && containerTask.isLoaded) {
             val container = player.openContainer
 
-            if (!isInventoryManaging) {
-                if (leaveEmptyShulkers &&
-                    container.getSlots(0..26)
-                        .all { it.stack.isEmpty
-                            || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) }) {
-                    if (debugLevel != DebugLevel.OFF) {
-                        if (!anonymizeStats) {
-                            MessageSendHelper.sendChatMessage("${module.chatName} Left empty ${containerTask.block.localizedName}@(${containerTask.blockPos.asString()})")
-                        } else {
-                            MessageSendHelper.sendChatMessage("${module.chatName} Left empty ${containerTask.block.localizedName}")
-                        }
-                    }
-                    containerTask.updateState(TaskState.DONE)
+            if (leaveEmptyShulkers
+                && containerTask.isShulker
+                && container.getSlots(0..26).all {
+                    it.stack.isEmpty
+                        || InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
                 }
-
-                var found = 0
-
-                when (containerTask.item) {
-//                    material.item -> {
-//                        val itemsFree = player.inventorySlots.sumOf {
-//                            val stack = it.stack
-//                            when {
-//                                stack.isEmpty -> 64
-//                                stack.item == material.item -> 64 - stack.count
-//                                else -> 0
-//                            }
-//                        } - 64 // To keep one slot free to collect the shulker
-//
-//                        container.getSlots(0..26)
-//                            .filterByItem(containerTask.item)
-//                            .forEach {
-//                                found += it.stack.count
-//                                if (found < itemsFree) moveToInventory(it)
-//                            }
-//                    }
-//                    is ItemPickaxe -> {
-//                        val slotsFree = player.inventorySlots.count {
-//                            InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
-//                                || it.stack.isEmpty
-//                        } - 1
-//
-//                        MessageSendHelper.sendChatMessage("$slotsFree")
-//
-//                        container.getSlots(0..26)
-//                            .filterByItem(containerTask.item)
-//                            .forEach {
-//                                found += 1
-//                                if (found < slotsFree) moveToInventory(it)
-//                            }
-//                    }
-                    else -> {
-                        container.getSlots(0..26)
-                            .firstItem(containerTask.item)?.let {
-                                moveToInventory(it)
-                                found += 1
-                            }
+            ) {
+                if (debugLevel != DebugLevel.OFF) {
+                    if (!anonymizeStats) {
+                        MessageSendHelper.sendChatMessage("${module.chatName} Left empty ${containerTask.block.localizedName}@(${containerTask.blockPos.asString()})")
+                    } else {
+                        MessageSendHelper.sendChatMessage("${module.chatName} Left empty ${containerTask.block.localizedName}")
                     }
                 }
-
-                if (found == 0) {
-                    getShulkerWith(container.getSlots(0..26), containerTask.item)?.let {
-                        moveToInventory(it)
-                    } ?: run {
-                        disableError("No ${containerTask.item.registryName} left in any container.")
-                    }
-                }
+                containerTask.updateState(TaskState.DONE)
+                containerTask.isOpen = false
+                player.closeScreen()
             } else {
                 if (PlayerInventoryManager.isDone()) {
-                    containerTask.updateState(TaskState.BREAK)
-                    isInventoryManaging = false
-                    containerTask.isOpen = false
-                    player.closeScreen()
+                    val freeSlots = container.getSlots(27..62).count {
+                        InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
+                            || it.stack.isEmpty
+                    } - 1
+
+                    if (containerTask.stopPull || freeSlots == 0) {
+                        containerTask.updateState(TaskState.BREAK)
+                        containerTask.isOpen = false
+                        player.closeScreen()
+                    } else {
+                        container.getSlots(0..26).firstItem(containerTask.item)?.let {
+                            moveToInventory(it)
+                            containerTask.stopPull = true
+                            if (fastFill) {
+                                if (mode == Mode.TUNNEL && containerTask.item is ItemPickaxe) {
+                                    containerTask.stopPull = false
+                                } else if (containerTask.item != material) {
+                                    containerTask.stopPull = false
+                                }
+                            }
+                        } ?: run {
+                            getShulkerWith(container.getSlots(0..26), containerTask.item)?.let {
+                                moveToInventory(it)
+                                containerTask.stopPull = true
+                            } ?: run {
+                                disableError("No ${containerTask.item.registryName} left in any container.")
+                            }
+                        }
+                    }
+                } else {
+                    containerTask.onStuck()
                 }
             }
         } else {
@@ -457,6 +432,7 @@ object Tasks {
 
     private fun SafeClientEvent.doOpenContainer() {
         if (containerTask.isOpen) {
+            moveState = MovementState.RESTOCK
             containerTask.updateState(TaskState.RESTOCK)
         } else {
             if (shulkerOpenTimer.tick(20)) {
@@ -550,10 +526,10 @@ object Tasks {
                 if (dynamicDelay && extraPlaceDelay > 0) extraPlaceDelay /= 2
 
                 if (blockTask == containerTask) {
-                    if (blockTask.destroy) {
-                        blockTask.updateState(TaskState.BREAK)
+                    if (containerTask.destroy) {
+                        containerTask.updateState(TaskState.BREAK)
                     } else {
-                        blockTask.updateState(TaskState.RESTOCK)
+                        containerTask.updateState(TaskState.OPEN_CONTAINER)
                     }
                 } else {
                     blockTask.updateState(TaskState.DONE)

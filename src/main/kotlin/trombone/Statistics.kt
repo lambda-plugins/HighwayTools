@@ -290,7 +290,7 @@ object Statistics {
                 displayText.addLine("$fillerMatLeft", secondaryColor)
 
                 if (moveState == Pathfinder.MovementState.RESTOCK) {
-                    displayText.add("    Ender Chest cycles:", primaryColor)
+                    displayText.add("    Ender Chest cycles left:", primaryColor)
                     displayText.addLine("$grindCycles", secondaryColor)
                 } else {
                     displayText.add("    Distance left:", primaryColor)

@@ -1,6 +1,5 @@
 package trombone.handler
 
-import HighwayTools.fillerMat
 import HighwayTools.grindObsidian
 import HighwayTools.material
 import HighwayTools.mode
@@ -14,7 +13,7 @@ import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
 import com.lambda.client.module.modules.player.InventoryManager
 import com.lambda.client.util.items.*
 import com.lambda.client.util.math.RotationUtils.getRotationTo
-import com.lambda.client.util.text.MessageSendHelper
+import net.minecraft.block.Block
 import net.minecraft.block.Block.getBlockFromName
 import net.minecraft.enchantment.EnchantmentHelper
 import net.minecraft.init.Blocks
@@ -24,7 +23,6 @@ import net.minecraft.inventory.ClickType
 import net.minecraft.inventory.Slot
 import net.minecraft.item.ItemBlock
 import net.minecraft.util.math.Vec3d
-import trombone.Blueprint.isInsideBlueprintBuild
 import trombone.IO.disableError
 import trombone.Pathfinder.MovementState
 import trombone.Pathfinder.moveState
@@ -91,24 +89,6 @@ object Player {
             }
             return true
         } else {
-            if (mode != Trombone.Mode.TUNNEL
-                && storageManagement
-                && grindObsidian
-                && containerTask.taskState == TaskState.DONE
-                && material == Blocks.OBSIDIAN
-                && (player.inventorySlots.countBlock(Blocks.OBSIDIAN) <= saveMaterial &&
-                    grindCycles == 0)
-            ) {
-                val cycles = (player.inventorySlots.count { it.stack.isEmpty || InventoryManager.ejectList.contains(it.stack.item.registryName.toString()) } - 1) * 8
-                if (cycles > 0) {
-                    moveState = MovementState.RESTOCK
-                    grindCycles = cycles
-                } else {
-                    disableError("No free inventory space.")
-                }
-                return false
-            }
-
             val useMat = findMaterial(blockTask)
             if (useMat == Blocks.AIR) return false
 
@@ -125,56 +105,57 @@ object Player {
         }
     }
 
-    private fun SafeClientEvent.findMaterial(blockTask: BlockTask) = when {
-        blockTask.isFiller -> {
-            if (isInsideBlueprintBuild(blockTask.blockPos) && mode == Trombone.Mode.HIGHWAY) {
-                if (player.inventorySlots.countBlock(material) > 0) {
-                    material
-                } else {
-                    restockFallback(blockTask)
-                    Blocks.AIR
-                }
+    private fun SafeClientEvent.findMaterial(blockTask: BlockTask): Block {
+        return if (blockTask.block == material) {
+            if (player.inventorySlots.countBlock(material) > saveMaterial) {
+                material
             } else {
-                if (player.inventorySlots.countBlock(fillerMat) > 0) {
-                    fillerMat
+                restockFallback(blockTask)
+                Blocks.AIR
+            }
+        } else {
+            if (player.inventorySlots.countBlock(blockTask.block) > 0) {
+                blockTask.block
+            } else {
+                val possibleMaterials = mutableSetOf<Block>()
+                InventoryManager.ejectList.forEach { stringName ->
+                    getBlockFromName(stringName)?.let {
+                        if (player.inventorySlots.countBlock(it) > 0) possibleMaterials.add(it)
+                    }
+                }
+
+                if (possibleMaterials.isEmpty()) {
+                    if (player.inventorySlots.countBlock(material) > saveMaterial) {
+                        material
+                    } else {
+                        restockFallback(blockTask)
+                        Blocks.AIR
+                    }
                 } else {
-                    val possibleMaterials = InventoryManager.ejectList.filter { stringName ->
-                        getBlockFromName(stringName)?.let {
-                            player.inventorySlots.countBlock(it) > 0
-                        } ?: run {
-                            false
-                        }
-                    }
-                    possibleMaterials.firstOrNull()?.let { stringMaterial ->
-                        getBlockFromName(stringMaterial) ?: run {
-                            disableError("Invalid eject material: $stringMaterial")
-                            Blocks.AIR
-                        }
-                    } ?: run {
-                        if (player.inventorySlots.countBlock(material) > 0) {
-                            material
-                        } else {
-                            restockFallback(blockTask)
-                            Blocks.AIR
-                        }
-                    }
+                    possibleMaterials.first()
                 }
             }
-        }
-        player.inventorySlots.countBlock(blockTask.block) > 0 -> {
-            blockTask.block
-        }
-        else -> {
-            restockFallback(blockTask)
-            Blocks.AIR
         }
     }
 
     private fun SafeClientEvent.restockFallback(blockTask: BlockTask) {
-        if (blockTask.block == material && storageManagement) {
-            handleRestock(material.item)
+        if (grindObsidian && blockTask.block == Blocks.OBSIDIAN) {
+            val cycles = (player.inventorySlots.count {
+                it.stack.isEmpty
+                    || InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
+            } - 1) * 8
+            if (cycles > 0) {
+                moveState = MovementState.RESTOCK
+                grindCycles = cycles
+            } else {
+                disableError("No free inventory space.")
+            }
         } else {
-            disableError("No usable material was found in inventory.")
+            if (storageManagement) {
+                handleRestock(blockTask.block.item)
+            } else {
+                disableError("No usable material was found in inventory.")
+            }
         }
     }
 
@@ -206,21 +187,22 @@ object Player {
         }
 
     fun SafeClientEvent.moveToInventory(originSlot: Slot) {
-        player.openContainer.getSlots(27..62).firstOrNull {
+        val container = player.openContainer
+
+        container.getSlots(27..62).firstOrNull {
             originSlot.stack.item == it.stack.item
-                && it.stack.count < originSlot.slotStackLimit - originSlot.stack.count
+                && it.stack.count < originSlot.stack.maxStackSize - originSlot.stack.count
         }?.let { _ ->
             module.addInventoryTask(
                 PlayerInventoryManager.ClickInfo(
                     player.openContainer.windowId,
-                    originSlot.slotIndex,
+                    originSlot.slotNumber,
                     0,
                     ClickType.QUICK_MOVE
                 )
             )
-            Tasks.isInventoryManaging = true
         } ?: run {
-            player.hotbarSlots.firstOrNull {
+            container.getSlots(54..62).firstOrNull {
                 InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
                     || it.stack.isEmpty
             }?.let { freeHotbarSlot ->
@@ -228,14 +210,12 @@ object Player {
                     PlayerInventoryManager.ClickInfo(
                         player.openContainer.windowId,
                         originSlot.slotNumber,
-                        freeHotbarSlot.hotbarSlot,
+                        freeHotbarSlot.slotNumber - 54,
                         ClickType.SWAP
                     )
                 )
-                Tasks.isInventoryManaging = true
             } ?: run {
-                MessageSendHelper.sendChatMessage("LOL") //ToDo: Remove
-                player.inventorySlots.firstOrNull {
+                container.getSlots(27..53).firstOrNull {
                     InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
                         || it.stack.isEmpty
                 }?.let { freeSlot ->
@@ -255,7 +235,6 @@ object Player {
                             ClickType.SWAP
                         )
                     )
-                    Tasks.isInventoryManaging = true
                 } ?: run {
                     disableError("Inventory full.")
                 }
