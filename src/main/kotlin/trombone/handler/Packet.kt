@@ -1,14 +1,20 @@
 package trombone.handler
 
+import com.lambda.client.LambdaMod
 import com.lambda.client.event.SafeClientEvent
+import com.lambda.client.util.items.HotbarSlot
+import com.lambda.client.util.items.hotbarSlots
+import com.lambda.client.util.items.inventorySlots
 import net.minecraft.init.Blocks
 import net.minecraft.network.Packet
 import net.minecraft.network.play.server.SPacketBlockChange
 import net.minecraft.network.play.server.SPacketOpenWindow
 import net.minecraft.network.play.server.SPacketPlayerPosLook
+import net.minecraft.network.play.server.SPacketSetSlot
 import net.minecraft.network.play.server.SPacketWindowItems
 import trombone.Blueprint.isInsideBlueprint
 import trombone.Pathfinder.rubberbandTimer
+import trombone.Statistics.durabilityUsages
 import trombone.handler.Container.containerTask
 import trombone.task.TaskManager.tasks
 import trombone.task.TaskState
@@ -59,6 +65,15 @@ object Packet {
             }
             is SPacketWindowItems -> {
                 if (containerTask.isOpen) containerTask.isLoaded = true
+            }
+            is SPacketSetSlot -> {
+                val currentStack = player.hotbarSlots[player.inventory.currentItem].stack
+                if (packet.slot == player.inventory.currentItem + 36
+                    && packet.stack.item == currentStack.item
+                    && packet.stack.itemDamage > currentStack.itemDamage
+                ) {
+                    durabilityUsages += packet.stack.itemDamage - currentStack.itemDamage
+                }
             }
             else -> {
                 // Nothing

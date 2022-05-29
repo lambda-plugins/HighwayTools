@@ -86,8 +86,7 @@ object TaskExecutor {
             TaskState.PENDING_BREAK, TaskState.PENDING_PLACE -> {
                 blockTask.onStuck()
             }
-            TaskState.DONE -> { /* do nothing */
-            }
+            TaskState.DONE -> { /* do nothing */ }
         }
     }
 
@@ -255,7 +254,6 @@ object TaskExecutor {
                 moveState = Pathfinder.MovementState.PICKUP
                 blockTask.updateState(TaskState.PICKUP)
             } else {
-//                    if (grindCycles == 0) moveState = MovementState.RUNNING
                 blockTask.updateState(TaskState.DONE)
             }
             return
@@ -296,8 +294,6 @@ object TaskExecutor {
                     val soundType = currentBlock.getSoundType(world.getBlockState(blockTask.blockPos), world, blockTask.blockPos, player)
                     world.playSound(player, blockTask.blockPos, soundType.placeSound, SoundCategory.BLOCKS, (soundType.getVolume() + 1.0f) / 2.0f, soundType.getPitch() * 0.8f)
                 }
-
-//                if (blockTask == containerTask && grindCycles == 0) moveState = MovementState.RUNNING
             }
             blockTask.targetBlock == currentBlock && currentBlock == Blocks.AIR -> {
                 blockTask.updateState(TaskState.BREAK)

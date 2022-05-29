@@ -14,6 +14,7 @@ import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.math.VectorUtils.multiply
 import com.lambda.client.util.math.VectorUtils.toVec3dCenter
 import com.lambda.client.util.world.isReplaceable
+import net.minecraft.init.Blocks
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
 import trombone.IO.disableError
@@ -54,14 +55,13 @@ object Pathfinder {
         when (moveState) {
             MovementState.RUNNING -> {
                 goal = currentBlockPos
+                val possiblePos = currentBlockPos.add(startingDirection.directionVec)
 
-                val current = currentBlockPos
-                val possiblePos = current.add(startingDirection.directionVec)
-
-                if (!isTaskDone(possiblePos) ||
-                    !isTaskDone(possiblePos.up()) ||
-                    !isTaskDone(possiblePos.down())) {
-                    LambdaMod.LOG.error("Task is not done")
+                if (world.getBlockState(possiblePos.up()).block != Blocks.AIR
+                    || world.getBlockState(possiblePos).block != Blocks.AIR
+                    || !isTaskDone(possiblePos.down())
+                ) {
+//                    LambdaMod.LOG.error("Task is not done")
                     return
                 }
 
@@ -72,7 +72,7 @@ object Pathfinder {
 //                    possiblePos = possiblePos.add(startingDirection.directionVec)
 //                }
 
-                if (current != possiblePos && player.positionVector.distanceTo(possiblePos) < 3) {
+                if (currentBlockPos != possiblePos && player.positionVector.distanceTo(possiblePos) < 3) {
                     simpleMovingAverageDistance.add(System.currentTimeMillis())
                     lastHitVec = Vec3d.ZERO
                     currentBlockPos = possiblePos

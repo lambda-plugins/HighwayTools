@@ -145,6 +145,7 @@ object Container {
                     && world.isAirBlock(pos.up())
                     && getVisibleSides(pos.down()).contains(EnumFacing.UP)
                     && player.positionVector.distanceTo(pos.toVec3dCenter()) > minDistance
+                    && pos.y >= currentBlockPos.y
             }.sortedWith(
                 compareByDescending<BlockPos> {
                     secureScore(it)

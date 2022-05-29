@@ -1,10 +1,10 @@
 package trombone.interaction
 
-import HighwayTools.anonymizeStats
 import HighwayTools.debugLevel
 import HighwayTools.dynamicDelay
 import HighwayTools.placeDelay
 import HighwayTools.taskTimeout
+import com.lambda.client.LambdaMod
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.items.blockBlacklist
 import com.lambda.client.util.math.CoordinateConverter.asString
@@ -38,11 +38,7 @@ object Place {
                     blockTask.updateState(TaskState.DONE)
                 }
                 if (debugLevel == DebugLevel.VERBOSE) {
-                    if (!anonymizeStats) {
-                        MessageSendHelper.sendChatMessage("${module.chatName} No neighbours found for ${blockTask.blockPos.asString()}")
-                    } else {
-                        MessageSendHelper.sendChatMessage("${module.chatName} No neighbours found")
-                    }
+                    LambdaMod.LOG.warn("${module.chatName} No neighbours found for ${blockTask.blockPos.asString()}")
                 }
                 if (blockTask == containerTask) {
                     MessageSendHelper.sendChatMessage("${module.chatName} Can't find neighbours for container task to place on")

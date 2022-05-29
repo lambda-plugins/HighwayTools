@@ -34,6 +34,7 @@ import net.minecraft.item.ItemFood
 import net.minecraft.item.ItemPickaxe
 import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
+import net.minecraftforge.fluids.BlockFluidBase
 import trombone.Blueprint.blueprint
 import trombone.Blueprint.generateBluePrint
 import trombone.IO.DebugLevel
@@ -83,18 +84,25 @@ object TaskManager {
     private fun SafeClientEvent.generateTask(blockPos: BlockPos, targetBlock: Block) {
         val currentState = world.getBlockState(blockPos)
         when {
-            /* Out of range, or is container pos and start padding */
-            isPositionNeeded(blockPos) -> { /* Ignore task */ }
+            /* Start padding */
+            isSpared(blockPos) -> { /* Ignore task */ }
+
+            /* Out of reach */
+            currentBlockPos.distanceTo(blockPos) >= maxReach -> { /* Ignore task */ }
+
             /* Do not override container task */
             containerTask.blockPos == blockPos -> { /* Ignore task */ }
+
             /* Ignored blocks */
             ignoreBlocks.contains(currentState.block.registryName.toString()) -> {
                 addTask(blockPos, TaskState.DONE, currentState.block)
             }
+
             /* Is in desired state */
             currentState.block == targetBlock -> {
                 addTask(blockPos, TaskState.DONE, currentState.block)
             }
+
             /* To place */
             currentState.isReplaceable && targetBlock != Blocks.AIR -> {
                 if (checkSupport(blockPos, targetBlock)
@@ -104,10 +112,12 @@ object TaskManager {
                     addTask(blockPos, TaskState.PLACE, targetBlock)
                 }
             }
+
             /* Is liquid */
             currentState.block is BlockLiquid -> {
                 addTask(blockPos, TaskState.LIQUID, targetBlock).updateLiquid(this)
             }
+
             /* Break */
             else -> {
                 if (checkSupport(blockPos, targetBlock)) {
@@ -218,6 +228,8 @@ object TaskManager {
 
         if (blockTask.stuckTicks < timeout) return true
 
+        if (blockTask.taskState == TaskState.DONE) return true
+
         if (blockTask.taskState == TaskState.PENDING_BREAK) {
             blockTask.updateState(TaskState.BREAK)
             return false
@@ -250,21 +262,24 @@ object TaskManager {
             }
         }
 
-        populateTasks()
+//        populateTasks() TODO: needed ???
         return false
     }
 
-    fun SafeClientEvent.isTaskDone(pos: BlockPos) =
-        tasks[pos]?.let {
+    fun SafeClientEvent.isTaskDone(pos: BlockPos): Boolean {
+        val block = world.getBlockState(pos).block
+        return tasks[pos]?.let {
             it.taskState == TaskState.DONE
-                && world.getBlockState(pos).block != Blocks.PORTAL
+                && block != Blocks.PORTAL
+                && block != Blocks.END_PORTAL
+                && block !is BlockLiquid
         } ?: false
+    }
+
 
     // ToDo: Fix padding for diagonal
-    private fun isPositionNeeded(blockPos: BlockPos) =
-        currentBlockPos.distanceTo(blockPos) > maxReach
-            || (blockPos == containerTask.blockPos && containerTask.taskState != TaskState.DONE)
-            || startingBlockPos.add(
+    private fun isSpared(blockPos: BlockPos) =
+        startingBlockPos.add(
             startingDirection
                 .clockwise(4)
                 .directionVec

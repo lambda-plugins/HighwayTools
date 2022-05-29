@@ -61,7 +61,7 @@ object Statistics {
     private var materialLeft = 0
     private var fillerMatLeft = 0
     private var lastToolDamage = 0
-    private var durabilityUsages = 0
+    var durabilityUsages = 0
     private var matPlaced = 0
     private var enderMined = 0
     private var netherrackMined = 0
