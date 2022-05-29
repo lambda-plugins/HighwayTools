@@ -8,7 +8,7 @@ import baritone.api.process.PathingCommand
 import baritone.api.process.PathingCommandType
 import com.lambda.client.util.math.CoordinateConverter.asString
 import trombone.Pathfinder.goal
-import trombone.handler.Tasks.lastTask
+import trombone.task.TaskManager.lastTask
 
 /**
  * @author Avanatiker

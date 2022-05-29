@@ -38,11 +38,11 @@ import trombone.Pathfinder.currentBlockPos
 import trombone.Pathfinder.moveState
 import trombone.Pathfinder.startingBlockPos
 import trombone.Pathfinder.startingDirection
-import trombone.Trombone.Mode
+import trombone.Trombone.Structure
 import trombone.handler.Container.containerTask
 import trombone.handler.Container.grindCycles
-import trombone.handler.Player.packetLimiter
-import trombone.handler.Tasks.sortedTasks
+import trombone.handler.Inventory.packetLimiter
+import trombone.task.TaskManager.sortedTasks
 import trombone.interaction.Place.extraPlaceDelay
 import trombone.task.BlockTask
 import trombone.task.TaskState
@@ -171,7 +171,7 @@ object Statistics {
             displayText.addLine("Lifetime", primaryColor)
         }
 
-        if (mode == Mode.HIGHWAY || mode == Mode.FLAT) {
+        if (mode == Structure.HIGHWAY || mode == Structure.FLAT) {
             if (matPlaced > 0) {
                 displayText.add("    ${material.localizedName} placed:", primaryColor)
                 displayText.addLine("%,d".format(matPlaced), secondaryColor)
@@ -249,10 +249,17 @@ object Statistics {
             displayText.addLine("${it.taskState}", secondaryColor)
 
             displayText.add("    Target block:", primaryColor)
-            displayText.addLine(it.block.localizedName, secondaryColor)
+            displayText.addLine(it.targetBlock.localizedName, secondaryColor)
 
-            if (!anonymizeStats) displayText.add("    Position:", primaryColor)
-            if (!anonymizeStats) displayText.addLine("(${it.blockPos.asString()})", secondaryColor)
+            if (it.item != Items.AIR) {
+                displayText.add("    Target item:", primaryColor)
+                displayText.addLine(it.targetBlock.localizedName, secondaryColor)
+            }
+
+            if (!anonymizeStats) {
+                displayText.add("    Position:", primaryColor)
+                displayText.addLine("(${it.blockPos.asString()})", secondaryColor)
+            }
 
             displayText.add("    Ticks stuck:", primaryColor)
             displayText.addLine("${it.stuckTicks}", secondaryColor)
@@ -261,7 +268,7 @@ object Statistics {
 
     private fun SafeClientEvent.gatherEstimations(displayText: TextComponent, runtimeSec: Double, distanceDone: Double) {
         when (mode) {
-            Mode.HIGHWAY, Mode.FLAT -> {
+            Structure.HIGHWAY, Structure.FLAT -> {
                 materialLeft = player.inventorySlots.countBlock(material)
                 fillerMatLeft = player.inventorySlots.countBlock(fillerMat)
                 val indirectMaterialLeft = 8 * player.inventorySlots.countBlock(Blocks.ENDER_CHEST)
@@ -289,7 +296,7 @@ object Statistics {
                 displayText.add("    ${fillerMat.localizedName}:", primaryColor)
                 displayText.addLine("$fillerMatLeft", secondaryColor)
 
-                if (moveState == Pathfinder.MovementState.RESTOCK) {
+                if (grindCycles > 0) {
                     displayText.add("    Ender Chest cycles left:", primaryColor)
                     displayText.addLine("$grindCycles", secondaryColor)
                 } else {
@@ -303,7 +310,7 @@ object Statistics {
                     displayText.addLine("$hoursLeft:$minutesLeft:$secondsLeft", secondaryColor)
                 }
             }
-            Mode.TUNNEL -> {
+            Structure.TUNNEL -> {
                 val pickaxesLeft = player.inventorySlots.countItem<ItemPickaxe>()
 
                 val tunnelingLeft = (pickaxesLeft * 1561) / (durabilityUsages.coerceAtLeast(1) / distanceDone.coerceAtLeast(1.0))

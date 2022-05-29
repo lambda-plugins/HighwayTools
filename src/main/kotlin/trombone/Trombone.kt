@@ -14,16 +14,16 @@ import trombone.Pathfinder.updateProcess
 import trombone.Renderer.updateRenderer
 import trombone.Statistics.updateStats
 import trombone.Statistics.updateTotalDistance
-import trombone.handler.Player.updateRotation
-import trombone.handler.Tasks.clearTasks
-import trombone.handler.Tasks.runTasks
-import trombone.handler.Tasks.updateTasks
+import trombone.handler.Inventory.updateRotation
+import trombone.task.TaskManager.clearTasks
+import trombone.task.TaskManager.runTasks
+import trombone.task.TaskManager.populateTasks
 
 object Trombone {
     val module = HighwayTools
     var active = false
 
-    enum class Mode {
+    enum class Structure {
         HIGHWAY, FLAT, TUNNEL
     }
 
@@ -44,7 +44,7 @@ object Trombone {
 
     fun SafeClientEvent.tick() {
         updateRenderer()
-        updateTasks()
+        populateTasks()
         updateStats()
 
         if (pauseCheck()) return

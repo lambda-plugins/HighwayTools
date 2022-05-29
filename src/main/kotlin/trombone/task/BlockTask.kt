@@ -3,6 +3,7 @@ package trombone.task
 import HighwayTools.illegalPlacements
 import HighwayTools.maxReach
 import HighwayTools.placementSearch
+import com.lambda.client.LambdaMod
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.math.VectorUtils.distanceTo
@@ -10,6 +11,7 @@ import com.lambda.client.util.world.PlaceInfo
 import com.lambda.client.util.world.getNeighbourSequence
 import net.minecraft.block.Block
 import net.minecraft.block.BlockLiquid
+import net.minecraft.block.BlockShulkerBox
 import net.minecraft.init.Items
 import net.minecraft.item.Item
 import net.minecraft.item.ItemStack
@@ -17,12 +19,13 @@ import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
 import trombone.Pathfinder.startingBlockPos
+import trombone.handler.Container
 import kotlin.random.Random
 
 class BlockTask(
     val blockPos: BlockPos,
     var taskState: TaskState,
-    var block: Block,
+    var targetBlock: Block,
     var item: Item = Items.AIR
 ) {
     private var ranTicks = 0
@@ -34,9 +37,9 @@ class BlockTask(
     var sequence: List<PlaceInfo> = emptyList(); private set
     var isLiquidSource = false
 
-    var isShulker = false
     var isOpen = false
     var stopPull = false
+    var stacksPulled = 0
     var isLoaded = false
     var itemID = 0
     var destroy = false
@@ -92,16 +95,18 @@ class BlockTask(
         }
     }
 
+    fun isShulker() = targetBlock is BlockShulkerBox
+
     fun shuffle() {
         shuffle = Random.nextInt(0, 1000)
     }
 
     fun prettyPrint(): String {
-        return "    ${block.localizedName}@(${blockPos.asString()}) State: $taskState Timings: (Threshold: ${taskState.stuckThreshold} Timeout: ${taskState.stuckTimeout}) Priority: ${taskState.ordinal} Stuck: $stuckTicks"
+        return "    ${targetBlock.localizedName}@(${blockPos.asString()}) State: $taskState Timings: (Threshold: ${taskState.stuckThreshold} Timeout: ${taskState.stuckTimeout}) Priority: ${taskState.ordinal} Stuck: $stuckTicks"
     }
 
     override fun toString(): String {
-        return "Block: ${block.localizedName} @ Position: (${blockPos.asString()}) State: ${taskState.name}"
+        return "Block: ${targetBlock.localizedName} @ Position: (${blockPos.asString()}) State: ${taskState.name}"
     }
 
     override fun equals(other: Any?) = this === other

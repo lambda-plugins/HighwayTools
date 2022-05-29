@@ -7,9 +7,7 @@ import com.lambda.client.module.Category
 import com.lambda.client.plugin.api.PluginModule
 import com.lambda.client.setting.settings.impl.collection.CollectionSetting
 import com.lambda.client.util.items.shulkerList
-import com.lambda.client.util.threads.runSafe
-import com.lambda.client.util.threads.runSafeR
-import com.lambda.client.util.threads.safeListener
+import com.lambda.client.util.threads.*
 import net.minecraft.block.Block
 import net.minecraft.init.Blocks
 import net.minecraft.init.Items
@@ -21,7 +19,7 @@ import trombone.IO.pauseCheck
 import trombone.Pathfinder.updatePathing
 import trombone.Renderer.renderOverlay
 import trombone.Renderer.renderWorld
-import trombone.Trombone.Mode
+import trombone.Trombone.Structure
 import trombone.Trombone.active
 import trombone.Trombone.tick
 import trombone.Trombone.onDisable
@@ -55,19 +53,19 @@ object HighwayTools : PluginModule(
     )
 
     // blueprint
-    val mode by setting("Mode", Mode.HIGHWAY, { page == Page.BLUEPRINT }, description = "Choose the structure")
+    val mode by setting("Mode", Structure.HIGHWAY, { page == Page.BLUEPRINT }, description = "Choose the structure")
     val width by setting("Width", 6, 1..11, 1, { page == Page.BLUEPRINT }, description = "Sets the width of blueprint")
     val height by setting("Height", 4, 2..6, 1, { page == Page.BLUEPRINT && clearSpace }, description = "Sets height of blueprint")
-    val backfill by setting("Backfill", false, { page == Page.BLUEPRINT && mode == Mode.TUNNEL }, description = "Fills the tunnel behind you")
-    val clearSpace by setting("Clear Space", true, { page == Page.BLUEPRINT && mode == Mode.HIGHWAY }, description = "Clears out the tunnel if necessary")
-    val cleanFloor by setting("Clean Floor", false, { page == Page.BLUEPRINT && mode == Mode.TUNNEL && !backfill }, description = "Cleans up the tunnels floor")
-    val cleanRightWall by setting("Clean Right Wall", false, { page == Page.BLUEPRINT && mode == Mode.TUNNEL && !backfill }, description = "Cleans up the right wall")
-    val cleanLeftWall by setting("Clean Left Wall", false, { page == Page.BLUEPRINT && mode == Mode.TUNNEL && !backfill }, description = "Cleans up the left wall")
-    val cleanRoof by setting("Clean Roof", false, { page == Page.BLUEPRINT && mode == Mode.TUNNEL && !backfill }, description = "Cleans up the tunnels roof")
-    val cleanCorner by setting("Clean Corner", false, { page == Page.BLUEPRINT && mode == Mode.TUNNEL && !cornerBlock && !backfill && width > 2 }, description = "Cleans up the tunnels corner")
-    val cornerBlock by setting("Corner Block", false, { page == Page.BLUEPRINT && (mode == Mode.HIGHWAY || (mode == Mode.TUNNEL && !backfill && width > 2)) }, description = "If activated will break the corner in tunnel or place a corner while paving")
-    val railing by setting("Railing", true, { page == Page.BLUEPRINT && mode == Mode.HIGHWAY }, description = "Adds a railing/rim/border to the highway")
-    val railingHeight by setting("Railing Height", 1, 1..4, 1, { railing && page == Page.BLUEPRINT && mode == Mode.HIGHWAY }, description = "Sets height of railing")
+    val backfill by setting("Backfill", false, { page == Page.BLUEPRINT && mode == Structure.TUNNEL }, description = "Fills the tunnel behind you")
+    val clearSpace by setting("Clear Space", true, { page == Page.BLUEPRINT && mode == Structure.HIGHWAY }, description = "Clears out the tunnel if necessary")
+    val cleanFloor by setting("Clean Floor", false, { page == Page.BLUEPRINT && mode == Structure.TUNNEL && !backfill }, description = "Cleans up the tunnels floor")
+    val cleanRightWall by setting("Clean Right Wall", false, { page == Page.BLUEPRINT && mode == Structure.TUNNEL && !backfill }, description = "Cleans up the right wall")
+    val cleanLeftWall by setting("Clean Left Wall", false, { page == Page.BLUEPRINT && mode == Structure.TUNNEL && !backfill }, description = "Cleans up the left wall")
+    val cleanRoof by setting("Clean Roof", false, { page == Page.BLUEPRINT && mode == Structure.TUNNEL && !backfill }, description = "Cleans up the tunnels roof")
+    val cleanCorner by setting("Clean Corner", false, { page == Page.BLUEPRINT && mode == Structure.TUNNEL && !cornerBlock && !backfill && width > 2 }, description = "Cleans up the tunnels corner")
+    val cornerBlock by setting("Corner Block", false, { page == Page.BLUEPRINT && (mode == Structure.HIGHWAY || (mode == Structure.TUNNEL && !backfill && width > 2)) }, description = "If activated will break the corner in tunnel or place a corner while paving")
+    val railing by setting("Railing", true, { page == Page.BLUEPRINT && mode == Structure.HIGHWAY }, description = "Adds a railing/rim/border to the highway")
+    val railingHeight by setting("Railing Height", 1, 1..4, 1, { railing && page == Page.BLUEPRINT && mode == Structure.HIGHWAY }, description = "Sets height of railing")
     private val materialSaved = setting("Material", "minecraft:obsidian", { false })
     private val fillerMatSaved = setting("FillerMat", "minecraft:netherrack", { false })
     private val foodItem = setting("FoodItem", "minecraft:golden_apple", { false })
@@ -101,6 +99,7 @@ object HighwayTools : PluginModule(
     val leaveEmptyShulkers by setting("Leave Empty Shulkers", true, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Does not break empty shulkers")
     val grindObsidian by setting("Grind Obsidian", true, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Destroy Ender Chests to obtain Obsidian")
     val fastFill by setting("Fast Fill", true, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Moves as many item stacks to inventory as possible")
+    val keepFreeSlots by setting("Free Slots", 1, 0..30, 1, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "How many inventory slots are untouched on refill")
     val preferEnderChests by setting("Prefer Ender Chests", false, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Prevent using raw material shulkers")
     val manageFood by setting("Manage Food", true, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Choose to manage food")
     val saveMaterial by setting("Save Material", 12, 0..64, 1, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "How many material blocks are saved")

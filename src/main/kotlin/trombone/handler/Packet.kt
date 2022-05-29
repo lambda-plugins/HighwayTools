@@ -10,7 +10,7 @@ import net.minecraft.network.play.server.SPacketWindowItems
 import trombone.Blueprint.isInsideBlueprint
 import trombone.Pathfinder.rubberbandTimer
 import trombone.handler.Container.containerTask
-import trombone.handler.Tasks.tasks
+import trombone.task.TaskManager.tasks
 import trombone.task.TaskState
 
 object Packet {
@@ -37,7 +37,7 @@ object Packet {
                             }
                         }
                         TaskState.PENDING_PLACE -> {
-                            if (task.block != Blocks.AIR && task.block == new) {
+                            if (task.targetBlock != Blocks.AIR && task.targetBlock == new) {
                                 task.updateState(TaskState.PLACED)
                             }
                         }
@@ -52,8 +52,8 @@ object Packet {
             }
             is SPacketOpenWindow -> {
                 if (containerTask.taskState != TaskState.DONE &&
-                    packet.guiId == "minecraft:shulker_box" && containerTask.isShulker ||
-                    packet.guiId == "minecraft:container" && !containerTask.isShulker) {
+                    packet.guiId == "minecraft:shulker_box" && containerTask.isShulker() ||
+                    packet.guiId == "minecraft:container" && !containerTask.isShulker()) {
                     containerTask.isOpen = true
                 }
             }

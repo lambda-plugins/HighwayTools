@@ -23,8 +23,8 @@ import net.minecraft.util.math.BlockPos
 import trombone.IO.DebugLevel
 import trombone.Trombone.module
 import trombone.handler.Container.containerTask
-import trombone.handler.Player.lastHitVec
-import trombone.handler.Player.waitTicks
+import trombone.handler.Inventory.lastHitVec
+import trombone.handler.Inventory.waitTicks
 import trombone.task.BlockTask
 import trombone.task.TaskState
 

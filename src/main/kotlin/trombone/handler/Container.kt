@@ -1,5 +1,7 @@
 package trombone.handler
 
+import HighwayTools.grindObsidian
+import HighwayTools.keepFreeSlots
 import HighwayTools.material
 import HighwayTools.maxReach
 import HighwayTools.minDistance
@@ -11,6 +13,7 @@ import HighwayTools.saveTools
 import HighwayTools.searchEChest
 import com.lambda.client.commons.extension.ceilToInt
 import com.lambda.client.event.SafeClientEvent
+import com.lambda.client.module.modules.player.InventoryManager
 import com.lambda.client.util.EntityUtils.getDroppedItems
 import com.lambda.client.util.TickTimer
 import com.lambda.client.util.TimeUnit
@@ -34,6 +37,7 @@ import net.minecraft.util.text.TextFormatting
 import trombone.Blueprint.isInsideBlueprintBuild
 import trombone.IO.disableError
 import trombone.Pathfinder.currentBlockPos
+import trombone.handler.Inventory.zipInventory
 import trombone.task.BlockTask
 import trombone.task.TaskState
 import kotlin.math.abs
@@ -47,10 +51,10 @@ object Container {
         if (preferEnderChests && item.block == Blocks.OBSIDIAN) {
             handleEnderChest(item)
         } else {
+            // Case 1: item is in a shulker in the inventory
             getShulkerWith(player.inventorySlots, item)?.let { slot ->
                 getRemotePos()?.let { pos ->
                     containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, item)
-                    containerTask.isShulker = true
                 } ?: run {
                     disableError("Can't find possible container position (Case: 1)")
                 }
@@ -61,45 +65,54 @@ object Container {
     }
 
     private fun SafeClientEvent.handleEnderChest(item: Item) {
-        if (item.block == Blocks.OBSIDIAN) {
+        if (grindObsidian && item.block == Blocks.OBSIDIAN) {
+            // Case 2: desired item is Obsidian and grinding E-Chests is allowed
+
+            if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) <= saveEnder) {
+                handleRestock(Blocks.ENDER_CHEST.item)
+                return
+            }
+
             if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) > saveEnder) {
-                getRemotePos()?.let { pos ->
-                    containerTask = BlockTask(pos, TaskState.PLACE, Blocks.ENDER_CHEST, Blocks.OBSIDIAN.item)
-                    containerTask.destroy = true
-                    if (grindCycles > 1) containerTask.collect = false
-                    containerTask.itemID = Blocks.OBSIDIAN.id
-                    grindCycles--
-                } ?: run {
-                    disableError("Can't find possible container position (Case: 3)")
-                }
-            } else {
-                getShulkerWith(player.inventorySlots, Blocks.ENDER_CHEST.item)?.let { slot ->
+                if (grindCycles > 0) {
                     getRemotePos()?.let { pos ->
-                        containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, Blocks.ENDER_CHEST.item)
-                        containerTask.isShulker = true
+                        containerTask = BlockTask(pos, TaskState.PLACE, Blocks.ENDER_CHEST, Blocks.OBSIDIAN.item)
+                        containerTask.destroy = true
+                        if (grindCycles > 1) containerTask.collect = false
+                        containerTask.itemID = Blocks.OBSIDIAN.id
+                        grindCycles--
                     } ?: run {
-                        disableError("Can't find possible container position (Case: 2)")
+                        disableError("Can't find possible container position (Case: 3)")
                     }
-                } ?: run {
-                    if (searchEChest) {
-                        dispatchEnderChest(Blocks.ENDER_CHEST.item)
+                } else {
+                    val freeSlots = player.inventorySlots.count { it.stack.isEmpty
+                        || InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
+                    }
+
+                    val cycles = (freeSlots - 1 - keepFreeSlots) * 8
+
+                    if (cycles > 0) {
+                        grindCycles = cycles
                     } else {
-                        disableError("${insufficientMaterial(item)}\nTo provide sufficient material, grant access to your ender chest. Activate in settings: ${TextFormatting.GRAY}Storage Management > Search Ender Chest")
+                        zipInventory()
                     }
                 }
             }
         } else {
-            if (searchEChest) {
-                dispatchEnderChest(item)
-            } else {
+            // Case 3: last hope is the ender chest
+
+            if (!searchEChest) {
                 disableError("${insufficientMaterial(item)}\nTo provide sufficient material, grant access to your ender chest. Activate in settings: ${TextFormatting.GRAY}Storage Management > Search Ender Chest")
+                return
             }
+
+            dispatchEnderChest(item)
         }
 
     }
 
     private fun SafeClientEvent.dispatchEnderChest(item: Item) {
-        if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) > 0) {
+        if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) > saveEnder) {
             getRemotePos()?.let { pos ->
                 containerTask = BlockTask(pos, TaskState.PLACE, Blocks.ENDER_CHEST, item)
                 containerTask.itemID = Blocks.OBSIDIAN.id
@@ -110,7 +123,6 @@ object Container {
             getShulkerWith(player.inventorySlots, Blocks.ENDER_CHEST.item)?.let { slot ->
                 getRemotePos()?.let { pos ->
                     containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, Blocks.ENDER_CHEST.item)
-                    containerTask.isShulker = true
                 } ?: run {
                     disableError("Can't find possible container position (Case: 5)")
                 }
@@ -134,7 +146,7 @@ object Container {
                     && player.positionVector.distanceTo(pos.toVec3dCenter()) > minDistance
             }.sortedWith(
                 compareByDescending<BlockPos> {
-                    safeValue(it)
+                    secureScore(it)
                 }.thenBy {
                     it.distanceSqToCenter(origin.x, origin.y, origin.z).ceilToInt()
                 }.thenBy {
@@ -143,7 +155,7 @@ object Container {
             ).firstOrNull()
     }
 
-    private fun SafeClientEvent.safeValue(pos: BlockPos): Int {
+    private fun SafeClientEvent.secureScore(pos: BlockPos): Int {
         var safe = 0
         if (!world.getBlockState(pos.down().north()).isReplaceable) safe++
         if (!world.getBlockState(pos.down().east()).isReplaceable) safe++
@@ -183,9 +195,9 @@ object Container {
             ?.let { itemVec ->
                 return VectorUtils.getBlockPosInSphere(itemVec, range).asSequence()
                     .filter { pos ->
-                        world.isAirBlock(pos.up()) &&
-                            world.isAirBlock(pos) &&
-                            !world.isPlaceable(pos.down())
+                        world.isAirBlock(pos.up())
+                            && world.isAirBlock(pos)
+                            && !world.isPlaceable(pos.down())
                     }
                     .sortedWith(
                         compareBy<BlockPos> {

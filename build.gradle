@@ -8,7 +8,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'net.minecraftforge.gradle:ForgeGradle:5.+'
+        classpath 'net.minecraftforge.gradle:ForgeGradle:4.+'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
     }
 }

@@ -26,10 +26,10 @@ import net.minecraft.util.EnumHand
 import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
 import trombone.handler.Liquid.handleLiquid
-import trombone.handler.Player.lastHitVec
-import trombone.handler.Player.packetLimiter
-import trombone.handler.Player.waitTicks
-import trombone.handler.Tasks.sortedTasks
+import trombone.handler.Inventory.lastHitVec
+import trombone.handler.Inventory.packetLimiter
+import trombone.handler.Inventory.waitTicks
+import trombone.task.TaskManager.sortedTasks
 import trombone.task.BlockTask
 import trombone.task.TaskState
 import kotlin.math.ceil
@@ -69,7 +69,7 @@ object Break {
                 blockTask.ticksMined = 0
             }
 
-            if (ticksNeeded == 1 || player.isCreative) {
+            if (ticksNeeded == 1 || player.capabilities.isCreativeMode) {
                 mineBlockInstant(blockTask, side)
             } else {
                 mineBlockNormal(blockTask, side, ticksNeeded)

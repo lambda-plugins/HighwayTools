@@ -1,11 +1,11 @@
 package trombone.handler
 
-import HighwayTools.grindObsidian
+import HighwayTools.keepFreeSlots
 import HighwayTools.material
-import HighwayTools.mode
 import HighwayTools.saveMaterial
 import HighwayTools.saveTools
 import HighwayTools.storageManagement
+import com.lambda.client.LambdaMod
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.manager.managers.PlayerInventoryManager
 import com.lambda.client.manager.managers.PlayerInventoryManager.addInventoryTask
@@ -23,20 +23,17 @@ import net.minecraft.inventory.ClickType
 import net.minecraft.inventory.Slot
 import net.minecraft.item.ItemBlock
 import net.minecraft.util.math.Vec3d
+import net.minecraft.inventory.Container
 import trombone.IO.disableError
-import trombone.Pathfinder.MovementState
-import trombone.Pathfinder.moveState
-import trombone.Trombone
 import trombone.Trombone.module
 import trombone.handler.Container.containerTask
 import trombone.handler.Container.getShulkerWith
-import trombone.handler.Container.grindCycles
 import trombone.handler.Container.handleRestock
 import trombone.task.BlockTask
 import trombone.task.TaskState
 import java.util.concurrent.ConcurrentLinkedDeque
 
-object Player {
+object Inventory {
     var lastHitVec: Vec3d = Vec3d.ZERO
     var waitTicks = 0
 
@@ -44,7 +41,7 @@ object Player {
 
     @Suppress("UNUSED")
     enum class RotationMode {
-        OFF, SPOOF, VIEW_LOCK
+        OFF, SPOOF
     }
 
     fun SafeClientEvent.updateRotation() {
@@ -77,7 +74,7 @@ object Player {
     }
 
     fun SafeClientEvent.swapOrMoveBlock(blockTask: BlockTask): Boolean {
-        if (blockTask.isShulker) {
+        if (blockTask.isShulker()) {
             getShulkerWith(player.inventorySlots, blockTask.item)?.let { slot ->
                 blockTask.itemID = slot.stack.item.id
                 slot.toHotbarSlotOrNull()?.let {
@@ -106,7 +103,7 @@ object Player {
     }
 
     private fun SafeClientEvent.findMaterial(blockTask: BlockTask): Block {
-        return if (blockTask.block == material) {
+        return if (blockTask.targetBlock == material) {
             if (player.inventorySlots.countBlock(material) > saveMaterial) {
                 material
             } else {
@@ -114,8 +111,8 @@ object Player {
                 Blocks.AIR
             }
         } else {
-            if (player.inventorySlots.countBlock(blockTask.block) > 0) {
-                blockTask.block
+            if (player.inventorySlots.countBlock(blockTask.targetBlock) > 0) {
+                blockTask.targetBlock
             } else {
                 val possibleMaterials = mutableSetOf<Block>()
                 InventoryManager.ejectList.forEach { stringName ->
@@ -139,23 +136,10 @@ object Player {
     }
 
     private fun SafeClientEvent.restockFallback(blockTask: BlockTask) {
-        if (grindObsidian && blockTask.block == Blocks.OBSIDIAN) {
-            val cycles = (player.inventorySlots.count {
-                it.stack.isEmpty
-                    || InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
-            } - 1) * 8
-            if (cycles > 0) {
-                moveState = MovementState.RESTOCK
-                grindCycles = cycles
-            } else {
-                disableError("No free inventory space.")
-            }
+        if (storageManagement) {
+            handleRestock(blockTask.targetBlock.item)
         } else {
-            if (storageManagement) {
-                handleRestock(blockTask.block.item)
-            } else {
-                disableError("No usable material was found in inventory.")
-            }
+            disableError("No usable material was found in inventory.")
         }
     }
 
@@ -172,6 +156,24 @@ object Player {
         return swapOrMoveTool(blockTask)
     }
 
+    fun SafeClientEvent.zipInventory() {
+        val compressableStacks = player.inventorySlots.filter { comp ->
+            comp.stack.count < comp.stack.maxStackSize
+                && player.inventorySlots.countByStack { comp.stack.item == it.item } > 1
+        }
+
+        if (compressableStacks.isEmpty()) {
+            disableError("Inventory full. (Considering that $keepFreeSlots slots are supposed to stay free)")
+            return
+        }
+
+        compressableStacks.forEach { slot ->
+            module.addInventoryTask(
+                PlayerInventoryManager.ClickInfo(slot = slot.slotNumber, type = ClickType.QUICK_MOVE)
+            )
+        }
+    }
+
     private fun SafeClientEvent.swapOrMoveTool(blockTask: BlockTask) =
         getBestTool(blockTask)?.let { slotFrom ->
             blockTask.toolToUse = slotFrom.stack
@@ -186,16 +188,14 @@ object Player {
             false
         }
 
-    fun SafeClientEvent.moveToInventory(originSlot: Slot) {
-        val container = player.openContainer
-
+    fun SafeClientEvent.moveToInventory(originSlot: Slot, container: Container) {
         container.getSlots(27..62).firstOrNull {
             originSlot.stack.item == it.stack.item
                 && it.stack.count < originSlot.stack.maxStackSize - originSlot.stack.count
         }?.let { _ ->
             module.addInventoryTask(
                 PlayerInventoryManager.ClickInfo(
-                    player.openContainer.windowId,
+                    container.windowId,
                     originSlot.slotNumber,
                     0,
                     ClickType.QUICK_MOVE
@@ -208,7 +208,7 @@ object Player {
             }?.let { freeHotbarSlot ->
                 module.addInventoryTask(
                     PlayerInventoryManager.ClickInfo(
-                        player.openContainer.windowId,
+                        container.windowId,
                         originSlot.slotNumber,
                         freeHotbarSlot.slotNumber - 54,
                         ClickType.SWAP
@@ -221,22 +221,20 @@ object Player {
                 }?.let { freeSlot ->
                     module.addInventoryTask(
                         PlayerInventoryManager.ClickInfo(
-                            player.openContainer.windowId,
+                            container.windowId,
+                            0,
+                            freeSlot.slotNumber,
+                            ClickType.SWAP
+                        ),
+                        PlayerInventoryManager.ClickInfo(
+                            container.windowId,
                             freeSlot.slotNumber,
                             0,
                             ClickType.SWAP
                         )
                     )
-                    module.addInventoryTask(
-                        PlayerInventoryManager.ClickInfo(
-                            player.openContainer.windowId,
-                            originSlot.slotNumber,
-                            0,
-                            ClickType.SWAP
-                        )
-                    )
                 } ?: run {
-                    disableError("Inventory full.")
+                    zipInventory()
                 }
             }
         }

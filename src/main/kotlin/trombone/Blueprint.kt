@@ -25,8 +25,9 @@ import net.minecraft.block.Block
 import net.minecraft.init.Blocks
 import net.minecraft.util.math.BlockPos
 import trombone.Pathfinder.currentBlockPos
+import trombone.Pathfinder.startingBlockPos
 import trombone.Pathfinder.startingDirection
-import trombone.Trombone.Mode
+import trombone.Trombone.Structure
 
 object Blueprint {
     val blueprint = HashMap<BlockPos, Block>()
@@ -35,41 +36,43 @@ object Blueprint {
         blueprint.clear()
         val basePos = currentBlockPos.down()
 
-        if (mode != Mode.FLAT) {
-            val zDirection = startingDirection
-            val xDirection = zDirection.clockwise(if (zDirection.isDiagonal) 1 else 2)
-
-            for (x in -maxReach.floorToInt() * 5..maxReach.ceilToInt() * 5) {
-                val thisPos = basePos.add(zDirection.directionVec.multiply(x))
-                if (clearSpace) generateClear(thisPos, xDirection)
-                if (mode == Mode.TUNNEL) {
-                    if (backfill) {
-                        generateBackfill(thisPos, xDirection)
-                    } else {
-                        if (cleanFloor) generateFloor(thisPos, xDirection)
-                        if (cleanRightWall || cleanLeftWall) generateWalls(thisPos, xDirection)
-                        if (cleanRoof) generateRoof(thisPos, xDirection)
-                        if (cleanCorner && !cornerBlock && width > 2) generateCorner(thisPos, xDirection)
-                    }
-                } else {
-                    generateBase(thisPos, xDirection)
-                }
-            }
-            if (mode == Mode.TUNNEL && (!cleanFloor || backfill)) {
-                if (startingDirection.isDiagonal) {
-                    for (x in 0..maxReach.floorToInt()) {
-                        val pos = basePos.add(zDirection.directionVec.multiply(x))
-                        blueprint[pos] = fillerMat
-                        blueprint[pos.add(startingDirection.clockwise(7).directionVec)] = fillerMat
-                    }
-                } else {
-                    for (x in 0..maxReach.floorToInt()) {
-                        blueprint[basePos.add(zDirection.directionVec.multiply(x))] = fillerMat
-                    }
-                }
-            }
-        } else {
+        if (mode == Structure.FLAT) {
             generateFlat(basePos)
+            return
+        }
+
+        val zDirection = startingDirection
+        val xDirection = zDirection.clockwise(if (zDirection.isDiagonal) 1 else 2)
+
+        for (x in -maxReach.floorToInt() * 5..maxReach.ceilToInt() * 5) {
+            val thisPos = basePos.add(zDirection.directionVec.multiply(x))
+            if (clearSpace) generateClear(thisPos, xDirection)
+            if (mode == Structure.TUNNEL) {
+                if (backfill) {
+                    generateBackfill(thisPos, xDirection)
+                } else {
+                    if (cleanFloor) generateFloor(thisPos, xDirection)
+                    if (cleanRightWall || cleanLeftWall) generateWalls(thisPos, xDirection)
+                    if (cleanRoof) generateRoof(thisPos, xDirection)
+                    if (cleanCorner && !cornerBlock && width > 2) generateCorner(thisPos, xDirection)
+                }
+            } else {
+                generateBase(thisPos, xDirection)
+            }
+        }
+
+        if (mode == Structure.TUNNEL && (!cleanFloor || backfill)) {
+            if (startingDirection.isDiagonal) {
+                for (x in 0..maxReach.floorToInt()) {
+                    val pos = basePos.add(zDirection.directionVec.multiply(x))
+                    blueprint[pos] = fillerMat
+                    blueprint[pos.add(startingDirection.clockwise(7).directionVec)] = fillerMat
+                }
+            } else {
+                for (x in 0..maxReach.floorToInt()) {
+                    blueprint[basePos.add(zDirection.directionVec.multiply(x))] = fillerMat
+                }
+            }
         }
     }
 
@@ -79,11 +82,11 @@ object Blueprint {
                 val x = w - width / 2
                 val pos = basePos.add(xDirection.directionVec.multiply(x)).up(h)
 
-                if (mode == Mode.HIGHWAY && h == 0 && isRail(w)) {
+                if (mode == Structure.HIGHWAY && h == 0 && isRail(w)) {
                     continue
                 }
 
-                if (mode == Mode.HIGHWAY) {
+                if (mode == Structure.HIGHWAY) {
                     blueprint[pos] = Blocks.AIR
                 } else {
                     if (!(isRail(w) && h == 0 && !cornerBlock && width > 2)) blueprint[pos.up()] = Blocks.AIR
@@ -97,7 +100,7 @@ object Blueprint {
             val x = w - width / 2
             val pos = basePos.add(xDirection.directionVec.multiply(x))
 
-            if (mode == Mode.HIGHWAY && isRail(w)) {
+            if (mode == Structure.HIGHWAY && isRail(w)) {
                 if (!cornerBlock && width > 2 && startingDirection.isDiagonal) blueprint[pos] = fillerMat
                 val startHeight = if (cornerBlock && width > 2) 0 else 1
                 for (y in startHeight..railingHeight) {
@@ -153,7 +156,7 @@ object Blueprint {
                 val x = w - width / 2
                 val pos = basePos.add(xDirection.directionVec.multiply(x)).up(h + 1)
 
-                if (Pathfinder.startingBlockPos.distanceTo(pos) < Pathfinder.startingBlockPos.distanceTo(Pathfinder.currentBlockPos)) {
+                if (startingBlockPos.distanceTo(pos) < startingBlockPos.distanceTo(currentBlockPos)) {
                     blueprint[pos] = fillerMat
                 }
             }

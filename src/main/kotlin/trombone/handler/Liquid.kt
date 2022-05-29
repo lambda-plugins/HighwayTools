@@ -4,6 +4,7 @@ import HighwayTools.anonymizeStats
 import HighwayTools.debugLevel
 import HighwayTools.fillerMat
 import HighwayTools.maxReach
+import com.lambda.client.LambdaMod
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.math.VectorUtils.distanceTo
@@ -12,8 +13,8 @@ import net.minecraft.block.BlockLiquid
 import net.minecraft.util.EnumFacing
 import trombone.IO
 import trombone.Trombone.module
-import trombone.handler.Tasks.safeTask
-import trombone.handler.Tasks.tasks
+import trombone.task.TaskManager.addTask
+import trombone.task.TaskManager.tasks
 import trombone.task.BlockTask
 import trombone.task.TaskState
 
@@ -29,11 +30,7 @@ object Liquid {
 
             if (player.distanceTo(neighbourPos) > maxReach) {
                 if (debugLevel == IO.DebugLevel.VERBOSE) {
-                    if (!anonymizeStats) {
-                        MessageSendHelper.sendChatMessage("${module.chatName} Liquid@(${neighbourPos.asString()}) out of reach (${player.distanceTo(neighbourPos)})")
-                    } else {
-                        MessageSendHelper.sendChatMessage("${module.chatName} Liquid out of reach (${player.distanceTo(neighbourPos)})")
-                    }
+                    LambdaMod.LOG.info("[Trombone] Skipping liquid block at ${neighbourPos.asString()} due to distance")
                 }
                 blockTask.updateState(TaskState.DONE)
                 return true
@@ -44,7 +41,7 @@ object Liquid {
             tasks[neighbourPos]?.let {
                 updateLiquidTask(it)
             } ?: run {
-                safeTask(neighbourPos, TaskState.LIQUID, fillerMat).updateLiquid(this)
+                addTask(neighbourPos, TaskState.LIQUID, fillerMat).updateLiquid(this)
             }
         }
 

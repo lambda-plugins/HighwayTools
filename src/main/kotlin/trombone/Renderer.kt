@@ -24,7 +24,7 @@ import net.minecraft.util.math.BlockPos
 import org.lwjgl.opengl.GL11
 import trombone.Pathfinder.currentBlockPos
 import trombone.handler.Container.containerTask
-import trombone.handler.Tasks.tasks
+import trombone.task.TaskManager.tasks
 import trombone.task.BlockTask
 import trombone.task.TaskState
 import kotlin.math.PI
@@ -48,7 +48,7 @@ object Renderer {
         }
 
         tasks.values.forEach {
-            if (it.block == Blocks.AIR && it.taskState == TaskState.DONE) return@forEach
+            if (it.targetBlock == Blocks.AIR && it.taskState == TaskState.DONE) return@forEach
             if (it.toRemove) {
                 addToRenderer(it, currentTime, true)
             } else {

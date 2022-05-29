@@ -39,7 +39,7 @@ import trombone.Pathfinder.startingBlockPos
 import trombone.Pathfinder.startingDirection
 import trombone.Statistics.totalBlocksBroken
 import trombone.Statistics.totalBlocksPlaced
-import trombone.Trombone.Mode
+import trombone.Trombone.Structure
 import trombone.Trombone.module
 import kotlin.math.abs
 
@@ -85,7 +85,7 @@ object IO {
         }
 
         if (!disableWarnings) {
-            if (startingBlockPos.y != 120 && mode != Mode.TUNNEL) {
+            if (startingBlockPos.y != 120 && mode != Structure.TUNNEL) {
                 MessageSendHelper.sendRawChatMessage("    §c[!] Check altitude and make sure to build at Y: 120 for the correct height")
             }
 
@@ -113,7 +113,7 @@ object IO {
                 MessageSendHelper.sendRawChatMessage("    §c[!] Make sure to use §aTunnel Mode§c instead of having same material for both main and filler!")
             }
 
-            if (mode == Mode.HIGHWAY && height < 3) {
+            if (mode == Structure.HIGHWAY && height < 3) {
                 MessageSendHelper.sendRawChatMessage("    §c[!] You may increase the height to at least 3")
             }
 
@@ -147,16 +147,16 @@ object IO {
     }
 
     fun SafeClientEvent.disableError(error: String) {
-        MessageSendHelper.sendChatMessage("${module.chatName} §c[!] $error")
+        MessageSendHelper.sendErrorMessage("${module.chatName} §c[!] $error")
         mc.soundHandler.playSound(PositionedSoundRecord.getRecord(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f))
         module.disable()
         when (disableMode) {
             DisableMode.ANTI_AFK -> {
-                MessageSendHelper.sendChatMessage("${module.chatName} §c[!] ${TextFormatting.AQUA}Going into AFK mode.")
+                MessageSendHelper.sendWarningMessage("${module.chatName} §c[!] ${TextFormatting.AQUA}Going into AFK mode.")
                 AntiAFK.enable()
             }
             DisableMode.LOGOUT -> {
-                MessageSendHelper.sendChatMessage("${module.chatName} §c[!] ${TextFormatting.DARK_RED}CAUTION: Logging off in 1 minute!")
+                MessageSendHelper.sendWarningMessage("${module.chatName} §c[!] ${TextFormatting.DARK_RED}CAUTION: Logging off in 1 minute!")
                 defaultScope.launch {
                     delay(6000L)
                     if (disableMode == DisableMode.LOGOUT && module.isDisabled) {

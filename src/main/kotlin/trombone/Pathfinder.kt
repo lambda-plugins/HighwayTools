@@ -3,6 +3,7 @@ package trombone
 import HighwayTools.maxReach
 import HighwayTools.moveSpeed
 import HighwayTools.scaffold
+import com.lambda.client.LambdaMod
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.BaritoneUtils
 import com.lambda.client.util.EntityUtils.flooredPosition
@@ -20,10 +21,10 @@ import trombone.Statistics.simpleMovingAverageDistance
 import trombone.Trombone.active
 import trombone.handler.Container.containerTask
 import trombone.handler.Container.getCollectingPosition
-import trombone.handler.Player.lastHitVec
-import trombone.handler.Tasks.isTaskDone
-import trombone.handler.Tasks.tasks
-import trombone.handler.Tasks.updateTasks
+import trombone.handler.Inventory.lastHitVec
+import trombone.task.TaskManager.isTaskDone
+import trombone.task.TaskManager.tasks
+import trombone.task.TaskManager.populateTasks
 import trombone.task.TaskState
 
 object Pathfinder {
@@ -59,7 +60,10 @@ object Pathfinder {
 
                 if (!isTaskDone(possiblePos) ||
                     !isTaskDone(possiblePos.up()) ||
-                    !isTaskDone(possiblePos.down())) return
+                    !isTaskDone(possiblePos.down())) {
+                    LambdaMod.LOG.error("Task is not done")
+                    return
+                }
 
                 if (!checkTasks(possiblePos.up())) return
 
@@ -72,7 +76,7 @@ object Pathfinder {
                     simpleMovingAverageDistance.add(System.currentTimeMillis())
                     lastHitVec = Vec3d.ZERO
                     currentBlockPos = possiblePos
-                    updateTasks()
+                    populateTasks()
                 }
 
                 if (currentBlockPos.distanceTo(targetBlockPos) < 2 ||
@@ -128,14 +132,11 @@ object Pathfinder {
             && world.isAirBlock(currentBlockPos.add(startingDirection.directionVec).up())
             && world.getBlockState(currentBlockPos.add(startingDirection.directionVec).down()).isReplaceable
             && tasks.values.filter {
-            it.taskState == TaskState.PLACE ||
-                it.taskState == TaskState.LIQUID
-        }.none {
-            it.sequence.isNotEmpty()
-        }
-            && tasks.values.none {
-            it.taskState == TaskState.PENDING_PLACE
-        }
+                it.taskState == TaskState.PLACE
+                    || it.taskState == TaskState.LIQUID
+            }.none { it.sequence.isNotEmpty() }
+            && tasks.values.none { it.taskState == TaskState.PENDING_PLACE }
+            && containerTask.taskState == TaskState.DONE
     }
 
     private fun SafeClientEvent.moveTo(target: Vec3d) {
