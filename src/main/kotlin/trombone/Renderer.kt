@@ -24,8 +24,8 @@ import net.minecraft.util.math.BlockPos
 import org.lwjgl.opengl.GL11
 import trombone.Pathfinder.currentBlockPos
 import trombone.handler.Container.containerTask
-import trombone.task.TaskManager.tasks
 import trombone.task.BlockTask
+import trombone.task.TaskManager.tasks
 import trombone.task.TaskState
 import kotlin.math.PI
 import kotlin.math.cos

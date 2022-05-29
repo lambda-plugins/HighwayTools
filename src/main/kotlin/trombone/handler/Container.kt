@@ -85,8 +85,9 @@ object Container {
                         disableError("Can't find possible container position (Case: 3)")
                     }
                 } else {
-                    val freeSlots = player.inventorySlots.count { it.stack.isEmpty
-                        || InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
+                    val freeSlots = player.inventorySlots.count {
+                        it.stack.isEmpty
+                            || InventoryManager.ejectList.contains(it.stack.item.registryName.toString())
                     }
 
                     val cycles = (freeSlots - 1 - keepFreeSlots) * 8

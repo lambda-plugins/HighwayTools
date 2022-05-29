@@ -23,8 +23,8 @@ import trombone.handler.Container.containerTask
 import trombone.handler.Container.getCollectingPosition
 import trombone.handler.Inventory.lastHitVec
 import trombone.task.TaskManager.isTaskDone
-import trombone.task.TaskManager.tasks
 import trombone.task.TaskManager.populateTasks
+import trombone.task.TaskManager.tasks
 import trombone.task.TaskState
 
 object Pathfinder {
@@ -132,9 +132,9 @@ object Pathfinder {
             && world.isAirBlock(currentBlockPos.add(startingDirection.directionVec).up())
             && world.getBlockState(currentBlockPos.add(startingDirection.directionVec).down()).isReplaceable
             && tasks.values.filter {
-                it.taskState == TaskState.PLACE
-                    || it.taskState == TaskState.LIQUID
-            }.none { it.sequence.isNotEmpty() }
+            it.taskState == TaskState.PLACE
+                || it.taskState == TaskState.LIQUID
+        }.none { it.sequence.isNotEmpty() }
             && tasks.values.none { it.taskState == TaskState.PENDING_PLACE }
             && containerTask.taskState == TaskState.DONE
     }

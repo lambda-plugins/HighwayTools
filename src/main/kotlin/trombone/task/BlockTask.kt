@@ -3,7 +3,6 @@ package trombone.task
 import HighwayTools.illegalPlacements
 import HighwayTools.maxReach
 import HighwayTools.placementSearch
-import com.lambda.client.LambdaMod
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.math.VectorUtils.distanceTo
@@ -19,7 +18,6 @@ import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
 import trombone.Pathfinder.startingBlockPos
-import trombone.handler.Container
 import kotlin.random.Random
 
 class BlockTask(

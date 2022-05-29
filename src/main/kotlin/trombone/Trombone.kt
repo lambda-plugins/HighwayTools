@@ -16,8 +16,8 @@ import trombone.Statistics.updateStats
 import trombone.Statistics.updateTotalDistance
 import trombone.handler.Inventory.updateRotation
 import trombone.task.TaskManager.clearTasks
-import trombone.task.TaskManager.runTasks
 import trombone.task.TaskManager.populateTasks
+import trombone.task.TaskManager.runTasks
 
 object Trombone {
     val module = HighwayTools

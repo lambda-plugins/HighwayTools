@@ -1,6 +1,5 @@
 package trombone.handler
 
-import HighwayTools.anonymizeStats
 import HighwayTools.debugLevel
 import HighwayTools.fillerMat
 import HighwayTools.maxReach
@@ -8,14 +7,12 @@ import com.lambda.client.LambdaMod
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.math.VectorUtils.distanceTo
-import com.lambda.client.util.text.MessageSendHelper
 import net.minecraft.block.BlockLiquid
 import net.minecraft.util.EnumFacing
 import trombone.IO
-import trombone.Trombone.module
+import trombone.task.BlockTask
 import trombone.task.TaskManager.addTask
 import trombone.task.TaskManager.tasks
-import trombone.task.BlockTask
 import trombone.task.TaskState
 
 object Liquid {

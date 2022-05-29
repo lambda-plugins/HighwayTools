@@ -5,7 +5,6 @@ import HighwayTools.material
 import HighwayTools.saveMaterial
 import HighwayTools.saveTools
 import HighwayTools.storageManagement
-import com.lambda.client.LambdaMod
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.manager.managers.PlayerInventoryManager
 import com.lambda.client.manager.managers.PlayerInventoryManager.addInventoryTask
@@ -20,10 +19,10 @@ import net.minecraft.init.Blocks
 import net.minecraft.init.Enchantments
 import net.minecraft.init.Items
 import net.minecraft.inventory.ClickType
+import net.minecraft.inventory.Container
 import net.minecraft.inventory.Slot
 import net.minecraft.item.ItemBlock
 import net.minecraft.util.math.Vec3d
-import net.minecraft.inventory.Container
 import trombone.IO.disableError
 import trombone.Trombone.module
 import trombone.handler.Container.containerTask

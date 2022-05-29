@@ -42,9 +42,9 @@ import trombone.Trombone.Structure
 import trombone.handler.Container.containerTask
 import trombone.handler.Container.grindCycles
 import trombone.handler.Inventory.packetLimiter
-import trombone.task.TaskManager.sortedTasks
 import trombone.interaction.Place.extraPlaceDelay
 import trombone.task.BlockTask
+import trombone.task.TaskManager.sortedTasks
 import trombone.task.TaskState
 import java.util.concurrent.ConcurrentLinkedDeque
 

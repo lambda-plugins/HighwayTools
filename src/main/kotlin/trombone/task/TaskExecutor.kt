@@ -12,7 +12,6 @@ import HighwayTools.keepFreeSlots
 import HighwayTools.leaveEmptyShulkers
 import HighwayTools.material
 import HighwayTools.mode
-import com.lambda.client.LambdaMod
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.module.modules.player.InventoryManager
 import com.lambda.client.util.TickTimer
