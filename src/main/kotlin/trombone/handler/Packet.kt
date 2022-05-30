@@ -1,10 +1,7 @@
 package trombone.handler
 
-import com.lambda.client.LambdaMod
 import com.lambda.client.event.SafeClientEvent
-import com.lambda.client.util.items.HotbarSlot
 import com.lambda.client.util.items.hotbarSlots
-import com.lambda.client.util.items.inventorySlots
 import net.minecraft.init.Blocks
 import net.minecraft.network.Packet
 import net.minecraft.network.play.server.SPacketBlockChange
@@ -75,9 +72,7 @@ object Packet {
                     durabilityUsages += packet.stack.itemDamage - currentStack.itemDamage
                 }
             }
-            else -> {
-                // Nothing
-            }
+            else -> { /* Ignored */ }
         }
     }
 }
