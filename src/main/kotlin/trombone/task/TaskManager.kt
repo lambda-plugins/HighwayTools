@@ -28,15 +28,16 @@ import com.lambda.client.util.world.isPlaceable
 import com.lambda.client.util.world.isReplaceable
 import net.minecraft.block.Block
 import net.minecraft.block.BlockLiquid
+import net.minecraft.block.state.IBlockState
 import net.minecraft.init.Blocks
 import net.minecraft.init.Items
 import net.minecraft.item.ItemFood
 import net.minecraft.item.ItemPickaxe
 import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
-import net.minecraftforge.fluids.BlockFluidBase
 import trombone.Blueprint.blueprint
 import trombone.Blueprint.generateBluePrint
+import trombone.Blueprint.isInsideBlueprintBuild
 import trombone.IO.DebugLevel
 import trombone.Pathfinder.MovementState
 import trombone.Pathfinder.currentBlockPos
@@ -85,7 +86,7 @@ object TaskManager {
         val currentState = world.getBlockState(blockPos)
         when {
             /* Start padding */
-            isSpared(blockPos) -> { /* Ignore task */ }
+            shouldBeSpared(blockPos) -> { /* Ignore task */ }
 
             /* Out of reach */
             currentBlockPos.distanceTo(blockPos) >= maxReach -> { /* Ignore task */ }
@@ -94,7 +95,7 @@ object TaskManager {
             containerTask.blockPos == blockPos -> { /* Ignore task */ }
 
             /* Ignored blocks */
-            ignoreBlocks.contains(currentState.block.registryName.toString()) -> {
+            shouldBeIgnored(blockPos, currentState) -> {
                 addTask(blockPos, TaskState.DONE, currentState.block)
             }
 
@@ -106,7 +107,8 @@ object TaskManager {
             /* To place */
             currentState.isReplaceable && targetBlock != Blocks.AIR -> {
                 if (checkSupport(blockPos, targetBlock)
-                    || !world.checkNoEntityCollision(AxisAlignedBB(blockPos), null)) {
+                    || !world.checkNoEntityCollision(AxisAlignedBB(blockPos), null)
+                ) {
                     addTask(blockPos, TaskState.DONE, targetBlock)
                 } else {
                     addTask(blockPos, TaskState.PLACE, targetBlock)
@@ -223,7 +225,7 @@ object TaskManager {
             && world.getBlockState(pos.up()).block == material
             && block == fillerMat
 
-    private fun SafeClientEvent.checkStuckTimeout(blockTask: BlockTask): Boolean {
+    private fun checkStuckTimeout(blockTask: BlockTask): Boolean {
         val timeout = blockTask.taskState.stuckTimeout
 
         if (blockTask.stuckTicks < timeout) return true
@@ -266,25 +268,19 @@ object TaskManager {
         return false
     }
 
-    fun SafeClientEvent.isTaskDone(pos: BlockPos): Boolean {
-        val block = world.getBlockState(pos).block
-        return tasks[pos]?.let {
-            it.taskState == TaskState.DONE
-                && block != Blocks.PORTAL
-                && block != Blocks.END_PORTAL
-                && block !is BlockLiquid
-        } ?: false
-    }
-
-
     // ToDo: Fix padding for diagonal
-    private fun isSpared(blockPos: BlockPos) =
+    private fun shouldBeSpared(blockPos: BlockPos) =
         startingBlockPos.add(
             startingDirection
                 .clockwise(4)
                 .directionVec
                 .multiply((maxReach * 2).ceilToInt() - 1)
         ).distanceTo(blockPos) < maxReach * 2
+
+    private fun shouldBeIgnored(blockPos: BlockPos, currentState: IBlockState) =
+        ignoreBlocks.contains(currentState.block.registryName.toString())
+            && !isInsideBlueprintBuild(blockPos)
+            && currentBlockPos.add(startingDirection.directionVec) != blockPos
 
     fun clearTasks() {
         tasks.clear()

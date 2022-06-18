@@ -58,6 +58,8 @@ object IO {
             || PauseProcess.isActive
             || AutoObsidian.isActive()
             || isInQueue()
+            || !player.isEntityAlive
+            || !player.onGround
 
     private fun SafeClientEvent.isInQueue() =
         world.difficulty == EnumDifficulty.PEACEFUL
