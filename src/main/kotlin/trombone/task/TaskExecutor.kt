@@ -8,6 +8,7 @@ import HighwayTools.fakeSounds
 import HighwayTools.fastFill
 import HighwayTools.fillerMat
 import HighwayTools.ignoreBlocks
+import HighwayTools.interactionLimit
 import HighwayTools.keepFreeSlots
 import HighwayTools.leaveEmptyShulkers
 import HighwayTools.material
@@ -218,7 +219,10 @@ object TaskExecutor {
             return
         }
 
-        if (!updateOnly && swapOrMoveBestTool(blockTask)) {
+        if (!updateOnly
+            && swapOrMoveBestTool(blockTask)
+            && Inventory.packetLimiter.size < interactionLimit
+        ) {
             mineBlock(blockTask)
         }
     }
@@ -362,8 +366,12 @@ object TaskExecutor {
             }
         }
 
-        if (!updateOnly && player.onGround && swapOrMoveBestTool(blockTask)) {
-            if (handleLiquid(blockTask)) return
+        if (!updateOnly
+            && player.onGround
+            && swapOrMoveBestTool(blockTask)
+            && !handleLiquid(blockTask)
+            && Inventory.packetLimiter.size < interactionLimit
+        ) {
             mineBlock(blockTask)
         }
     }

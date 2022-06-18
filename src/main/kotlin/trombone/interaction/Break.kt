@@ -9,11 +9,16 @@ import HighwayTools.miningSpeedFactor
 import HighwayTools.multiBreak
 import HighwayTools.packetFlood
 import HighwayTools.taskTimeout
+import com.lambda.client.LambdaMod
+import com.lambda.client.commons.extension.ceilToInt
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.math.isInSight
+import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.defaultScope
 import com.lambda.client.util.threads.onMainThreadSafe
+import com.lambda.client.util.threads.runSafe
 import com.lambda.client.util.threads.runSafeSuspend
+import com.lambda.client.util.world.getCollisionBox
 import com.lambda.client.util.world.getHitVec
 import com.lambda.client.util.world.getMiningSide
 import com.lambda.client.util.world.getNeighbour
@@ -31,6 +36,7 @@ import trombone.handler.Inventory.waitTicks
 import trombone.handler.Liquid.handleLiquid
 import trombone.task.BlockTask
 import trombone.task.TaskManager.sortedTasks
+import trombone.task.TaskManager.tasks
 import trombone.task.TaskState
 import kotlin.math.ceil
 
@@ -95,37 +101,36 @@ object Break {
         }
     }
 
-    private suspend fun tryMultiBreak(blockTask: BlockTask) {
-        runSafeSuspend {
+    private fun tryMultiBreak(blockTask: BlockTask) {
+        runSafe {
             val eyePos = player.getPositionEyes(1.0f)
             val viewVec = lastHitVec.subtract(eyePos).normalize()
 
-            for (task in sortedTasks) {
-                if (task.taskState != TaskState.BREAK) continue
-                if (task == blockTask) continue
+            tasks.values.filter {
+                it.taskState == TaskState.BREAK
+                    && it != blockTask
+            }.forEach { task ->
+                val relativeHardness = world.getBlockState(task.blockPos).getPlayerRelativeBlockHardness(player, world, task.blockPos)
+                if (ceil((1 / relativeHardness) * miningSpeedFactor).ceilToInt() > 1) return@forEach
 
-                try {
-                    if (ceil((1 / world.getBlockState(task.blockPos).getPlayerRelativeBlockHardness(player, world, blockTask.blockPos)) * miningSpeedFactor).toInt() > 1) continue
-                } catch (_: IllegalArgumentException) {
-                    break
-                }
-
-                if (handleLiquid(task)) break
-
-                if (packetLimiter.size > interactionLimit) break // Drop instant mine action when exceeded limit
+                if (packetLimiter.size > interactionLimit || handleLiquid(task)) return@runSafe
 
                 val box = AxisAlignedBB(task.blockPos)
                 val rayTraceResult = box.isInSight(eyePos, viewVec, range = maxReach.toDouble(), tolerance = 0.0)
-                    ?: continue
+                    ?: return@forEach
+
+                task.updateState(TaskState.PENDING_BREAK)
 
                 defaultScope.launch {
-                    sendMiningPackets(task.blockPos, rayTraceResult.sideHit, start = true)
+                    sendMiningPackets(task.blockPos, rayTraceResult.sideHit, start = true, swing = false)
 
                     delay(50L * taskTimeout)
-                    if (blockTask.taskState == TaskState.PENDING_BREAK) {
-                        blockTask.updateState(TaskState.BREAK)
+                    if (task.taskState == TaskState.PENDING_BREAK) {
+                        task.updateState(TaskState.BREAK)
                     }
                 }
+
+//                if (simpleMovingAverageBreaks.size < packetLimiter.size) return@runSafeSuspend
             }
         }
     }
@@ -133,8 +138,8 @@ object Break {
     private fun mineBlockNormal(blockTask: BlockTask, side: EnumFacing, ticks: Int) {
         defaultScope.launch {
             if (blockTask.taskState == TaskState.BREAK) {
-                sendMiningPackets(blockTask.blockPos, side, start = true)
                 blockTask.updateState(TaskState.BREAKING)
+                sendMiningPackets(blockTask.blockPos, side, start = true)
             } else {
                 if (blockTask.ticksMined >= ticks) {
                     sendMiningPackets(blockTask.blockPos, side, stop = true)
@@ -159,21 +164,19 @@ object Break {
         }
     }
 
-    private suspend fun sendMiningPackets(pos: BlockPos, side: EnumFacing, start: Boolean = false, stop: Boolean = false, abort: Boolean = false) {
+    private suspend fun sendMiningPackets(pos: BlockPos, side: EnumFacing, start: Boolean = false, stop: Boolean = false, abort: Boolean = false, swing: Boolean = true) {
+        packetLimiter.add(System.currentTimeMillis())
         onMainThreadSafe {
             if (start || packetFlood) {
                 connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.START_DESTROY_BLOCK, pos, side))
-                packetLimiter.add(System.currentTimeMillis())
             }
             if (abort) {
                 connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.ABORT_DESTROY_BLOCK, pos, side))
-                packetLimiter.add(System.currentTimeMillis())
             }
             if (stop || packetFlood) {
                 connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.STOP_DESTROY_BLOCK, pos, side))
-                packetLimiter.add(System.currentTimeMillis())
             }
-            player.swingArm(EnumHand.MAIN_HAND)
+            if (swing) player.swingArm(EnumHand.MAIN_HAND)
         }
     }
 }
