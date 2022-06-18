@@ -9,16 +9,12 @@ import HighwayTools.miningSpeedFactor
 import HighwayTools.multiBreak
 import HighwayTools.packetFlood
 import HighwayTools.taskTimeout
-import com.lambda.client.LambdaMod
 import com.lambda.client.commons.extension.ceilToInt
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.math.isInSight
-import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.defaultScope
 import com.lambda.client.util.threads.onMainThreadSafe
 import com.lambda.client.util.threads.runSafe
-import com.lambda.client.util.threads.runSafeSuspend
-import com.lambda.client.util.world.getCollisionBox
 import com.lambda.client.util.world.getHitVec
 import com.lambda.client.util.world.getMiningSide
 import com.lambda.client.util.world.getNeighbour
@@ -35,7 +31,6 @@ import trombone.handler.Inventory.packetLimiter
 import trombone.handler.Inventory.waitTicks
 import trombone.handler.Liquid.handleLiquid
 import trombone.task.BlockTask
-import trombone.task.TaskManager.sortedTasks
 import trombone.task.TaskManager.tasks
 import trombone.task.TaskState
 import kotlin.math.ceil
@@ -129,8 +124,6 @@ object Break {
                         task.updateState(TaskState.BREAK)
                     }
                 }
-
-//                if (simpleMovingAverageBreaks.size < packetLimiter.size) return@runSafeSuspend
             }
         }
     }
