@@ -117,7 +117,7 @@ object Break {
                 task.updateState(TaskState.PENDING_BREAK)
 
                 defaultScope.launch {
-                    sendMiningPackets(task.blockPos, rayTraceResult.sideHit, start = true, swing = false)
+                    sendMiningPackets(task.blockPos, rayTraceResult.sideHit, start = true)
 
                     delay(50L * taskTimeout)
                     if (task.taskState == TaskState.PENDING_BREAK) {
@@ -157,7 +157,7 @@ object Break {
         }
     }
 
-    private suspend fun sendMiningPackets(pos: BlockPos, side: EnumFacing, start: Boolean = false, stop: Boolean = false, abort: Boolean = false, swing: Boolean = true) {
+    private suspend fun sendMiningPackets(pos: BlockPos, side: EnumFacing, start: Boolean = false, stop: Boolean = false, abort: Boolean = false) {
         packetLimiter.add(System.currentTimeMillis())
         onMainThreadSafe {
             if (start || packetFlood) {
@@ -169,7 +169,7 @@ object Break {
             if (stop || packetFlood) {
                 connection.sendPacket(CPacketPlayerDigging(CPacketPlayerDigging.Action.STOP_DESTROY_BLOCK, pos, side))
             }
-            if (swing) player.swingArm(EnumHand.MAIN_HAND)
+            player.swingArm(EnumHand.MAIN_HAND)
         }
     }
 }
