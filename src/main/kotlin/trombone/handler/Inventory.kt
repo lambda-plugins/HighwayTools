@@ -80,7 +80,7 @@ object Inventory {
                     swapToSlot(it)
                 } ?: run {
                     val slotTo = player.hotbarSlots.firstEmpty()?.hotbarSlot ?: 0
-                    moveToHotbar(slot.slotNumber, slotTo)
+                    moveToHotbar(module, slot.slotNumber, slotTo)
                 }
             }
             return true
@@ -88,7 +88,7 @@ object Inventory {
             val useMat = findMaterial(blockTask)
             if (useMat == Blocks.AIR) return false
 
-            val success = swapToBlockOrMove(useMat, predicateSlot = {
+            val success = swapToBlockOrMove(module, useMat, predicateSlot = {
                 it.item is ItemBlock
             })
 
@@ -180,7 +180,7 @@ object Inventory {
                 swapToSlot(it)
             } ?: run {
                 val slotTo = player.hotbarSlots.firstEmpty()?.hotbarSlot ?: 0
-                moveToHotbar(slotFrom.slotNumber, slotTo)
+                moveToHotbar(module, slotFrom.slotNumber, slotTo)
             }
             true
         } ?: run {

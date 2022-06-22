@@ -38,6 +38,7 @@ import trombone.*
 import trombone.IO.disableError
 import trombone.Pathfinder.moveState
 import trombone.Pathfinder.shouldBridge
+import trombone.Trombone.module
 import trombone.handler.Container
 import trombone.handler.Container.containerTask
 import trombone.handler.Container.getCollectingPosition
@@ -174,7 +175,7 @@ object TaskExecutor {
 
         if (player.inventorySlots.firstEmpty() == null && restockTimer.tick(20)) {
             getEjectSlot()?.let {
-                throwAllInSlot(it)
+                throwAllInSlot(module, it)
             }
         } else {
             containerTask.onStuck()
