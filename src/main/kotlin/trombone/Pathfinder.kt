@@ -66,27 +66,24 @@ object Pathfinder {
                     return
                 }
 
-                repeat(maxReach.floorToInt()) {
-                    val possiblePos = currentBlockPos.add(startingDirection.directionVec.multiply(it + 1))
+                val possiblePos = currentBlockPos.add(startingDirection.directionVec)
 
-                    if (!isTaskDone(possiblePos.up())
-                        || !isTaskDone(possiblePos)
-                        || !isTaskDone(possiblePos.down())
-                    ) return@repeat
+                if (!isTaskDone(possiblePos.up())
+                    || !isTaskDone(possiblePos)
+                    || !isTaskDone(possiblePos.down())
+                ) return
 
-                    if (!checkForResidue(possiblePos.up())) return@repeat
+                if (!checkForResidue(possiblePos.up())) return
 
-                    if (world.getBlockState(possiblePos.down()).isReplaceable) return@repeat
+                if (world.getBlockState(possiblePos.down()).isReplaceable) return
 
-                    if (currentBlockPos != possiblePos
-                        && player.positionVector.distanceTo(currentBlockPos.toVec3dCenter()) < 2
-                    ) {
-                        simpleMovingAverageDistance.add(System.currentTimeMillis())
-                        lastHitVec = Vec3d.ZERO
-                        currentBlockPos = possiblePos
-                        populateTasks()
-                        return
-                    }
+                if (currentBlockPos != possiblePos
+                    && player.positionVector.distanceTo(currentBlockPos.toVec3dCenter()) < 2
+                ) {
+                    simpleMovingAverageDistance.add(System.currentTimeMillis())
+                    lastHitVec = Vec3d.ZERO
+                    currentBlockPos = possiblePos
+                    populateTasks()
                 }
             }
             MovementState.BRIDGE -> {
