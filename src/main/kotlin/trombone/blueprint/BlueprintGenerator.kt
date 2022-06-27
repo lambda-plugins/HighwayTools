@@ -21,6 +21,7 @@ import com.lambda.client.commons.extension.floorToInt
 import com.lambda.client.util.math.Direction
 import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.math.VectorUtils.multiply
+import com.lambda.client.util.math.VectorUtils.toVec3dCenter
 import net.minecraft.init.Blocks
 import net.minecraft.util.math.BlockPos
 import trombone.Pathfinder.currentBlockPos
@@ -155,7 +156,7 @@ object BlueprintGenerator {
                 val x = w - width / 2
                 val pos = basePos.add(xDirection.directionVec.multiply(x)).up(h + 1)
 
-                if (startingBlockPos.distanceTo(pos) < startingBlockPos.distanceTo(currentBlockPos)) {
+                if (startingBlockPos.toVec3dCenter().distanceTo(pos.toVec3dCenter()) + 1 < startingBlockPos.toVec3dCenter().distanceTo(currentBlockPos.toVec3dCenter())) {
                     blueprint[pos] = BlueprintTask(fillerMat, isFiller = true)
                 }
             }
