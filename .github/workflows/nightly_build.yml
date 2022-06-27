@@ -40,8 +40,8 @@ jobs:
       - name: Archive artifact
         uses: actions/upload-artifact@v2
         with:
-          name: HighwayTools-${{ github.sha }}.jar
-          path: build/libs/*.jar
+          name: HighwayTools-${{ github.sha }}
+          path: build/libs/
 
       - name: Get branch name
         uses: nelonoel/branch-name@v1.0.1
