@@ -21,6 +21,7 @@ import com.lambda.client.module.modules.movement.AntiHunger
 import com.lambda.client.module.modules.movement.Velocity
 import com.lambda.client.module.modules.player.AutoEat
 import com.lambda.client.module.modules.player.LagNotifier
+import com.lambda.client.module.modules.player.NoGhostItems
 import com.lambda.client.process.PauseProcess
 import com.lambda.client.util.math.Direction
 import com.lambda.client.util.math.VectorUtils.distanceTo
@@ -121,6 +122,10 @@ object IO {
 
             if (isInQueue()) {
                 MessageSendHelper.sendRawChatMessage("    §c[!] You should not activate the bot in queue! Bot will move to 0 0.")
+            }
+
+            if (NoGhostItems.isDisabled) {
+                MessageSendHelper.sendRawChatMessage("    §c[!] Please consider using the module NoGhostItems to minimize item desyncs")
             }
         }
     }
