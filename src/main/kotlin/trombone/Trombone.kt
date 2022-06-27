@@ -11,7 +11,6 @@ import trombone.IO.printEnable
 import trombone.Pathfinder.clearProcess
 import trombone.Pathfinder.setupPathing
 import trombone.Pathfinder.updateProcess
-import trombone.Renderer.updateRenderer
 import trombone.Statistics.updateStats
 import trombone.Statistics.updateTotalDistance
 import trombone.handler.Inventory.updateRotation
@@ -43,7 +42,6 @@ object Trombone {
     }
 
     fun SafeClientEvent.tick() {
-        updateRenderer()
         populateTasks()
         updateStats()
 

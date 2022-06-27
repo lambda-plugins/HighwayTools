@@ -13,6 +13,7 @@ import com.lambda.client.util.world.getNeighbourSequence
 import net.minecraft.block.BlockLiquid
 import net.minecraft.util.EnumFacing
 import trombone.IO
+import trombone.blueprint.BlueprintTask
 import trombone.task.BlockTask
 import trombone.task.TaskManager.addTask
 import trombone.task.TaskManager.tasks
@@ -43,7 +44,10 @@ object Liquid {
             tasks[neighbourPos]?.let {
                 updateLiquidTask(it)
             } ?: run {
-                addTask(neighbourPos, TaskState.LIQUID, fillerMat).updateLiquid(this)
+                val newTask = BlockTask(neighbourPos, TaskState.LIQUID, fillerMat)
+                val blueprintTask = BlueprintTask(fillerMat, isFiller = true, isSupport = false)
+
+                addTask(newTask, blueprintTask)
             }
         }
 
@@ -52,6 +56,6 @@ object Liquid {
 
     fun SafeClientEvent.updateLiquidTask(blockTask: BlockTask) {
         blockTask.updateState(TaskState.LIQUID)
-        blockTask.updateLiquid(this)
+        blockTask.updateTask(this)
     }
 }

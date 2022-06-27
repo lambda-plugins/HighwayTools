@@ -1,5 +1,6 @@
 package trombone.handler
 
+import com.lambda.client.LambdaMod
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.items.hotbarSlots
 import net.minecraft.init.Blocks
@@ -9,7 +10,7 @@ import net.minecraft.network.play.server.SPacketOpenWindow
 import net.minecraft.network.play.server.SPacketPlayerPosLook
 import net.minecraft.network.play.server.SPacketSetSlot
 import net.minecraft.network.play.server.SPacketWindowItems
-import trombone.Blueprint.isInsideBlueprint
+import trombone.blueprint.BlueprintGenerator.isInsideBlueprint
 import trombone.Pathfinder.rubberbandTimer
 import trombone.Statistics.durabilityUsages
 import trombone.handler.Container.containerTask
@@ -40,7 +41,9 @@ object Packet {
                             }
                         }
                         TaskState.PENDING_PLACE -> {
-                            if (task.targetBlock != Blocks.AIR && task.targetBlock == new) {
+                            if (new != Blocks.AIR
+                                && (task.targetBlock == new || task.isFiller)
+                            ) {
                                 task.updateState(TaskState.PLACED)
                             }
                         }

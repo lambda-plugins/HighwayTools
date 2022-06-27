@@ -1,9 +1,7 @@
 package trombone
 
-import HighwayTools.maxReach
 import HighwayTools.moveSpeed
 import HighwayTools.scaffold
-import com.lambda.client.commons.extension.floorToInt
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.BaritoneUtils
 import com.lambda.client.util.EntityUtils.flooredPosition
@@ -115,12 +113,10 @@ object Pathfinder {
     }
 
     private fun checkForResidue(pos: BlockPos) =
-        ((containerTask.taskState != TaskState.DONE
-            && pos.toVec3dCenter().distanceTo(containerTask.blockPos.toVec3dCenter()) < maxReach - 0.5)
-            || containerTask.taskState == TaskState.DONE)
-            && tasks.values.all {
+        containerTask.taskState != TaskState.DONE
+            || tasks.values.all {
                 it.taskState == TaskState.DONE
-                    || pos.toVec3dCenter().distanceTo(it.blockPos.toVec3dCenter()) < maxReach - 0.5
+                    || startingBlockPos.toVec3dCenter().distanceTo(pos.toVec3dCenter()) < startingBlockPos.toVec3dCenter().distanceTo(it.blockPos)
             }
 
     private fun SafeClientEvent.isTaskDone(pos: BlockPos): Boolean {
@@ -139,9 +135,9 @@ object Pathfinder {
             && world.isAirBlock(currentBlockPos.add(startingDirection.directionVec).up())
             && world.getBlockState(currentBlockPos.add(startingDirection.directionVec).down()).isReplaceable
             && tasks.values.filter {
-            it.taskState == TaskState.PLACE
-                || it.taskState == TaskState.LIQUID
-        }.none { it.sequence.isNotEmpty() }
+                it.taskState == TaskState.PLACE
+                    || it.taskState == TaskState.LIQUID
+            }.none { it.sequence.isNotEmpty() }
             && tasks.values.none { it.taskState == TaskState.PENDING_PLACE }
             && containerTask.taskState == TaskState.DONE
     }

@@ -14,5 +14,6 @@ enum class TaskState(val stuckThreshold: Int, val stuckTimeout: Int, val color: 
     PLACE(20, 20, ColorHolder(35, 188, 254)),
     PENDING_BREAK(100, 100, ColorHolder(0, 0, 0)),
     PENDING_PLACE(100, 100, ColorHolder(0, 0, 0)),
+    IMPOSSIBLE_PLACE(100, 100, ColorHolder(16, 74, 94)),
     DONE(69420, 0x22, ColorHolder(50, 50, 50))
 }

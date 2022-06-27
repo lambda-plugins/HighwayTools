@@ -5,7 +5,7 @@ import HighwayTools.maxReach
 import HighwayTools.placementSearch
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.math.CoordinateConverter.asString
-import com.lambda.client.util.math.VectorUtils.distanceTo
+import com.lambda.client.util.math.VectorUtils.toVec3dCenter
 import com.lambda.client.util.world.PlaceInfo
 import com.lambda.client.util.world.getNeighbourSequence
 import net.minecraft.block.Block
@@ -16,7 +16,6 @@ import net.minecraft.item.Item
 import net.minecraft.item.ItemStack
 import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
-import net.minecraft.util.math.Vec3d
 import trombone.Pathfinder.startingBlockPos
 import kotlin.random.Random
 
@@ -24,6 +23,8 @@ class BlockTask(
     val blockPos: BlockPos,
     var taskState: TaskState,
     var targetBlock: Block,
+    var isSupport: Boolean = false,
+    var isFiller: Boolean = false,
     var item: Item = Items.AIR
 ) {
     private var ranTicks = 0
@@ -48,7 +49,7 @@ class BlockTask(
 
     var toRemove = false
     var ticksMined = 1
-    var toolToUse = ItemStack(Items.AIR)
+    var toolToUse: ItemStack = ItemStack.EMPTY
 
     fun updateState(state: TaskState) {
         if (state != taskState) {
@@ -75,7 +76,11 @@ class BlockTask(
         stuckTicks = 0
     }
 
-    fun updateTask(event: SafeClientEvent, eyePos: Vec3d) {
+    fun updateTask(event: SafeClientEvent) {
+        isLiquidSource = event.world.getBlockState(blockPos).let {
+            it.block is BlockLiquid && it.getValue(BlockLiquid.LEVEL) == 0
+        }
+
         when (taskState) {
             TaskState.PLACE, TaskState.LIQUID -> {
                 sequence = event.getNeighbourSequence(blockPos, placementSearch, maxReach, !illegalPlacements)
@@ -83,14 +88,12 @@ class BlockTask(
             else -> {}
         }
 
-        startDistance = startingBlockPos.distanceTo(blockPos)
-        eyeDistance = eyePos.distanceTo(blockPos)
-    }
+        startDistance = startingBlockPos.toVec3dCenter().distanceTo(blockPos.toVec3dCenter())
+        eyeDistance = event.player.getPositionEyes(1f).distanceTo(blockPos.toVec3dCenter())
 
-    fun updateLiquid(event: SafeClientEvent) {
-        isLiquidSource = event.world.getBlockState(blockPos).let {
-            it.block is BlockLiquid && it.getValue(BlockLiquid.LEVEL) == 0
-        }
+        aabb = event.world
+            .getBlockState(blockPos)
+            .getSelectedBoundingBox(event.world, blockPos)
     }
 
     fun isShulker() = targetBlock is BlockShulkerBox

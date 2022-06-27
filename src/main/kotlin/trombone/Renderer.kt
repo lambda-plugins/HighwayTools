@@ -11,7 +11,6 @@ import HighwayTools.showCurrentPos
 import HighwayTools.showDebugRender
 import HighwayTools.textScale
 import HighwayTools.thickness
-import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.color.ColorHolder
 import com.lambda.client.util.graphics.ESPRenderer
 import com.lambda.client.util.graphics.GlStateUtils
@@ -66,21 +65,10 @@ object Renderer {
             updateOverlay(containerTask.blockPos, containerTask)
         }
 
-        tasks.forEach { (pos, blockTask) ->
-            if (blockTask.taskState == TaskState.DONE) return@forEach
+        tasks.filterValues {
+            it.taskState != TaskState.DONE
+        }.forEach { (pos, blockTask) ->
             updateOverlay(pos, blockTask)
-        }
-    }
-
-    fun SafeClientEvent.updateRenderer() {
-        containerTask.aabb = world
-            .getBlockState(containerTask.blockPos)
-            .getSelectedBoundingBox(world, containerTask.blockPos)
-
-        tasks.values.forEach {
-            it.aabb = world
-                .getBlockState(it.blockPos)
-                .getSelectedBoundingBox(world, it.blockPos)
         }
     }
 

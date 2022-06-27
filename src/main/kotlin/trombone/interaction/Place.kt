@@ -34,31 +34,28 @@ object Place {
     fun SafeClientEvent.placeBlock(blockTask: BlockTask) {
         when (blockTask.sequence.size) {
             0 -> {
-                if (blockTask.taskState == TaskState.LIQUID) {
-                    blockTask.updateState(TaskState.DONE)
-                }
                 if (debugLevel == DebugLevel.VERBOSE) {
                     LambdaMod.LOG.warn("${module.chatName} No neighbours found for ${blockTask.blockPos.asString()}")
                 }
                 if (blockTask == containerTask) {
-                    MessageSendHelper.sendChatMessage("${module.chatName} Can't find neighbours for container task to place on")
-                    blockTask.updateState(TaskState.DONE)
+                    MessageSendHelper.sendChatMessage("${module.chatName} Can't find neighbour blocks to place down the container.")
                 }
                 blockTask.onStuck(21)
+                blockTask.updateState(TaskState.DONE)
                 return
             }
-            1 -> {
+            else -> {
                 val last = blockTask.sequence.last()
                 lastHitVec = getHitVec(last.pos, last.side)
 
                 placeBlockNormal(blockTask, last.pos, last.side)
             }
-            else -> {
+//            else -> {
                 // ToDo: Rewrite deep place
 //                blockTask.sequence.forEach {
 //                    addTaskToPending(it.pos, TaskState.PLACE, fillerMat)
 //                }
-            }
+//            }
         }
     }
 

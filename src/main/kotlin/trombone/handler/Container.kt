@@ -34,7 +34,7 @@ import net.minecraft.util.EnumFacing
 import net.minecraft.util.NonNullList
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.text.TextFormatting
-import trombone.Blueprint.isInsideBlueprintBuild
+import trombone.blueprint.BlueprintGenerator.isInsideBlueprintBuild
 import trombone.IO.disableError
 import trombone.Pathfinder.currentBlockPos
 import trombone.handler.Inventory.zipInventory
@@ -43,7 +43,7 @@ import trombone.task.TaskState
 import kotlin.math.abs
 
 object Container {
-    var containerTask = BlockTask(BlockPos.ORIGIN, TaskState.DONE, Blocks.AIR, Items.AIR)
+    var containerTask = BlockTask(BlockPos.ORIGIN, TaskState.DONE, Blocks.AIR)
     val shulkerOpenTimer = TickTimer(TimeUnit.TICKS)
     var grindCycles = 0
 
@@ -54,7 +54,7 @@ object Container {
             // Case 1: item is in a shulker in the inventory
             getShulkerWith(player.inventorySlots, item)?.let { slot ->
                 getRemotePos()?.let { pos ->
-                    containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, item)
+                    containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, item = item)
                 } ?: run {
                     disableError("Can't find possible container position (Case: 1)")
                 }
@@ -76,7 +76,7 @@ object Container {
             if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) > saveEnder) {
                 if (grindCycles > 0) {
                     getRemotePos()?.let { pos ->
-                        containerTask = BlockTask(pos, TaskState.PLACE, Blocks.ENDER_CHEST, Blocks.OBSIDIAN.item)
+                        containerTask = BlockTask(pos, TaskState.PLACE, Blocks.ENDER_CHEST, item = Blocks.OBSIDIAN.item)
                         containerTask.destroy = true
                         if (grindCycles > 1) containerTask.collect = false
                         containerTask.itemID = Blocks.OBSIDIAN.id
@@ -115,7 +115,7 @@ object Container {
     private fun SafeClientEvent.dispatchEnderChest(item: Item) {
         if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) > saveEnder) {
             getRemotePos()?.let { pos ->
-                containerTask = BlockTask(pos, TaskState.PLACE, Blocks.ENDER_CHEST, item)
+                containerTask = BlockTask(pos, TaskState.PLACE, Blocks.ENDER_CHEST, item = item)
                 containerTask.itemID = Blocks.OBSIDIAN.id
             } ?: run {
                 disableError("Can't find possible container position (Case: 4)")
@@ -123,7 +123,7 @@ object Container {
         } else {
             getShulkerWith(player.inventorySlots, Blocks.ENDER_CHEST.item)?.let { slot ->
                 getRemotePos()?.let { pos ->
-                    containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, Blocks.ENDER_CHEST.item)
+                    containerTask = BlockTask(pos, TaskState.PLACE, slot.stack.item.block, item = Blocks.ENDER_CHEST.item)
                 } ?: run {
                     disableError("Can't find possible container position (Case: 5)")
                 }

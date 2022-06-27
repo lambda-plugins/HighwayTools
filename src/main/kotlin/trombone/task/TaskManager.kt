@@ -3,13 +3,11 @@ package trombone.task
 import HighwayTools.anonymizeStats
 import HighwayTools.debugLevel
 import HighwayTools.dynamicDelay
-import HighwayTools.fillerMat
 import HighwayTools.food
 import HighwayTools.ignoreBlocks
 import HighwayTools.manageFood
 import HighwayTools.material
 import HighwayTools.maxReach
-import HighwayTools.mode
 import HighwayTools.multiBuilding
 import HighwayTools.saveFood
 import HighwayTools.saveTools
@@ -23,10 +21,10 @@ import com.lambda.client.util.items.item
 import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.math.VectorUtils.multiply
+import com.lambda.client.util.math.VectorUtils.toVec3dCenter
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.world.isPlaceable
 import com.lambda.client.util.world.isReplaceable
-import net.minecraft.block.Block
 import net.minecraft.block.BlockLiquid
 import net.minecraft.block.state.IBlockState
 import net.minecraft.init.Blocks
@@ -35,17 +33,17 @@ import net.minecraft.item.ItemFood
 import net.minecraft.item.ItemPickaxe
 import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
-import trombone.Blueprint.blueprint
-import trombone.Blueprint.generateBluePrint
-import trombone.Blueprint.isInsideBlueprintBuild
+import trombone.blueprint.BlueprintGenerator.blueprint
+import trombone.blueprint.BlueprintGenerator.generateBluePrint
+import trombone.blueprint.BlueprintGenerator.isInsideBlueprintBuild
 import trombone.IO.DebugLevel
 import trombone.Pathfinder.MovementState
 import trombone.Pathfinder.currentBlockPos
 import trombone.Pathfinder.moveState
 import trombone.Pathfinder.startingBlockPos
 import trombone.Pathfinder.startingDirection
-import trombone.Trombone.Structure
 import trombone.Trombone.module
+import trombone.blueprint.BlueprintTask
 import trombone.handler.Container.containerTask
 import trombone.handler.Container.grindCycles
 import trombone.handler.Container.handleRestock
@@ -64,8 +62,8 @@ object TaskManager {
         generateBluePrint()
 
         /* Generate tasks based on the blueprint */
-        blueprint.forEach { (pos, block) ->
-            generateTask(pos, block)
+        blueprint.forEach { (pos, blueprintTask) ->
+            generateTask(pos, blueprintTask)
         }
 
         /* Remove old tasks */
@@ -82,50 +80,83 @@ object TaskManager {
         }
     }
 
-    private fun SafeClientEvent.generateTask(blockPos: BlockPos, targetBlock: Block) {
+    private fun SafeClientEvent.generateTask(blockPos: BlockPos, blueprintTask: BlueprintTask) {
         val currentState = world.getBlockState(blockPos)
+        val eyePos = player.getPositionEyes(1f)
+
         when {
-            /* Start padding */
+            /* start padding */
             shouldBeSpared(blockPos) -> { /* Ignore task */ }
 
-            /* Out of reach */
-            currentBlockPos.distanceTo(blockPos) >= maxReach -> { /* Ignore task */ }
+            /* out of reach */
+            eyePos.distanceTo(blockPos.toVec3dCenter()) >= maxReach + 1 -> { /* Ignore task */ }
 
-            /* Do not override container task */
+            /* do not override container task */
             containerTask.blockPos == blockPos -> { /* Ignore task */ }
 
-            /* Ignored blocks */
+            /* ignored blocks */
             shouldBeIgnored(blockPos, currentState) -> {
-                addTask(blockPos, TaskState.DONE, currentState.block)
+                val blockTask = BlockTask(blockPos, TaskState.DONE, currentState.block)
+                addTask(blockTask, blueprintTask)
             }
 
-            /* Is in desired state */
-            currentState.block == targetBlock -> {
-                addTask(blockPos, TaskState.DONE, currentState.block)
+            /* is in desired state */
+            currentState.block == blueprintTask.targetBlock -> {
+                val blockTask = BlockTask(blockPos, TaskState.DONE, currentState.block)
+                addTask(blockTask, blueprintTask)
             }
 
-            /* To place */
-            currentState.isReplaceable && targetBlock != Blocks.AIR -> {
-                if (checkSupport(blockPos, targetBlock)
-                    || !world.checkNoEntityCollision(AxisAlignedBB(blockPos), null)
-                ) {
-                    addTask(blockPos, TaskState.DONE, targetBlock)
-                } else {
-                    addTask(blockPos, TaskState.PLACE, targetBlock)
+            /* is liquid */
+            currentState.block is BlockLiquid -> {
+                val blockTask = BlockTask(blockPos, TaskState.LIQUID, blueprintTask.targetBlock)
+                blockTask.updateTask(this)
+
+                if (blockTask.sequence.isNotEmpty()) {
+                    addTask(blockTask, blueprintTask)
                 }
             }
 
-            /* Is liquid */
-            currentState.block is BlockLiquid -> {
-                addTask(blockPos, TaskState.LIQUID, targetBlock).updateLiquid(this)
+            /* to place */
+            currentState.isReplaceable && blueprintTask.targetBlock != Blocks.AIR -> {
+                /* support not needed */
+                if (blueprintTask.isSupport && world.getBlockState(blockPos.up()).block == material) {
+                    val blockTask = BlockTask(blockPos, TaskState.DONE, currentState.block)
+                    addTask(blockTask, blueprintTask)
+                    return
+                }
+
+                /* is blocked by entity */
+                if (!world.checkNoEntityCollision(AxisAlignedBB(blockPos), null)) {
+                    val blockTask = BlockTask(blockPos, TaskState.DONE, currentState.block)
+                    addTask(blockTask, blueprintTask)
+                    return
+                }
+
+                val blockTask = BlockTask(blockPos, TaskState.PLACE, blueprintTask.targetBlock)
+                blockTask.updateTask(this)
+
+                if (blockTask.sequence.isNotEmpty()) {
+                    addTask(blockTask, blueprintTask)
+                } else {
+                    blockTask.updateState(TaskState.IMPOSSIBLE_PLACE)
+                    addTask(blockTask, blueprintTask)
+                }
             }
 
-            /* Break */
+            /* To break */
             else -> {
-                if (checkSupport(blockPos, targetBlock)) {
-                    addTask(blockPos, TaskState.DONE, currentState.block)
-                } else {
-                    addTask(blockPos, TaskState.BREAK, targetBlock)
+                /* Is already filled */
+                if (blueprintTask.isFiller) {
+                    val blockTask = BlockTask(blockPos, TaskState.DONE, currentState.block)
+                    addTask(blockTask, blueprintTask)
+                    return
+                }
+
+                val blockTask = BlockTask(blockPos, TaskState.BREAK, blueprintTask.targetBlock)
+                blockTask.updateTask(this)
+
+                if (blockTask.eyeDistance < maxReach) {
+                    addTask(blockTask, blueprintTask)
                 }
             }
         }
@@ -138,8 +169,7 @@ object TaskManager {
 
             /* Finish the container task first */
             containerTask.taskState != TaskState.DONE -> {
-                val eyePos = player.getPositionEyes(1f)
-                containerTask.updateTask(this, eyePos)
+                containerTask.updateTask(this)
                 if (containerTask.stuckTicks > containerTask.taskState.stuckTimeout) {
                     if (containerTask.taskState == TaskState.PICKUP) moveState = MovementState.RUNNING
 
@@ -181,16 +211,16 @@ object TaskManager {
                 tasks.values.forEach {
                     doTask(it, updateOnly = true)
 
-                    it.updateTask(this, player.getPositionEyes(1.0f))
+                    it.updateTask(this)
                     if (multiBuilding) it.shuffle()
                 }
 
+                sortedTasks.clear()
                 sortedTasks.addAll(tasks.values)
 
                 sortedTasks.forEach taskExecution@{ task ->
                     if (!checkStuckTimeout(task)) return
                     if (task.taskState != TaskState.DONE && waitTicks > 0) return
-                    if (task.taskState == TaskState.PLACE && task.sequence.isEmpty()) return@taskExecution
 
                     doTask(task)
                     when (task.taskState) {
@@ -202,28 +232,25 @@ object TaskManager {
         }
     }
 
-    fun SafeClientEvent.addTask(blockPos: BlockPos, taskState: TaskState, material: Block): BlockTask {
-        val task = BlockTask(blockPos, taskState, material)
-        tasks[blockPos]?.let {
+    fun SafeClientEvent.addTask(blockTask: BlockTask, blueprintTask: BlueprintTask) {
+        blockTask.updateTask(this)
+        blockTask.isFiller = blueprintTask.isFiller
+        blockTask.isSupport = blueprintTask.isSupport
+
+        tasks[blockTask.blockPos]?.let {
             if (it.stuckTicks > it.taskState.stuckTimeout
-                || taskState == TaskState.LIQUID
-                || (it.taskState != taskState
+                || blockTask.taskState == TaskState.LIQUID
+                || (it.taskState != blockTask.taskState
                     && (it.taskState == TaskState.DONE
+                    || it.taskState == TaskState.IMPOSSIBLE_PLACE
                     || (it.taskState == TaskState.PLACE
                     && !world.isPlaceable(it.blockPos))))) {
-                tasks[blockPos] = task
+                tasks[blockTask.blockPos] = blockTask
             }
         } ?: run {
-            tasks[blockPos] = task
+            tasks[blockTask.blockPos] = blockTask
         }
-        return task
     }
-
-    private fun SafeClientEvent.checkSupport(pos: BlockPos, block: Block) =
-        mode == Structure.HIGHWAY
-            && startingDirection.isDiagonal
-            && world.getBlockState(pos.up()).block == material
-            && block == fillerMat
 
     private fun checkStuckTimeout(blockTask: BlockTask): Boolean {
         val timeout = blockTask.taskState.stuckTimeout
@@ -263,8 +290,6 @@ object TaskManager {
                 blockTask.updateState(TaskState.DONE)
             }
         }
-
-//        populateTasks() TODO: needed ???
         return false
     }
 

@@ -156,17 +156,17 @@ object Inventory {
     }
 
     fun SafeClientEvent.zipInventory() {
-        val compressableStacks = player.inventorySlots.filter { comp ->
+        val compressibleStacks = player.inventorySlots.filter { comp ->
             comp.stack.count < comp.stack.maxStackSize
                 && player.inventorySlots.countByStack { comp.stack.item == it.item } > 1
         }
 
-        if (compressableStacks.isEmpty()) {
+        if (compressibleStacks.isEmpty()) {
             disableError("Inventory full. (Considering that $keepFreeSlots slots are supposed to stay free)")
             return
         }
 
-        compressableStacks.forEach { slot ->
+        compressibleStacks.forEach { slot ->
             module.addInventoryTask(
                 PlayerInventoryManager.ClickInfo(slot = slot.slotNumber, type = ClickType.QUICK_MOVE)
             )

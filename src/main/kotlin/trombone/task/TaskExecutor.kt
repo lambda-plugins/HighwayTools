@@ -18,13 +18,9 @@ import com.lambda.client.module.modules.player.InventoryManager
 import com.lambda.client.util.TickTimer
 import com.lambda.client.util.items.*
 import com.lambda.client.util.math.CoordinateConverter.asString
-import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.math.VectorUtils.toVec3dCenter
 import com.lambda.client.util.text.MessageSendHelper
-import com.lambda.client.util.world.getCollisionBox
-import com.lambda.client.util.world.getHitVec
-import com.lambda.client.util.world.getHitVecOffset
-import com.lambda.client.util.world.isPlaceable
+import com.lambda.client.util.world.*
 import net.minecraft.block.BlockLiquid
 import net.minecraft.client.gui.inventory.GuiContainer
 import net.minecraft.init.Blocks
@@ -39,6 +35,7 @@ import trombone.IO.disableError
 import trombone.Pathfinder.moveState
 import trombone.Pathfinder.shouldBridge
 import trombone.Trombone.module
+import trombone.blueprint.BlueprintGenerator
 import trombone.handler.Container
 import trombone.handler.Container.containerTask
 import trombone.handler.Container.getCollectingPosition
@@ -88,6 +85,9 @@ object TaskExecutor {
             TaskState.PENDING_BREAK, TaskState.PENDING_PLACE -> {
                 blockTask.onStuck()
             }
+            TaskState.IMPOSSIBLE_PLACE -> {
+                if (!updateOnly) doImpossiblePlace()
+            }
             TaskState.DONE -> { /* do nothing */ }
         }
     }
@@ -106,6 +106,7 @@ object TaskExecutor {
         }
 
         if (leaveEmptyShulkers
+            && !InventoryManager.ejectList.contains(containerTask.item.registryName.toString())
             && containerTask.isShulker()
             && container.getSlots(0..26).all {
                 it.stack.isEmpty
@@ -114,9 +115,9 @@ object TaskExecutor {
         ) {
             if (debugLevel != IO.DebugLevel.OFF) {
                 if (!anonymizeStats) {
-                    MessageSendHelper.sendChatMessage("${Trombone.module.chatName} Left empty ${containerTask.targetBlock.localizedName}@(${containerTask.blockPos.asString()})")
+                    MessageSendHelper.sendChatMessage("${module.chatName} Left empty ${containerTask.targetBlock.localizedName}@(${containerTask.blockPos.asString()})")
                 } else {
-                    MessageSendHelper.sendChatMessage("${Trombone.module.chatName} Left empty ${containerTask.targetBlock.localizedName}")
+                    MessageSendHelper.sendChatMessage("${module.chatName} Left empty ${containerTask.targetBlock.localizedName}")
                 }
             }
 
@@ -272,10 +273,10 @@ object TaskExecutor {
     }
 
     private fun SafeClientEvent.doPlaced(blockTask: BlockTask) {
-        val currentBlock = world.getBlockState(blockTask.blockPos).block
+        val currentState = world.getBlockState(blockTask.blockPos)
 
         when {
-            blockTask.targetBlock == currentBlock && currentBlock != Blocks.AIR -> {
+            (blockTask.targetBlock == currentState.block || blockTask.isFiller) && !currentState.isReplaceable -> {
                 Statistics.totalBlocksPlaced++
                 Break.prePrimedPos = blockTask.blockPos
                 Statistics.simpleMovingAveragePlaces.add(System.currentTimeMillis())
@@ -296,14 +297,14 @@ object TaskExecutor {
                 TaskManager.tasks.values.filter { it.taskState == TaskState.PLACE }.forEach { it.resetStuck() }
 
                 if (fakeSounds) {
-                    val soundType = currentBlock.getSoundType(world.getBlockState(blockTask.blockPos), world, blockTask.blockPos, player)
+                    val soundType = currentState.block.getSoundType(currentState, world, blockTask.blockPos, player)
                     world.playSound(player, blockTask.blockPos, soundType.placeSound, SoundCategory.BLOCKS, (soundType.getVolume() + 1.0f) / 2.0f, soundType.getPitch() * 0.8f)
                 }
             }
-            blockTask.targetBlock == currentBlock && currentBlock == Blocks.AIR -> {
+            blockTask.targetBlock == currentState.block && currentState.block == Blocks.AIR -> {
                 blockTask.updateState(TaskState.BREAK)
             }
-            blockTask.targetBlock == Blocks.AIR && currentBlock != Blocks.AIR -> {
+            blockTask.targetBlock == Blocks.AIR && currentState.block != Blocks.AIR -> {
                 blockTask.updateState(TaskState.BREAK)
             }
             else -> {
@@ -317,14 +318,14 @@ object TaskExecutor {
 
         if (ignoreBlocks.contains(currentBlock.registryName.toString())
             && !blockTask.isShulker()
-            && !Blueprint.isInsideBlueprintBuild(blockTask.blockPos)
+            && !BlueprintGenerator.isInsideBlueprintBuild(blockTask.blockPos)
             || currentBlock in arrayOf(Blocks.PORTAL, Blocks.END_PORTAL, Blocks.END_PORTAL_FRAME, Blocks.BEDROCK)
         ) {
             blockTask.updateState(TaskState.DONE)
             return
         }
 
-        // TODO: Fix this
+        // ToDo: Fix this
 //        if (blockTask.targetBlock == fillerMat
 //            && world.getBlockState(blockTask.blockPos.up()).block == material
 //            || (!world.isPlaceable(blockTask.blockPos)
@@ -380,14 +381,9 @@ object TaskExecutor {
     private fun SafeClientEvent.doPlace(blockTask: BlockTask, updateOnly: Boolean) {
         val currentBlock = world.getBlockState(blockTask.blockPos).block
 
-        if (shouldBridge()
-            && moveState != Pathfinder.MovementState.RESTOCK
-            && player.positionVector.distanceTo(Pathfinder.currentBlockPos) < 1) {
-            moveState = Pathfinder.MovementState.BRIDGE
-        }
-
         if (blockTask.taskState == TaskState.LIQUID
-            && world.getBlockState(blockTask.blockPos).block !is BlockLiquid) {
+            && world.getBlockState(blockTask.blockPos).block !is BlockLiquid
+        ) {
             blockTask.updateState(TaskState.DONE)
             return
         }
@@ -405,7 +401,8 @@ object TaskExecutor {
                     return
                 } else if (currentBlock != fillerMat
                     && mode == Trombone.Structure.HIGHWAY
-                    && world.getBlockState(blockTask.blockPos.up()).block == material) {
+                    && world.getBlockState(blockTask.blockPos.up()).block == material
+                ) {
                     blockTask.updateState(TaskState.DONE)
                     return
                 }
@@ -427,14 +424,14 @@ object TaskExecutor {
         if (!world.isPlaceable(blockTask.blockPos)) {
             if (debugLevel == IO.DebugLevel.VERBOSE) {
                 if (!anonymizeStats) {
-                    MessageSendHelper.sendChatMessage("${Trombone.module.chatName} Invalid place position @(${blockTask.blockPos.asString()}) Removing task")
+                    MessageSendHelper.sendChatMessage("${module.chatName} Invalid place position @(${blockTask.blockPos.asString()}) Removing task")
                 } else {
-                    MessageSendHelper.sendChatMessage("${Trombone.module.chatName} Invalid place position. Removing task")
+                    MessageSendHelper.sendChatMessage("${module.chatName} Invalid place position. Removing task")
                 }
             }
 
             if (blockTask == containerTask) {
-                MessageSendHelper.sendChatMessage("${Trombone.module.chatName} Failed container task. Trying to break block.")
+                MessageSendHelper.sendChatMessage("${module.chatName} Failed container task. Trying to break block.")
                 containerTask.updateState(TaskState.BREAK)
             } else {
                 TaskManager.tasks.remove(blockTask.blockPos)
@@ -449,5 +446,14 @@ object TaskExecutor {
         }
 
         placeBlock(blockTask)
+    }
+
+    private fun SafeClientEvent.doImpossiblePlace() {
+        if (shouldBridge()
+            && moveState != Pathfinder.MovementState.RESTOCK
+            && player.positionVector.distanceTo(Pathfinder.currentBlockPos.toVec3dCenter()) < 1
+        ) {
+            moveState = Pathfinder.MovementState.BRIDGE
+        }
     }
 }
