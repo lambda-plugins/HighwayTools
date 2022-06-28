@@ -63,6 +63,7 @@ object Statistics {
     private var lastToolDamage = 0
     var durabilityUsages = 0
     private var matPlaced = 0
+    private var matMined = 0
     private var enderMined = 0
     private var netherrackMined = 0
     private var pickaxeBroken = 0
@@ -157,6 +158,9 @@ object Statistics {
         matPlaced = StatList.getObjectUseStats(material.item)?.let {
             player.statFileWriter.readStat(it)
         } ?: 0
+        matMined = StatList.getBlockStats(material)?.let {
+            player.statFileWriter.readStat(it)
+        } ?: 0
         enderMined = StatList.getBlockStats(Blocks.ENDER_CHEST)?.let {
             player.statFileWriter.readStat(it)
         } ?: 0
@@ -167,7 +171,7 @@ object Statistics {
             player.statFileWriter.readStat(it)
         } ?: 0
 
-        if (matPlaced + enderMined + netherrackMined + pickaxeBroken > 0) {
+        if (matPlaced + matMined + enderMined + netherrackMined + pickaxeBroken > 0) {
             displayText.addLine("Lifetime", primaryColor)
         }
 
@@ -175,6 +179,11 @@ object Statistics {
             if (matPlaced > 0) {
                 displayText.add("    ${material.localizedName} placed:", primaryColor)
                 displayText.addLine("%,d".format(matPlaced), secondaryColor)
+            }
+
+            if (matMined > 0) {
+                displayText.add("    ${material.localizedName} mined:", primaryColor)
+                displayText.addLine("%,d".format(matMined), secondaryColor)
             }
 
             if (enderMined > 0) {
