@@ -113,8 +113,8 @@ object Pathfinder {
     }
 
     private fun checkForResidue(pos: BlockPos) =
-        containerTask.taskState != TaskState.DONE
-            || tasks.values.all {
+        containerTask.taskState == TaskState.DONE
+            && tasks.values.all {
                 it.taskState == TaskState.DONE
                     || startingBlockPos.toVec3dCenter().distanceTo(pos.toVec3dCenter()) < startingBlockPos.toVec3dCenter().distanceTo(it.blockPos)
             }
