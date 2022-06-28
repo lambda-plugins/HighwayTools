@@ -22,6 +22,7 @@ import trombone.Trombone.active
 import trombone.handler.Container.containerTask
 import trombone.handler.Container.getCollectingPosition
 import trombone.handler.Inventory.lastHitVec
+import trombone.task.TaskManager.isBehindPos
 import trombone.task.TaskManager.populateTasks
 import trombone.task.TaskManager.tasks
 import trombone.task.TaskState
@@ -115,8 +116,7 @@ object Pathfinder {
     private fun checkForResidue(pos: BlockPos) =
         containerTask.taskState == TaskState.DONE
             && tasks.values.all {
-                it.taskState == TaskState.DONE
-                    || startingBlockPos.toVec3dCenter().distanceTo(pos.toVec3dCenter()) < startingBlockPos.toVec3dCenter().distanceTo(it.blockPos)
+                it.taskState == TaskState.DONE || !isBehindPos(pos, it.blockPos)
             }
 
     private fun SafeClientEvent.isTaskDone(pos: BlockPos): Boolean {
@@ -131,15 +131,15 @@ object Pathfinder {
 
     fun SafeClientEvent.shouldBridge(): Boolean {
         return scaffold
+            && containerTask.taskState == TaskState.DONE
             && world.isAirBlock(currentBlockPos.add(startingDirection.directionVec))
             && world.isAirBlock(currentBlockPos.add(startingDirection.directionVec).up())
             && world.getBlockState(currentBlockPos.add(startingDirection.directionVec).down()).isReplaceable
+            && tasks.values.none { it.taskState == TaskState.PENDING_PLACE }
             && tasks.values.filter {
                 it.taskState == TaskState.PLACE
                     || it.taskState == TaskState.LIQUID
             }.none { it.sequence.isNotEmpty() }
-            && tasks.values.none { it.taskState == TaskState.PENDING_PLACE }
-            && containerTask.taskState == TaskState.DONE
     }
 
     private fun SafeClientEvent.moveTo(target: Vec3d) {

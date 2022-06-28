@@ -12,7 +12,7 @@ import HighwayTools.multiBuilding
 import HighwayTools.saveFood
 import HighwayTools.saveTools
 import HighwayTools.storageManagement
-import com.lambda.client.commons.extension.ceilToInt
+import HighwayTools.width
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.manager.managers.PlayerInventoryManager
 import com.lambda.client.util.items.countItem
@@ -33,6 +33,7 @@ import net.minecraft.item.ItemFood
 import net.minecraft.item.ItemPickaxe
 import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.Vec3d
 import trombone.blueprint.BlueprintGenerator.blueprint
 import trombone.blueprint.BlueprintGenerator.generateBluePrint
 import trombone.blueprint.BlueprintGenerator.isInsideBlueprintBuild
@@ -86,7 +87,7 @@ object TaskManager {
 
         when {
             /* start padding */
-            shouldBeSpared(blockPos) -> { /* Ignore task */ }
+            startPadding(blockPos) -> { /* Ignore task */ }
 
             /* out of reach */
             eyePos.distanceTo(blockPos.toVec3dCenter()) >= maxReach + 1 -> { /* Ignore task */ }
@@ -164,9 +165,6 @@ object TaskManager {
 
     fun SafeClientEvent.runTasks() {
         when {
-            /* Wait for PIM to finish all inventory transactions */
-            !PlayerInventoryManager.isDone() -> {}
-
             /* Finish the container task first */
             containerTask.taskState != TaskState.DONE -> {
                 containerTask.updateTask(this)
@@ -293,14 +291,14 @@ object TaskManager {
         return false
     }
 
-    // ToDo: Fix padding for diagonal
-    private fun shouldBeSpared(blockPos: BlockPos) =
-        startingBlockPos.add(
-            startingDirection
-                .clockwise(4)
-                .directionVec
-                .multiply((maxReach * 2).ceilToInt() - 1)
-        ).distanceTo(blockPos) < maxReach * 2
+    private fun startPadding(c: BlockPos) = isBehindPos(startingBlockPos.add(startingDirection.directionVec), c)
+
+    fun isBehindPos(origin: BlockPos, check: BlockPos): Boolean {
+        val a = origin.add(startingDirection.counterClockwise(2).directionVec.multiply(width))
+        val b = origin.add(startingDirection.clockwise(2).directionVec.multiply(width))
+
+        return ((b.x - a.x) * (check.z - a.z) - (b.z - a.z) * (check.x - a.x)) > 0
+    }
 
     private fun shouldBeIgnored(blockPos: BlockPos, currentState: IBlockState) =
         ignoreBlocks.contains(currentState.block.registryName.toString())
