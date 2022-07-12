@@ -29,9 +29,7 @@ object Liquid {
 
             if (world.getBlockState(neighbourPos).block !is BlockLiquid) continue
 
-            if (player.distanceTo(neighbourPos) > maxReach
-                || getNeighbourSequence(neighbourPos, placementSearch, maxReach, !illegalPlacements).isEmpty()
-            ) {
+            if (getNeighbourSequence(neighbourPos, placementSearch, maxReach, !illegalPlacements).isEmpty()) {
                 if (debugLevel == IO.DebugLevel.VERBOSE) {
                     LambdaMod.LOG.info("[Trombone] Skipping liquid block at ${neighbourPos.asString()} due to distance")
                 }
@@ -45,7 +43,7 @@ object Liquid {
                 updateLiquidTask(it)
             } ?: run {
                 val newTask = BlockTask(neighbourPos, TaskState.LIQUID, fillerMat)
-                val blueprintTask = BlueprintTask(fillerMat, isFiller = true, isSupport = false)
+                val blueprintTask = BlueprintTask(fillerMat, isFiller = true)
 
                 addTask(newTask, blueprintTask)
             }
