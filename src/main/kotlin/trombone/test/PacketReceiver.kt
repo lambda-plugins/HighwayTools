@@ -2,7 +2,6 @@ package trombone.test
 
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.items.hotbarSlots
-import net.minecraft.block.BlockShulkerBox
 import net.minecraft.network.Packet
 import net.minecraft.network.play.server.SPacketBlockChange
 import net.minecraft.network.play.server.SPacketOpenWindow
@@ -14,6 +13,7 @@ import trombone.Statistics.durabilityUsages
 import trombone.test.task.tasks.BreakTask
 import trombone.test.task.tasks.PlaceTask
 import trombone.test.task.TaskProcessor
+import trombone.test.task.tasks.RestockTask
 
 object PacketReceiver {
     fun SafeClientEvent.handlePacket(packet: Packet<*>) {
@@ -34,30 +34,16 @@ object PacketReceiver {
                 rubberbandTimer.reset()
             }
             is SPacketOpenWindow -> {
-                TaskProcessor.getContainerTask()?.let {
-                    if (it !is RestockTask) return
-
+                TaskProcessor.getContainerTasks().filterIsInstance<RestockTask>().forEach {
                     with(it) {
-                        it.acceptPacketOpen()
-                        if (it.state == RestockTask.State.PENDING) {
-                            if ((currentBlock is BlockShulkerBox && packet.guiId == "minecraft:shulker_box")
-                                || (currentBlock !is BlockShulkerBox && packet.guiId == "minecraft:container")
-                            ) {
-                                it.state = RestockTask.State.LOADING_ITEMS
-                            }
-                        }
+                        acceptPacketOpen(packet)
                     }
                 }
             }
             is SPacketWindowItems -> {
-                TaskProcessor.getContainerTask()?.let {
-                    if (it !is RestockTask) return
-
+                TaskProcessor.getContainerTasks().filterIsInstance<RestockTask>().forEach {
                     with(it) {
-                        it.acceptPacketLoaded()
-                        if (it.state == RestockTask.State.LOADING_ITEMS) {
-                            it.state = RestockTask.State.LOADED
-                        }
+                        acceptPacketLoaded()
                     }
                 }
             }

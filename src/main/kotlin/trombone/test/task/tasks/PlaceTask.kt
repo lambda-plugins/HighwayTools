@@ -18,16 +18,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import net.minecraft.block.Block
 import net.minecraft.block.Block.getBlockFromName
-import net.minecraft.block.BlockAir
 import net.minecraft.block.BlockLiquid
 import net.minecraft.block.state.IBlockState
-import net.minecraft.init.Items
 import net.minecraft.inventory.Slot
-import net.minecraft.item.ItemBlock
-import net.minecraft.item.ItemShulkerBox
 import net.minecraft.network.play.client.CPacketEntityAction
 import net.minecraft.network.play.client.CPacketPlayerTryUseItemOnBlock
-import net.minecraft.pathfinding.PathFinder
 import net.minecraft.util.EnumFacing
 import net.minecraft.util.EnumHand
 import net.minecraft.util.SoundCategory
@@ -62,6 +57,7 @@ class PlaceTask(
     override val timeout = 20
     override var threshold = 20
     override val color = state.colorHolder
+    override var hitVec3d: Vec3d = Vec3d.ZERO
 
     enum class State(val colorHolder: ColorHolder, val prioOffset: Int) {
         INVALID(ColorHolder(16, 74, 94), 10),
@@ -85,6 +81,7 @@ class PlaceTask(
             && validPlaceableSides.size == 1
         ) state = State.VALID
         priority = 2 + state.prioOffset + if (isLiquidSource) 10 else 0
+        hitVec3d = validPlaceableSides.firstOrNull()?.hitVec ?: Vec3d.ZERO
 
         when {
             currentBlock == targetBlock -> {
@@ -137,7 +134,7 @@ class PlaceTask(
 
                     state = State.PENDING
 
-                    sendPlacingPackets(it.placedPos, it.side, it.hitVec)
+                    sendPlacingPackets(it.placedPos, it.side, getHitVecOffset(it.side))
                 }
             }
             State.PENDING -> {

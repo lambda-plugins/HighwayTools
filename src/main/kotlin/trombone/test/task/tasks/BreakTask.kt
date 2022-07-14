@@ -12,7 +12,6 @@ import HighwayTools.saveTools
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.color.ColorHolder
 import com.lambda.client.util.items.*
-import com.lambda.client.util.math.CoordinateConverter.asString
 import com.lambda.client.util.math.isInSight
 import com.lambda.client.util.threads.defaultScope
 import com.lambda.client.util.world.getHitVec
@@ -26,7 +25,6 @@ import net.minecraft.block.BlockFire
 import net.minecraft.block.BlockLiquid
 import net.minecraft.block.state.IBlockState
 import net.minecraft.enchantment.EnchantmentHelper
-import net.minecraft.init.Blocks
 import net.minecraft.init.Enchantments
 import net.minecraft.item.ItemPickaxe
 import net.minecraft.item.ItemStack
@@ -46,6 +44,7 @@ import trombone.test.task.TaskProcessor.addTask
 import trombone.test.task.TaskProcessor.convertTo
 import trombone.test.task.TaskProcessor.interactionLimitNotReached
 import trombone.test.task.TaskProcessor.packetLimiter
+import trombone.test.task.TaskProcessor.waitPenalty
 import kotlin.math.ceil
 
 class BreakTask(
@@ -65,6 +64,7 @@ class BreakTask(
     override val timeout = 20
     override var threshold = 1
     override val color = state.colorHolder
+    override var hitVec3d: Vec3d = Vec3d.ZERO
 
     private enum class State(val colorHolder: ColorHolder, val prioOffset: Int) {
         INVALID(ColorHolder(22, 0, 0), 20),
@@ -87,6 +87,7 @@ class BreakTask(
         if (isValid() && state == State.INVALID) state = State.VALID
 //        priority = 1 + state.prioOffset
         threshold = 1 + ticksNeeded
+        hitVec3d = breakInfo?.hitVec3d ?: Vec3d.ZERO
 
         when {
             shouldBeIgnored() || isIllegal() -> {
@@ -99,7 +100,7 @@ class BreakTask(
                 convertTo<DoneTask>()
             }
             isLiquidBlock -> {
-                convertTo<PlaceTask>(isLiquidTask = true)
+                convertTo<PlaceTask>()
             }
             state.ordinal < 2 && updateLiquidNeighbours() -> {
                 /* Change already done */
@@ -143,7 +144,10 @@ class BreakTask(
                         defaultScope.launch {
                             delay(threshold * 50L)
 
-                            if (state == State.PENDING) state = State.INVALID
+                            if (state == State.PENDING) {
+                                state = State.INVALID
+                                waitPenalty++
+                            }
                         }
                     } else {
                         state = State.BREAKING

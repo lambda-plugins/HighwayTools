@@ -9,6 +9,7 @@ import net.minecraft.block.state.IBlockState
 import net.minecraft.item.Item
 import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.Vec3d
 
 abstract class BuildTask(
     val blockPos: BlockPos,
@@ -21,6 +22,7 @@ abstract class BuildTask(
     abstract val timeout: Int
     abstract var threshold: Int
     abstract val color: ColorHolder
+    abstract var hitVec3d: Vec3d
 
     val timeStamp = System.currentTimeMillis()
     var timeTicking = 0

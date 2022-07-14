@@ -1,9 +1,14 @@
 package trombone.test.task
 
 import HighwayTools.interactionLimit
+import HighwayTools.mode
+import HighwayTools.modulePriority
 import com.lambda.client.event.SafeClientEvent
+import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
+import com.lambda.client.util.math.RotationUtils.getRotationTo
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
+import trombone.Trombone.module
 import trombone.test.task.tasks.PlaceTask
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedDeque
@@ -39,10 +44,12 @@ object TaskProcessor {
 
         currentTask?.let {
             with(it) {
-                if (isValid()
-                    && !runUpdate()
-                ) {
+                if (isValid() && !runUpdate()) {
                     runExecute()
+
+                    module.sendPlayerPacket {
+                        rotate(getRotationTo(it.hitVec3d))
+                    }
                 }
             }
         }
@@ -52,17 +59,13 @@ object TaskProcessor {
     inline fun <reified T: BuildTask> BuildTask.convertTo(
         isSupportTask: Boolean = this.isSupportTask,
         isFillerTask: Boolean = this.isFillerTask,
-        isContainerTask: Boolean = this.isContainerTask,
-        isLiquidTask: Boolean = false
+        isContainerTask: Boolean = this.isContainerTask
     ) {
         val newTask = T::class.java.getDeclaredConstructor().newInstance(blockPos, targetBlock)
         newTask.isSupportTask = isSupportTask
         newTask.isFillerTask = isFillerTask
         newTask.isContainerTask = isContainerTask
 
-        if (newTask is PlaceTask) {
-            newTask.isLiquidTask = isLiquidTask
-        }
         tasks[blockPos] = newTask
     }
 
@@ -70,7 +73,7 @@ object TaskProcessor {
         tasks[buildTask.blockPos] = buildTask
     }
 
-    fun getContainerTask() = tasks.values.firstOrNull { it.isContainerTask }
+    fun getContainerTasks() = tasks.values.filter { it.isContainerTask }
 
     val interactionLimitNotReached = packetLimiter.size < interactionLimit
 }
