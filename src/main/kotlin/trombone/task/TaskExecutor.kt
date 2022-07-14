@@ -281,8 +281,7 @@ object TaskExecutor {
                 Break.prePrimedPos = blockTask.blockPos
                 Statistics.simpleMovingAveragePlaces.add(System.currentTimeMillis())
 
-                if (
-                    dynamicDelay && Place.extraPlaceDelay > 0) Place.extraPlaceDelay /= 2
+                if (dynamicDelay && Place.extraPlaceDelay > 0) Place.extraPlaceDelay /= 2
 
                 if (blockTask == containerTask) {
                     if (containerTask.destroy) {
