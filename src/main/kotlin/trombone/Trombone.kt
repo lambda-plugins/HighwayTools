@@ -3,8 +3,8 @@ package trombone
 import HighwayTools
 import HighwayTools.info
 import com.lambda.client.event.SafeClientEvent
-import trombone.BaritoneHelper.resetBaritone
-import trombone.BaritoneHelper.setupBaritone
+import trombone.refactor.pathfinding.BaritoneHelper.resetBaritone
+import trombone.refactor.pathfinding.BaritoneHelper.setupBaritone
 import trombone.IO.pauseCheck
 import trombone.IO.printDisable
 import trombone.IO.printEnable

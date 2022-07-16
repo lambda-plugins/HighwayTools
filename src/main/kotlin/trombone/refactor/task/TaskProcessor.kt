@@ -1,15 +1,16 @@
-package trombone.test.task
+package trombone.refactor.task
 
 import HighwayTools.interactionLimit
-import HighwayTools.mode
-import HighwayTools.modulePriority
+import HighwayTools.taskStrategy
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
 import com.lambda.client.util.math.RotationUtils.getRotationTo
 import net.minecraft.util.math.BlockPos
-import net.minecraft.util.math.Vec3d
 import trombone.Trombone.module
-import trombone.test.task.tasks.PlaceTask
+import trombone.refactor.task.sequence.TaskSequenceStrategy
+import trombone.refactor.task.sequence.strategies.LeftToRightStrategy
+import trombone.refactor.task.sequence.strategies.OriginStrategy
+import trombone.refactor.task.sequence.strategies.RandomStrategy
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.ConcurrentSkipListSet
@@ -19,8 +20,17 @@ object TaskProcessor {
     private var currentTask: BuildTask? = null
     var waitTicks = 0
     var waitPenalty = 0
+    var taskSequenceStrategy = taskStrategy.getInstance()
 
     val packetLimiter = ConcurrentLinkedDeque<Long>()
+
+    enum class EnumTaskSequenceStrategy {
+        ORIGIN { override fun getInstance() = OriginStrategy },
+        RANDOM { override fun getInstance() = RandomStrategy },
+        LEFT_TO_RIGHT { override fun getInstance() = LeftToRightStrategy };
+
+        abstract fun getInstance(): TaskSequenceStrategy
+    }
 
     fun SafeClientEvent.doTick() {
         /* update old tasks */
@@ -36,11 +46,8 @@ object TaskProcessor {
             return
         }
 
-        /* get task with the highest priority */
-        val sortedTasks = ConcurrentSkipListSet(compareBy<BuildTask> { it.priority })
-        sortedTasks.addAll(tasks.values)
-
-        currentTask = sortedTasks.firstOrNull()
+        /* get task with the highest priority based on selection strategy */
+        currentTask = taskSequenceStrategy.getNextTask(tasks)
 
         currentTask?.let {
             with(it) {

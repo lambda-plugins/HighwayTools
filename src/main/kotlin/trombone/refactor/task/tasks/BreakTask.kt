@@ -1,4 +1,4 @@
-package trombone.test.task.tasks
+package trombone.refactor.task.tasks
 
 import HighwayTools.breakDelay
 import HighwayTools.fillerMat
@@ -8,15 +8,16 @@ import HighwayTools.maxReach
 import HighwayTools.miningSpeedFactor
 import HighwayTools.multiBreak
 import HighwayTools.packetFlood
-import HighwayTools.saveTools
+import HighwayTools.leastTools
+import HighwayTools.pickupRadius
 import com.lambda.client.event.SafeClientEvent
+import com.lambda.client.util.EntityUtils.getDroppedItems
 import com.lambda.client.util.color.ColorHolder
 import com.lambda.client.util.items.*
+import com.lambda.client.util.math.VectorUtils
 import com.lambda.client.util.math.isInSight
 import com.lambda.client.util.threads.defaultScope
-import com.lambda.client.util.world.getHitVec
-import com.lambda.client.util.world.getMiningSide
-import com.lambda.client.util.world.getNeighbour
+import com.lambda.client.util.world.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import net.minecraft.block.Block
@@ -36,15 +37,16 @@ import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
 import trombone.Statistics
 import trombone.Trombone
-import trombone.test.ContainerHandler.handleRestock
-import trombone.test.task.BuildTask
-import trombone.test.task.TaskFactory
-import trombone.test.task.TaskProcessor
-import trombone.test.task.TaskProcessor.addTask
-import trombone.test.task.TaskProcessor.convertTo
-import trombone.test.task.TaskProcessor.interactionLimitNotReached
-import trombone.test.task.TaskProcessor.packetLimiter
-import trombone.test.task.TaskProcessor.waitPenalty
+import trombone.Trombone.module
+import trombone.refactor.task.ContainerHandler.handleRestock
+import trombone.refactor.task.BuildTask
+import trombone.refactor.task.TaskFactory
+import trombone.refactor.task.TaskProcessor
+import trombone.refactor.task.TaskProcessor.addTask
+import trombone.refactor.task.TaskProcessor.convertTo
+import trombone.refactor.task.TaskProcessor.interactionLimitNotReached
+import trombone.refactor.task.TaskProcessor.packetLimiter
+import trombone.refactor.task.TaskProcessor.waitPenalty
 import kotlin.math.ceil
 
 class BreakTask(
@@ -59,12 +61,13 @@ class BreakTask(
     private var alreadyCheckedMultiBreak = false
     var breakInfo: BreakInfo? = null
     private var toolToUse = ItemStack.EMPTY
+    var collectPos: BlockPos? = null
 
     override var priority = 1 + state.prioOffset
     override val timeout = 20
     override var threshold = 1
     override val color = state.colorHolder
-    override var hitVec3d: Vec3d = Vec3d.ZERO
+    override var hitVec3d: Vec3d? = null
 
     private enum class State(val colorHolder: ColorHolder, val prioOffset: Int) {
         INVALID(ColorHolder(22, 0, 0), 20),
@@ -73,7 +76,8 @@ class BreakTask(
         BREAK(ColorHolder(222, 0, 0), 0),
         BREAKING(ColorHolder(240, 222, 60), -100),
         PENDING(ColorHolder(42, 0, 0), 20),
-        ACCEPTED(ColorHolder(53, 222, 66), 0)
+        ACCEPTED(ColorHolder(53, 222, 66), 0),
+        PICKUP(ColorHolder(), 0)
     }
 
     override fun SafeClientEvent.isValid() =
@@ -87,7 +91,7 @@ class BreakTask(
         if (isValid() && state == State.INVALID) state = State.VALID
 //        priority = 1 + state.prioOffset
         threshold = 1 + ticksNeeded
-        hitVec3d = breakInfo?.hitVec3d ?: Vec3d.ZERO
+        hitVec3d = breakInfo?.hitVec3d
 
         when {
             shouldBeIgnored() || isIllegal() -> {
@@ -176,14 +180,36 @@ class BreakTask(
                 Statistics.simpleMovingAverageBreaks.add(System.currentTimeMillis())
 
                 TaskProcessor.tasks.values.filterIsInstance<BreakTask>().forEach {
-                    it.timeTicking = 0
+                    it.timesFailed = 0
                 }
 
-                if (currentBlock == targetBlock) {
+                if (currentBlock is BlockAir) {
+                    if (isContainerTask && pickupAfterBreak) {
+                        state = State.PICKUP
+                        execute()
+                        return
+                    }
+
                     convertTo<DoneTask>()
                 } else {
                     convertTo<PlaceTask>()
                 }
+            }
+            State.PICKUP -> {
+                getCollectingPosition()?.let { goal ->
+                    collectPos = goal
+
+                    player.inventorySlots.firstByStack { itemIsInEjectList(it.item) }?.let {
+                        if (timeTicking > 20) {
+                            throwAllInSlot(module, it)
+                            timeTicking = 0
+                        }
+                    }
+                    return
+                }
+
+                collectPos = null
+                convertTo<DoneTask>()
             }
         }
     }
@@ -279,7 +305,7 @@ class BreakTask(
     }
 
     private fun SafeClientEvent.equipBestTool(breakTask: BreakTask): Boolean {
-        if (player.inventorySlots.countItem<ItemPickaxe>() <= saveTools) {
+        if (player.inventorySlots.countItem<ItemPickaxe>() <= leastTools) {
             handleRestock<ItemPickaxe>()
             return false
         }
@@ -319,6 +345,28 @@ class BreakTask(
                 speed
             }
         }
+
+    private fun SafeClientEvent.getCollectingPosition(): BlockPos? {
+        getDroppedItems(itemIdToPickup, range = pickupRadius.toFloat())
+            .minByOrNull { player.getDistance(it) }
+            ?.positionVector
+            ?.let { itemVec ->
+                return VectorUtils.getBlockPosInSphere(itemVec, pickupRadius.toFloat()).asSequence()
+                    .filter { pos ->
+                        world.isAirBlock(pos.up())
+                            && world.isPlaceable(pos)
+                            && !world.getBlockState(pos.down()).isReplaceable
+                    }
+                    .sortedWith(
+                        compareBy<BlockPos> {
+                            it.distanceSqToCenter(itemVec.x, itemVec.y, itemVec.z)
+                        }.thenBy {
+                            it.y
+                        }
+                    ).firstOrNull()
+            }
+        return null
+    }
 
     fun acceptPacketState(packetBlockState: IBlockState) {
         if ((state == State.PENDING || state == State.BREAKING)

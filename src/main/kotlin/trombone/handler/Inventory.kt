@@ -2,8 +2,8 @@ package trombone.handler
 
 import HighwayTools.keepFreeSlots
 import HighwayTools.material
-import HighwayTools.saveMaterial
-import HighwayTools.saveTools
+import HighwayTools.leastMaterial
+import HighwayTools.leastTools
 import HighwayTools.storageManagement
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.manager.managers.PlayerInventoryManager
@@ -103,7 +103,7 @@ object Inventory {
 
     private fun SafeClientEvent.findMaterial(blockTask: BlockTask): Block {
         return if (blockTask.targetBlock == material) {
-            if (player.inventorySlots.countBlock(material) > saveMaterial) {
+            if (player.inventorySlots.countBlock(material) > leastMaterial) {
                 material
             } else {
                 restockFallback(blockTask)
@@ -121,7 +121,7 @@ object Inventory {
                 }
 
                 if (possibleMaterials.isEmpty()) {
-                    if (player.inventorySlots.countBlock(material) > saveMaterial) {
+                    if (player.inventorySlots.countBlock(material) > leastMaterial) {
                         material
                     } else {
                         restockFallback(blockTask)
@@ -143,7 +143,7 @@ object Inventory {
     }
 
     fun SafeClientEvent.swapOrMoveBestTool(blockTask: BlockTask): Boolean {
-        if (player.inventorySlots.countItem(Items.DIAMOND_PICKAXE) <= saveTools) {
+        if (player.inventorySlots.countItem(Items.DIAMOND_PICKAXE) <= leastTools) {
             return if (containerTask.taskState == TaskState.DONE && storageManagement) {
                 handleRestock(Items.DIAMOND_PICKAXE)
                 false

@@ -9,12 +9,11 @@ import HighwayTools.manageFood
 import HighwayTools.material
 import HighwayTools.maxReach
 import HighwayTools.multiBuilding
-import HighwayTools.saveFood
-import HighwayTools.saveTools
+import HighwayTools.leastFood
+import HighwayTools.leastTools
 import HighwayTools.storageManagement
 import HighwayTools.width
 import com.lambda.client.event.SafeClientEvent
-import com.lambda.client.manager.managers.PlayerInventoryManager
 import com.lambda.client.util.items.countItem
 import com.lambda.client.util.items.inventorySlots
 import com.lambda.client.util.items.item
@@ -33,7 +32,6 @@ import net.minecraft.item.ItemFood
 import net.minecraft.item.ItemPickaxe
 import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
-import net.minecraft.util.math.Vec3d
 import trombone.blueprint.BlueprintGenerator.blueprint
 import trombone.blueprint.BlueprintGenerator.generateBluePrint
 import trombone.blueprint.BlueprintGenerator.isInsideBlueprintBuild
@@ -183,7 +181,7 @@ object TaskManager {
 
             /* Check tools */
             storageManagement
-                && player.inventorySlots.countItem<ItemPickaxe>() <= saveTools -> {
+                && player.inventorySlots.countItem<ItemPickaxe>() <= leastTools -> {
                 // TODO: ItemPickaxe support
                 handleRestock(Items.DIAMOND_PICKAXE)
             }
@@ -191,7 +189,7 @@ object TaskManager {
             /* Fulfill basic needs */
             storageManagement
                 && manageFood
-                && player.inventorySlots.countItem<ItemFood>() <= saveFood -> {
+                && player.inventorySlots.countItem<ItemFood>() <= leastFood -> {
                 // TODO: ItemFood support
                 handleRestock(food)
             }

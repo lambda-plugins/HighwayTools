@@ -1,4 +1,4 @@
-package trombone
+package trombone.refactor.pathfinding
 
 import HighwayTools.goalRender
 import com.lambda.client.util.BaritoneUtils

@@ -1,12 +1,12 @@
-package trombone.test.task.tasks
+package trombone.refactor.task.tasks
 
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.color.ColorHolder
-import com.lambda.client.util.math.CoordinateConverter.asString
 import net.minecraft.block.Block
 import net.minecraft.util.math.BlockPos
-import trombone.test.task.BuildTask
-import trombone.test.task.TaskProcessor
+import net.minecraft.util.math.Vec3d
+import trombone.refactor.task.BuildTask
+import trombone.refactor.task.TaskProcessor
 
 class DoneTask(blockPos: BlockPos,
                targetBlock: Block,
@@ -18,6 +18,7 @@ class DoneTask(blockPos: BlockPos,
     override val timeout = 0
     override var threshold = 0
     override val color = ColorHolder(50, 50, 50)
+    override var hitVec3d: Vec3d? = null
 
     override fun SafeClientEvent.isValid() = true
 

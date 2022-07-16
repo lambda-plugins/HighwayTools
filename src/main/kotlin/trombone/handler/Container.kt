@@ -6,10 +6,10 @@ import HighwayTools.material
 import HighwayTools.maxReach
 import HighwayTools.minDistance
 import HighwayTools.preferEnderChests
-import HighwayTools.saveEnder
-import HighwayTools.saveFood
-import HighwayTools.saveMaterial
-import HighwayTools.saveTools
+import HighwayTools.leastEnder
+import HighwayTools.leastFood
+import HighwayTools.leastMaterial
+import HighwayTools.leastTools
 import HighwayTools.searchEChest
 import com.lambda.client.commons.extension.ceilToInt
 import com.lambda.client.event.SafeClientEvent
@@ -68,12 +68,12 @@ object Container {
         if (grindObsidian && item.block == Blocks.OBSIDIAN) {
             // Case 2: desired item is Obsidian and grinding E-Chests is allowed
 
-            if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) <= saveEnder) {
+            if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) <= leastEnder) {
                 handleRestock(Blocks.ENDER_CHEST.item)
                 return
             }
 
-            if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) > saveEnder) {
+            if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) > leastEnder) {
                 if (grindCycles > 0) {
                     getRemotePos()?.let { pos ->
                         containerTask = BlockTask(pos, TaskState.PLACE, Blocks.ENDER_CHEST, item = Blocks.OBSIDIAN.item)
@@ -113,7 +113,7 @@ object Container {
     }
 
     private fun SafeClientEvent.dispatchEnderChest(item: Item) {
-        if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) > saveEnder) {
+        if (player.inventorySlots.countBlock(Blocks.ENDER_CHEST) > leastEnder) {
             getRemotePos()?.let { pos ->
                 containerTask = BlockTask(pos, TaskState.PLACE, Blocks.ENDER_CHEST, item = item)
                 containerTask.itemID = Blocks.OBSIDIAN.id
@@ -215,10 +215,10 @@ object Container {
     private fun SafeClientEvent.insufficientMaterial(item: Item): String {
         val itemCount = player.inventorySlots.countItem(item)
         var message = ""
-        if (saveMaterial > 0 && item == material.item) message += insufficientMaterialPrint(itemCount, saveMaterial, material.localizedName)
-        if (saveEnder > 0 && item.block == Blocks.ENDER_CHEST) message += insufficientMaterialPrint(itemCount, saveEnder, Blocks.ENDER_CHEST.localizedName)
-        if (saveTools > 0 && item == Items.DIAMOND_PICKAXE) message += insufficientMaterialPrint(itemCount, saveTools, "Diamond Pickaxe(s)")
-        if (saveFood > 0 && item == Items.GOLDEN_APPLE) message += insufficientMaterialPrint(itemCount, saveFood, "Golden Apple(s)")
+        if (leastMaterial > 0 && item == material.item) message += insufficientMaterialPrint(itemCount, leastMaterial, material.localizedName)
+        if (leastEnder > 0 && item.block == Blocks.ENDER_CHEST) message += insufficientMaterialPrint(itemCount, leastEnder, Blocks.ENDER_CHEST.localizedName)
+        if (leastTools > 0 && item == Items.DIAMOND_PICKAXE) message += insufficientMaterialPrint(itemCount, leastTools, "Diamond Pickaxe(s)")
+        if (leastFood > 0 && item == Items.GOLDEN_APPLE) message += insufficientMaterialPrint(itemCount, leastFood, "Golden Apple(s)")
         return "$message\nTo continue anyways, set setting in ${TextFormatting.GRAY}Storage Management > Save <Material>${TextFormatting.RESET} to zero."
     }
 

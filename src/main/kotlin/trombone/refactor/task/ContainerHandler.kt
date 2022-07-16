@@ -1,4 +1,4 @@
-package trombone.test
+package trombone.refactor.task
 
 import HighwayTools.storageManagement
 import com.lambda.client.event.SafeClientEvent
@@ -8,13 +8,13 @@ import net.minecraft.item.Item
 import net.minecraft.item.ItemShulkerBox
 import net.minecraft.item.ItemStack
 import net.minecraft.util.NonNullList
-import trombone.handler.Container
-import trombone.test.task.tasks.DoneTask
-import trombone.test.task.TaskProcessor
+import trombone.refactor.pathfinding.Navigator.changeStrategy
+import trombone.refactor.pathfinding.strategies.RestockStrategy
+import trombone.refactor.task.tasks.DoneTask
 
 object ContainerHandler {
     inline fun <reified T: Item> SafeClientEvent.handleRestock() {
-        if (TaskProcessor.getContainerTask() is DoneTask
+        if (TaskProcessor.getContainerTasks().all { it is DoneTask }
             && storageManagement
         ) {
 
@@ -22,7 +22,7 @@ object ContainerHandler {
     }
 
     fun SafeClientEvent.handleRestock(item: Item) {
-
+        changeStrategy<RestockStrategy>()
     }
 
     fun getShulkerWith(slots: List<Slot>, item: Item) =

@@ -1,11 +1,14 @@
-package trombone.test.task
+package trombone.refactor.task
 
+import HighwayTools.ejectList
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.color.ColorHolder
 import com.lambda.client.util.math.CoordinateConverter.asString
 import net.minecraft.block.Block
 import net.minecraft.block.BlockLiquid
 import net.minecraft.block.state.IBlockState
+import net.minecraft.init.Items
+import net.minecraft.inventory.Slot
 import net.minecraft.item.Item
 import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
@@ -22,16 +25,20 @@ abstract class BuildTask(
     abstract val timeout: Int
     abstract var threshold: Int
     abstract val color: ColorHolder
-    abstract var hitVec3d: Vec3d
+    abstract var hitVec3d: Vec3d?
 
     val timeStamp = System.currentTimeMillis()
+    var toRemove = false
     var timeTicking = 0
     var timesFailed = 0
-    var aabb = AxisAlignedBB(BlockPos.ORIGIN)
+    var aabb = AxisAlignedBB(blockPos)
     private var debugInfo: MutableList<Pair<String, String>> = mutableListOf()
 
-    val itemsToRestock: MutableList<Item> = mutableListOf()
+    val slotToUseForPlace: Slot? = null
+    val desiredItem: Item = Items.AIR
     var destroyAfterPlace = false
+    var pickupAfterBreak = false
+    val itemIdToPickup = 0
 
     /**
      * checks if requirements are met for the task
@@ -89,6 +96,7 @@ abstract class BuildTask(
     val SafeClientEvent.currentBlock: Block get() = currentBlockState.block
     val SafeClientEvent.isLiquidBlock get() = currentBlock is BlockLiquid
     private val SafeClientEvent.axisAlignedBB: AxisAlignedBB get() = currentBlockState.getSelectedBoundingBox(world, blockPos).also { aabb = it }
+    fun itemIsInEjectList(item: Item) = item.registryName.toString() in ejectList
 
     abstract fun gatherInfoToString(): String
 

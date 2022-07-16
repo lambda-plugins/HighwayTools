@@ -1,4 +1,4 @@
-package trombone.test
+package trombone.refactor
 
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.util.items.hotbarSlots
@@ -10,10 +10,10 @@ import net.minecraft.network.play.server.SPacketSetSlot
 import net.minecraft.network.play.server.SPacketWindowItems
 import trombone.Pathfinder.rubberbandTimer
 import trombone.Statistics.durabilityUsages
-import trombone.test.task.tasks.BreakTask
-import trombone.test.task.tasks.PlaceTask
-import trombone.test.task.TaskProcessor
-import trombone.test.task.tasks.RestockTask
+import trombone.refactor.task.tasks.BreakTask
+import trombone.refactor.task.tasks.PlaceTask
+import trombone.refactor.task.TaskProcessor
+import trombone.refactor.task.tasks.RestockTask
 
 object PacketReceiver {
     fun SafeClientEvent.handlePacket(packet: Packet<*>) {

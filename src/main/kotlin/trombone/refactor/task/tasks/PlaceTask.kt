@@ -1,6 +1,7 @@
-package trombone.test.task.tasks
+package trombone.refactor.task.tasks
 
 import HighwayTools.dynamicDelay
+import HighwayTools.ejectList
 import HighwayTools.fakeSounds
 import HighwayTools.fillerMat
 import HighwayTools.illegalPlacements
@@ -9,7 +10,6 @@ import HighwayTools.maxReach
 import HighwayTools.placeDelay
 import HighwayTools.placementSearch
 import com.lambda.client.event.SafeClientEvent
-import com.lambda.client.module.modules.player.InventoryManager
 import com.lambda.client.util.color.ColorHolder
 import com.lambda.client.util.items.*
 import com.lambda.client.util.threads.defaultScope
@@ -33,14 +33,13 @@ import trombone.Pathfinder.moveState
 import trombone.Pathfinder.shouldBridge
 import trombone.Statistics
 import trombone.Trombone.module
-import trombone.test.ContainerHandler.getShulkerWith
-import trombone.test.ContainerHandler.handleRestock
-import trombone.test.task.BuildTask
-import trombone.test.task.TaskProcessor
-import trombone.test.task.TaskProcessor.addTask
-import trombone.test.task.TaskProcessor.convertTo
-import trombone.test.task.TaskProcessor.interactionLimitNotReached
-import trombone.test.task.TaskProcessor.waitPenalty
+import trombone.refactor.task.ContainerHandler.handleRestock
+import trombone.refactor.task.BuildTask
+import trombone.refactor.task.TaskProcessor
+import trombone.refactor.task.TaskProcessor.addTask
+import trombone.refactor.task.TaskProcessor.convertTo
+import trombone.refactor.task.TaskProcessor.interactionLimitNotReached
+import trombone.refactor.task.TaskProcessor.waitPenalty
 
 class PlaceTask(
     blockPos: BlockPos,
@@ -50,14 +49,15 @@ class PlaceTask(
     isSupportTask: Boolean = false
 ) : BuildTask(blockPos, targetBlock, isFillerTask, isContainerTask, isSupportTask) {
     private var state = State.INVALID
+    var placeInfo: PlaceInfo? = null
     private val SafeClientEvent.isLiquidSource get() = isLiquidBlock && currentBlockState.getValue(BlockLiquid.LEVEL) == 0
-    private val SafeClientEvent.validPlaceableSides get() = getNeighbourSequence(blockPos, placementSearch, maxReach, !illegalPlacements)
+    private val SafeClientEvent.placeInfoSequence get() = getNeighbourSequence(blockPos, placementSearch, maxReach, !illegalPlacements)
 
     override var priority = 2
     override val timeout = 20
     override var threshold = 20
     override val color = state.colorHolder
-    override var hitVec3d: Vec3d = Vec3d.ZERO
+    override var hitVec3d: Vec3d? = null
 
     enum class State(val colorHolder: ColorHolder, val prioOffset: Int) {
         INVALID(ColorHolder(16, 74, 94), 10),
@@ -70,18 +70,19 @@ class PlaceTask(
 
     override fun SafeClientEvent.isValid() =
         interactionLimitNotReached
-            && validPlaceableSides.isNotEmpty()
+            && placeInfo != null
             && world.checkNoEntityCollision(aabb, player)
 
     override fun SafeClientEvent.update(): Boolean {
         var wasUpdated = true
 
+        priority = 2 + state.prioOffset + if (isLiquidSource) 10 else 0
+        if (placeInfoSequence.size == 1) placeInfo = placeInfoSequence.firstOrNull()
+        hitVec3d = placeInfo?.hitVec
+
         if (isValid()
             && state == State.INVALID
-            && validPlaceableSides.size == 1
         ) state = State.VALID
-        priority = 2 + state.prioOffset + if (isLiquidSource) 10 else 0
-        hitVec3d = validPlaceableSides.firstOrNull()?.hitVec ?: Vec3d.ZERO
 
         when {
             currentBlock == targetBlock -> {
@@ -107,8 +108,8 @@ class PlaceTask(
     override fun SafeClientEvent.execute() {
         when (state) {
             State.INVALID -> {
-                if (validPlaceableSides.isNotEmpty()) {
-                    validPlaceableSides.filter {
+                if (placeInfoSequence.isNotEmpty()) {
+                    placeInfoSequence.filter {
                         !TaskProcessor.tasks.containsKey(it.placedPos)
                     }.forEach {
                         addTask(PlaceTask(it.placedPos, fillerMat, isFillerTask = true))
@@ -129,7 +130,7 @@ class PlaceTask(
                 }
             }
             State.PLACE -> {
-                validPlaceableSides.firstOrNull()?.let {
+                placeInfo?.let {
                     TaskProcessor.waitTicks = placeDelay + waitPenalty
 
                     state = State.PENDING
@@ -177,13 +178,8 @@ class PlaceTask(
     }
 
     private fun SafeClientEvent.equipBlockToPlace(): Boolean {
-        if (isContainerTask && itemsToRestock.isNotEmpty()) {
-            itemsToRestock.forEach { item ->
-                getShulkerWith(player.inventorySlots, item)?.let {
-                    swapToSlotOrMove(it)
-                    return true
-                }
-            }
+        if (isContainerTask && slotToUseForPlace != null) {
+            swapToSlotOrMove(slotToUseForPlace)
         }
 
         if (swapToItemOrMove(module, targetBlock.item)) {
@@ -191,7 +187,7 @@ class PlaceTask(
         }
 
         if (isFillerTask) {
-            InventoryManager.ejectList.forEach { stringName ->
+            ejectList.forEach { stringName ->
                 getBlockFromName(stringName)?.let {
                     if (swapToBlockOrMove(module, it)) return true
                 }

@@ -1,4 +1,4 @@
-package trombone.test
+package trombone.refactor
 
 import HighwayTools.aFilled
 import HighwayTools.aOutline
@@ -13,11 +13,11 @@ import com.lambda.client.util.graphics.ESPRenderer
 import com.lambda.client.util.graphics.GeometryMasks
 import net.minecraft.init.Blocks
 import trombone.Pathfinder
-import trombone.test.task.BuildTask
-import trombone.test.task.TaskProcessor
-import trombone.test.task.tasks.BreakTask
-import trombone.test.task.tasks.DoneTask
-import trombone.test.task.tasks.PlaceTask
+import trombone.refactor.task.BuildTask
+import trombone.refactor.task.TaskProcessor
+import trombone.refactor.task.tasks.BreakTask
+import trombone.refactor.task.tasks.DoneTask
+import trombone.refactor.task.tasks.PlaceTask
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -63,14 +63,14 @@ object Renderer {
             is BreakTask -> {
                 buildTask.breakInfo?.let { breakInfo ->
                     GeometryMasks.FACEMAP[breakInfo.side]?.let { geoSide ->
-                        renderer.add(aabb, buildTask.color.multiply(1.0f), geoSide)
+                        renderer.add(aabb, buildTask.color.multiply(1.1f), geoSide)
                     }
                 }
             }
             is PlaceTask -> {
                 buildTask.placeInfo?.let { placeInfo ->
                     GeometryMasks.FACEMAP[placeInfo.side]?.let { geoSide ->
-                        renderer.add(aabb, buildTask.color.multiply(1.0f), geoSide)
+                        renderer.add(aabb, buildTask.color.multiply(1.1f), geoSide)
                     }
                 }
             }

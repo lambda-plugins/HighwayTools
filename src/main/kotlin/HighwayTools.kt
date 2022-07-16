@@ -25,6 +25,10 @@ import trombone.Trombone.tick
 import trombone.Trombone.onDisable
 import trombone.Trombone.onEnable
 import trombone.handler.Packet.handlePacket
+import trombone.refactor.pathfinding.MovementStrategy
+import trombone.refactor.pathfinding.Navigator
+import trombone.refactor.task.TaskProcessor
+import trombone.refactor.task.sequence.TaskSequenceStrategy
 
 /**
  * @author Avanatiker
@@ -53,6 +57,16 @@ object HighwayTools : PluginModule(
         "minecraft:barrier"
     )
 
+    private val defaultEjectList = linkedSetOf(
+        "minecraft:grass",
+        "minecraft:dirt",
+        "minecraft:netherrack",
+        "minecraft:gravel",
+        "minecraft:sand",
+        "minecraft:stone",
+        "minecraft:cobblestone"
+    )
+
     // blueprint
     val mode by setting("Mode", Structure.HIGHWAY, { page == Page.BLUEPRINT }, description = "Choose the structure")
     val width by setting("Width", 6, 1..11, 1, { page == Page.BLUEPRINT }, description = "Sets the width of blueprint", unit = " blocks")
@@ -71,13 +85,15 @@ object HighwayTools : PluginModule(
     private val fillerMatSaved = setting("FillerMat", "minecraft:netherrack", { false })
     private val foodItem = setting("FoodItem", "minecraft:golden_apple", { false })
     val ignoreBlocks = setting(CollectionSetting("IgnoreList", defaultIgnoreBlocks, { false }))
+    val ejectList = setting(CollectionSetting("Eject List", defaultEjectList))
 
     // behavior
     val maxReach by setting("Max Reach", 4.9f, 1.0f..7.0f, 0.1f, { page == Page.BEHAVIOR }, description = "Sets the range of the blueprint. Decrease when tasks fail!", unit = " blocks")
-    val multiBuilding by setting("Shuffle Tasks", false, { page == Page.PLACING }, description = "Only activate when working with several players")
     val rubberbandTimeout by setting("Rubberband Timeout", 50, 5..100, 5, { page == Page.BEHAVIOR }, description = "Timeout for pausing after a lag")
     val taskTimeout by setting("Task Timeout", 8, 0..20, 1, { page == Page.BEHAVIOR }, description = "Timeout for waiting for the server to try again", unit = " ticks")
     val moveSpeed by setting("Packet Move Speed", 0.2f, 0.0f..1.0f, 0.01f, { page == Page.BEHAVIOR }, description = "Maximum player velocity per tick", unit = "m/t")
+    val movementStrategy by setting("Movement Strategy", Navigator.EnumMoveStrategy.PROPAGATE, { page == Page.BEHAVIOR }, description = "Sets the movement strategy")
+    val taskStrategy by setting("Task Selection Strategy", TaskProcessor.EnumTaskSequenceStrategy.ORIGIN, { page == Page.BEHAVIOR }, description = "Choose the strategy for task selection")
 
     // mining
     val breakDelay by setting("Break Delay", 1, 1..20, 1, { page == Page.MINING }, description = "Sets the delay ticks between break tasks", unit = " ticks")
@@ -85,7 +101,6 @@ object HighwayTools : PluginModule(
     val interactionLimit by setting("Interaction Limit", 20, 1..100, 1, { page == Page.MINING }, description = "Set the interaction limit per second", unit = " interactions/s")
     val multiBreak by setting("Multi Break", true, { page == Page.MINING }, description = "Breaks multiple instant breaking blocks intersecting with view vector")
     val packetFlood by setting("Packet Flood", false, { page == Page.MINING }, description = "Exploit for faster packet breaks. Sends START and STOP packet on same tick.")
-    val instantMine by setting("Ender Chest Instant Mine", false, { page == Page.MINING && packetFlood }, description = "Instant mine NCP exploit")
 
     // placing
     val placeDelay by setting("Place Delay", 3, 1..20, 1, { page == Page.PLACING }, description = "Sets the delay ticks between placement tasks")
@@ -99,18 +114,19 @@ object HighwayTools : PluginModule(
     val searchEChest by setting("Search Ender Chest", false, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Allow access to your ender chest")
     val leaveEmptyShulkers by setting("Leave Empty Shulkers", true, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Does not break empty shulkers")
     val grindObsidian by setting("Grind Obsidian", true, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Destroy Ender Chests to obtain Obsidian")
+    val pickupRadius by setting("Pickup radius", 8, 1..50, 1, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Sets the radius for pickup", unit = " blocks")
     val fastFill by setting("Fast Fill", true, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Moves as many item stacks to inventory as possible")
     val keepFreeSlots by setting("Free Slots", 1, 0..30, 1, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "How many inventory slots are untouched on refill", unit = " slots")
-    val preferEnderChests by setting("Prefer Ender Chests", false, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Prevent using raw material shulkers")
     val manageFood by setting("Manage Food", true, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Choose to manage food")
-    val saveMaterial by setting("Save Material", 12, 0..64, 1, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "How many material blocks are saved")
-    val saveTools by setting("Save Tools", 1, 0..36, 1, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "How many tools are saved")
-    val saveEnder by setting("Save Ender Chests", 1, 0..64, 1, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "How many ender chests are saved")
-    val saveFood by setting("Save Food", 1, 0..64, 1, { page == Page.STORAGE_MANAGEMENT && manageFood && storageManagement}, description = "How many food items are saved")
+    val leastMaterial by setting("Least Material", 12, 0..64, 1, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "How many material blocks are saved")
+    val leastTools by setting("Least Tools", 1, 0..36, 1, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "How many tools are saved")
+    val leastEnder by setting("Least Ender Chests", 1, 0..64, 1, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "How many ender chests are saved")
+    val leastFood by setting("Least Food", 1, 0..64, 1, { page == Page.STORAGE_MANAGEMENT && manageFood && storageManagement}, description = "How many food items are saved")
     val minDistance by setting("Min Container Distance", 1.5, 0.0..3.0, 0.1, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Avoid player movement collision with placement.", unit = " blocks")
     val disableMode by setting("Disable Mode", DisableMode.NONE, { page == Page.STORAGE_MANAGEMENT }, description = "Choose action when bot is out of materials or tools")
     val usingProxy by setting("Proxy", false, { disableMode == DisableMode.LOGOUT && page == Page.STORAGE_MANAGEMENT }, description = "Enable this if you are using a proxy to call the given command")
     val proxyCommand by setting("Proxy Command", "/dc", { usingProxy && disableMode == DisableMode.LOGOUT && page == Page.STORAGE_MANAGEMENT }, description = "Command to be sent to log out")
+    val preferEnderChests by setting("Prefer Ender Chests", false, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Prevent using raw material shulkers")
 
     // render
     val anonymizeStats by setting("Anonymize", false, { page == Page.RENDER }, description = "Censors all coordinates in HUD and Chat")
