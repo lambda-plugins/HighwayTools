@@ -89,7 +89,7 @@ abstract class BuildTask(
         return info
     }
 
-    override fun toString() = "$javaClass blockPos=(${blockPos.asString()}) targetBlock=${targetBlock.localizedName}${if (isFillerTask) " isFillerTask" else ""}${if (isContainerTask) " isContainerTask" else ""}${if (isSupportTask) " isSupportTask" else ""} ${gatherInfoToString()}"
+    override fun toString() = "${javaClass.name} blockPos=(${blockPos.asString()}) targetBlock=${targetBlock.localizedName}${if (isFillerTask) " isFillerTask" else ""}${if (isContainerTask) " isContainerTask" else ""}${if (isSupportTask) " isSupportTask" else ""} ${gatherInfoToString()}"
 
     /* helper functions */
     val SafeClientEvent.currentBlockState: IBlockState get() = world.getBlockState(blockPos)

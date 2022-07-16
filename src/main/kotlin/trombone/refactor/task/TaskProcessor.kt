@@ -11,9 +11,9 @@ import trombone.refactor.task.sequence.TaskSequenceStrategy
 import trombone.refactor.task.sequence.strategies.LeftToRightStrategy
 import trombone.refactor.task.sequence.strategies.OriginStrategy
 import trombone.refactor.task.sequence.strategies.RandomStrategy
+import trombone.refactor.task.tasks.DoneTask
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedDeque
-import java.util.concurrent.ConcurrentSkipListSet
 
 object TaskProcessor {
     val tasks = ConcurrentHashMap<BlockPos, BuildTask>()
@@ -47,15 +47,23 @@ object TaskProcessor {
         }
 
         /* get task with the highest priority based on selection strategy */
-        currentTask = taskSequenceStrategy.getNextTask(tasks)
+        val containerTasks = getContainerTasks()
 
-        currentTask?.let {
-            with(it) {
+        currentTask = if (containerTasks.isEmpty()) {
+            taskSequenceStrategy.getNextTask(tasks.values.toList())
+        } else {
+            taskSequenceStrategy.getNextTask(containerTasks)
+        }
+
+        currentTask?.let { currentTask ->
+            with(currentTask) {
                 if (isValid() && !runUpdate()) {
                     runExecute()
 
-                    module.sendPlayerPacket {
-                        rotate(getRotationTo(it.hitVec3d))
+                    hitVec3d?.let {
+                        module.sendPlayerPacket {
+                            rotate(getRotationTo(it))
+                        }
                     }
                 }
             }

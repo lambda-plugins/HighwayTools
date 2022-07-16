@@ -1,28 +1,41 @@
 package trombone.refactor.task
 
+import HighwayTools.preferEnderChests
 import HighwayTools.storageManagement
 import com.lambda.client.event.SafeClientEvent
+import com.lambda.client.util.items.block
+import com.lambda.client.util.items.inventorySlots
+import net.minecraft.block.state.IBlockState
+import net.minecraft.init.Blocks
 import net.minecraft.inventory.ItemStackHelper
 import net.minecraft.inventory.Slot
 import net.minecraft.item.Item
 import net.minecraft.item.ItemShulkerBox
 import net.minecraft.item.ItemStack
 import net.minecraft.util.NonNullList
-import trombone.refactor.pathfinding.Navigator.changeStrategy
-import trombone.refactor.pathfinding.strategies.RestockStrategy
-import trombone.refactor.task.tasks.DoneTask
+import trombone.IO.disableError
 
-object ContainerHandler {
+object RestockHandler {
+    inline fun <reified T: IBlockState> handleRestock() {
+
+    }
+
     inline fun <reified T: Item> SafeClientEvent.handleRestock() {
-        if (TaskProcessor.getContainerTasks().all { it is DoneTask }
-            && storageManagement
-        ) {
-
-        }
+        handleRestock(T::class.java.newInstance())
     }
 
     fun SafeClientEvent.handleRestock(item: Item) {
-        changeStrategy<RestockStrategy>()
+        if (!storageManagement) {
+            disableError("Storage management is disabled. Can't restock ${item.registryName}")
+            return
+        }
+
+        if (preferEnderChests && item.block == Blocks.OBSIDIAN) {
+            grindObsidian()
+            return
+        }
+
+        getShulkerWith(player.inventorySlots, item)
     }
 
     fun getShulkerWith(slots: List<Slot>, item: Item) =

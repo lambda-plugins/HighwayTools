@@ -38,11 +38,6 @@ object Inventory {
 
     val packetLimiter = ConcurrentLinkedDeque<Long>()
 
-    @Suppress("UNUSED")
-    enum class RotationMode {
-        OFF, SPOOF
-    }
-
     fun SafeClientEvent.updateRotation() {
         if (lastHitVec == Vec3d.ZERO) return
         val rotation = getRotationTo(lastHitVec)

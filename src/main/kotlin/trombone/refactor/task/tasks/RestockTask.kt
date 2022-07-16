@@ -36,7 +36,7 @@ import trombone.IO
 import trombone.IO.disableError
 import trombone.Trombone
 import trombone.Trombone.module
-import trombone.refactor.task.ContainerHandler
+import trombone.refactor.task.RestockHandler
 import trombone.refactor.task.BuildTask
 import trombone.refactor.task.TaskProcessor.convertTo
 
@@ -52,7 +52,7 @@ class RestockTask(
     override val timeout = 20
     override var threshold = 200
     override val color = state.colorHolder
-    override var hitVec3d: Vec3d = Vec3d.ZERO
+    override var hitVec3d: Vec3d? = null
 
     enum class State(val colorHolder: ColorHolder, val prioOffset: Int) {
         INIT(ColorHolder(252, 3, 207 ), 0),
@@ -163,7 +163,7 @@ class RestockTask(
                     return
                 }
 
-                ContainerHandler.getShulkerWith(openContainer.getSlots(0..26), desiredItem)?.let {
+                RestockHandler.getShulkerWith(openContainer.getSlots(0..26), desiredItem)?.let {
                     moveToInventory(openContainer, it)
                     state = State.CLOSE
                     execute()

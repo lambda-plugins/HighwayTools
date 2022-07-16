@@ -38,7 +38,7 @@ import net.minecraft.util.math.Vec3d
 import trombone.Statistics
 import trombone.Trombone
 import trombone.Trombone.module
-import trombone.refactor.task.ContainerHandler.handleRestock
+import trombone.refactor.task.RestockHandler.handleRestock
 import trombone.refactor.task.BuildTask
 import trombone.refactor.task.TaskFactory
 import trombone.refactor.task.TaskProcessor

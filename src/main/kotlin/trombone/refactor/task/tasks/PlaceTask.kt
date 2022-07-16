@@ -33,7 +33,7 @@ import trombone.Pathfinder.moveState
 import trombone.Pathfinder.shouldBridge
 import trombone.Statistics
 import trombone.Trombone.module
-import trombone.refactor.task.ContainerHandler.handleRestock
+import trombone.refactor.task.RestockHandler.handleRestock
 import trombone.refactor.task.BuildTask
 import trombone.refactor.task.TaskProcessor
 import trombone.refactor.task.TaskProcessor.addTask

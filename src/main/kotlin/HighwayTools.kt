@@ -6,6 +6,7 @@ import com.lambda.client.event.listener.listener
 import com.lambda.client.module.Category
 import com.lambda.client.plugin.api.PluginModule
 import com.lambda.client.setting.settings.impl.collection.CollectionSetting
+import com.lambda.client.util.Bind
 import com.lambda.client.util.items.shulkerList
 import com.lambda.client.util.threads.*
 import net.minecraft.block.Block
@@ -24,11 +25,8 @@ import trombone.Trombone.active
 import trombone.Trombone.tick
 import trombone.Trombone.onDisable
 import trombone.Trombone.onEnable
-import trombone.handler.Packet.handlePacket
-import trombone.refactor.pathfinding.MovementStrategy
 import trombone.refactor.pathfinding.Navigator
 import trombone.refactor.task.TaskProcessor
-import trombone.refactor.task.sequence.TaskSequenceStrategy
 
 /**
  * @author Avanatiker
@@ -117,6 +115,7 @@ object HighwayTools : PluginModule(
     val pickupRadius by setting("Pickup radius", 8, 1..50, 1, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Sets the radius for pickup", unit = " blocks")
     val fastFill by setting("Fast Fill", true, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Moves as many item stacks to inventory as possible")
     val keepFreeSlots by setting("Free Slots", 1, 0..30, 1, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "How many inventory slots are untouched on refill", unit = " slots")
+    val lockSlotHotkey by setting("Lock Slot Hotkey", Bind(), { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Sets the hotkey for locking a slot")
     val manageFood by setting("Manage Food", true, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "Choose to manage food")
     val leastMaterial by setting("Least Material", 12, 0..64, 1, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "How many material blocks are saved")
     val leastTools by setting("Least Tools", 1, 0..36, 1, { page == Page.STORAGE_MANAGEMENT && storageManagement }, description = "How many tools are saved")

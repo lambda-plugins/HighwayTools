@@ -1,12 +1,10 @@
 package trombone.refactor.task.sequence.strategies
 
-import net.minecraft.util.math.BlockPos
 import trombone.refactor.task.BuildTask
 import trombone.refactor.task.sequence.TaskSequenceStrategy
-import java.util.concurrent.ConcurrentHashMap
 
 object LeftToRightStrategy : TaskSequenceStrategy {
-    override fun getNextTask(tasks: ConcurrentHashMap<BlockPos, BuildTask>): BuildTask? {
+    override fun getNextTask(tasks: List<BuildTask>): BuildTask? {
         TODO("Not yet implemented")
     }
 }
