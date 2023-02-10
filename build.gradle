@@ -68,7 +68,7 @@ dependencies {
     minecraft "net.minecraftforge:forge:$minecraftVersion-$forgeVersion"
 
     // Online maven dependency coming soon
-    implementation files("lib/lambda-3.2-api.jar")
+    implementation files("lib/lambda-3.2.1-api.jar")
 
     implementation('org.spongepowered:mixin:0.8.3') {
         exclude module: 'commons-io'
