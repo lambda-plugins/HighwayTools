@@ -4,6 +4,6 @@
   "authors": [ "Constructor" ],
   "description": "Build highways with ease",
   "url": "https://github.com/lambda-plugins/HighwayTools",
-  "min_api_version": "3.2.1",
+  "min_api_version": "3.3.0",
   "main_class": "HighwayToolsPlugin"
 }
