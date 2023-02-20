@@ -339,7 +339,7 @@ object TaskExecutor {
         when (blockTask.targetBlock) {
             fillerMat -> {
                 if (world.getBlockState(blockTask.blockPos.up()).block == material ||
-                    (!world.isPlaceable(blockTask.blockPos, AxisAlignedBB(blockTask.blockPos)) &&
+                    (!world.isPlaceable(blockTask.blockPos) &&
                         world.getCollisionBox(blockTask.blockPos) != null)) {
                     blockTask.updateState(TaskState.DONE)
                     return
@@ -422,7 +422,7 @@ object TaskExecutor {
 
         if (updateOnly) return
 
-        if (!world.isPlaceable(blockTask.blockPos, AxisAlignedBB(blockTask.blockPos))) {
+        if (!world.isPlaceable(blockTask.blockPos)) {
             if (debugLevel == IO.DebugLevel.VERBOSE) {
                 if (!anonymizeStats) {
                     MessageSendHelper.sendChatMessage("${module.chatName} Invalid place position @(${blockTask.blockPos.asString()}) Removing task")

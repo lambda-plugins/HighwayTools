@@ -47,7 +47,7 @@ object Inventory {
         if (lastHitVec == Vec3d.ZERO) return
         val rotation = getRotationTo(lastHitVec)
 
-        sendPlayerPacket {
+        module.sendPlayerPacket {
             rotate(rotation)
         }
     }

@@ -141,7 +141,7 @@ object Container {
             .filter { pos ->
                 !isInsideBlueprintBuild(pos)
                     && pos != currentBlockPos
-                    && world.isPlaceable(pos, AxisAlignedBB(pos))
+                    && world.isPlaceable(pos)
                     && !world.getBlockState(pos.down()).isReplaceable
                     && world.isAirBlock(pos.up())
                     && getVisibleSides(pos.down()).contains(EnumFacing.UP)
@@ -200,7 +200,7 @@ object Container {
                     .filter { pos ->
                         world.isAirBlock(pos.up())
                             && world.isAirBlock(pos)
-                            && !world.isPlaceable(pos.down(), AxisAlignedBB(pos))
+                            && !world.isPlaceable(pos.down())
                     }
                     .sortedWith(
                         compareBy<BlockPos> {
