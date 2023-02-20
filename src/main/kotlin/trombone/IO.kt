@@ -14,7 +14,7 @@ import HighwayTools.proxyCommand
 import HighwayTools.rubberbandTimeout
 import HighwayTools.usingProxy
 import com.lambda.client.event.SafeClientEvent
-import com.lambda.client.module.modules.combat.AutoLog
+import com.lambda.client.module.modules.combat.AutoDisconnect
 import com.lambda.client.module.modules.misc.AntiAFK
 import com.lambda.client.module.modules.misc.AutoObsidian
 import com.lambda.client.module.modules.movement.AntiHunger
@@ -104,7 +104,7 @@ object IO {
                 MessageSendHelper.sendRawChatMessage("    §c[!] You should activate AutoEat to not die on starvation.")
             }
 
-            if (AutoLog.isDisabled) {
+            if (AutoDisconnect.isDisabled) {
                 MessageSendHelper.sendRawChatMessage("    §c[!] You should activate AutoLog to prevent most deaths when afk.")
             }
 

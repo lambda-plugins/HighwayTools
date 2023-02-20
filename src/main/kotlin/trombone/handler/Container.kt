@@ -32,6 +32,7 @@ import net.minecraft.item.ItemShulkerBox
 import net.minecraft.item.ItemStack
 import net.minecraft.util.EnumFacing
 import net.minecraft.util.NonNullList
+import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.text.TextFormatting
 import trombone.blueprint.BlueprintGenerator.isInsideBlueprintBuild
@@ -140,7 +141,7 @@ object Container {
             .filter { pos ->
                 !isInsideBlueprintBuild(pos)
                     && pos != currentBlockPos
-                    && world.isPlaceable(pos)
+                    && world.isPlaceable(pos, AxisAlignedBB(pos))
                     && !world.getBlockState(pos.down()).isReplaceable
                     && world.isAirBlock(pos.up())
                     && getVisibleSides(pos.down()).contains(EnumFacing.UP)
@@ -199,7 +200,7 @@ object Container {
                     .filter { pos ->
                         world.isAirBlock(pos.up())
                             && world.isAirBlock(pos)
-                            && !world.isPlaceable(pos.down())
+                            && !world.isPlaceable(pos.down(), AxisAlignedBB(pos))
                     }
                     .sortedWith(
                         compareBy<BlockPos> {

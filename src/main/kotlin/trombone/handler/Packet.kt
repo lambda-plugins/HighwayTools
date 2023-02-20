@@ -25,7 +25,7 @@ object Packet {
                 if (!isInsideBlueprint(pos)) return
 
                 val prev = world.getBlockState(pos).block
-                val new = packet.getBlockState().block
+                val new = packet.blockState.block
 
                 if (prev != new) {
                     val task = if (pos == containerTask.blockPos) {

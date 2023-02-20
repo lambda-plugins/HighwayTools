@@ -242,7 +242,8 @@ object TaskManager {
                     && (it.taskState == TaskState.DONE
                     || it.taskState == TaskState.IMPOSSIBLE_PLACE
                     || (it.taskState == TaskState.PLACE
-                    && !world.isPlaceable(it.blockPos))))) {
+                    && !world.isPlaceable(it.blockPos, AxisAlignedBB(it.blockPos)
+            ))))) {
                 tasks[blockTask.blockPos] = blockTask
             }
         } ?: run {
